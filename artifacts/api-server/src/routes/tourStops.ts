@@ -57,7 +57,7 @@ router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
     const stop = await assertStopOwner(params.stopId, user.id, res);
     if (!stop) return;
 
-    const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, stop.propertyId));
+    const [property] = await db.select().from(propertiesTable).where(and(eq(propertiesTable.id, stop.propertyId), eq(propertiesTable.agentId, user.id)));
     const [showingRequest] = await db
       .select()
       .from(showingRequestsTable)

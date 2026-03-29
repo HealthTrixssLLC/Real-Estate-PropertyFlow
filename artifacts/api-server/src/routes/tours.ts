@@ -110,6 +110,16 @@ router.post("/tours", async (req: Request, res: Response) => {
   if (!body) return;
   const user = (req as Express.AuthedRequest).user;
   try {
+    if (body.buyerId) {
+      const [ownedBuyer] = await db
+        .select({ id: buyersTable.id })
+        .from(buyersTable)
+        .where(and(eq(buyersTable.id, body.buyerId), eq(buyersTable.agentId, user.id)));
+      if (!ownedBuyer) {
+        res.status(403).json({ error: "Forbidden: buyer not owned by current user" });
+        return;
+      }
+    }
     const [tour] = await db
       .insert(toursTable)
       .values({ id: randomUUID(), agentId: user.id, ...body, status: "draft" })
@@ -146,7 +156,7 @@ router.get("/tours/:tourId", async (req: Request, res: Response) => {
 
     let buyer = null;
     if (tour.buyerId) {
-      const [b] = await db.select().from(buyersTable).where(eq(buyersTable.id, tour.buyerId));
+      const [b] = await db.select().from(buyersTable).where(and(eq(buyersTable.id, tour.buyerId), eq(buyersTable.agentId, user.id)));
       buyer = b ?? null;
     }
 
@@ -178,6 +188,17 @@ router.put("/tours/:tourId", async (req: Request, res: Response) => {
     const itineraryFields = ["date", "startTime", "startAddress", "startLat", "startLng", "endAddress", "endLat", "endLng"] as const;
     const isItineraryChange = itineraryFields.some(f => f in body);
     if (isItineraryChange && !assertTourNotPublished(existing, res)) return;
+
+    if (body.buyerId) {
+      const [ownedBuyer] = await db
+        .select({ id: buyersTable.id })
+        .from(buyersTable)
+        .where(and(eq(buyersTable.id, body.buyerId), eq(buyersTable.agentId, user.id)));
+      if (!ownedBuyer) {
+        res.status(403).json({ error: "Forbidden: buyer not owned by current user" });
+        return;
+      }
+    }
 
     const [tour] = await db
       .update(toursTable)
@@ -235,6 +256,15 @@ router.post("/tours/:tourId/properties", async (req: Request, res: Response) => 
         .values({ id: randomUUID(), agentId: user.id, ...propertyData })
         .returning();
       propertyId = property.id;
+    } else {
+      const [owned] = await db
+        .select({ id: propertiesTable.id })
+        .from(propertiesTable)
+        .where(and(eq(propertiesTable.id, propertyId), eq(propertiesTable.agentId, user.id)));
+      if (!owned) {
+        res.status(403).json({ error: "Forbidden: property not owned by current user" });
+        return;
+      }
     }
 
     const existingStops = await db
