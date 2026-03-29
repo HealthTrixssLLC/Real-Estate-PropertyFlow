@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
-import { useAddPropertyToTour, useReorderTourStops, useOptimizeTourRoute } from "@workspace/api-client-react"
+import { useAddPropertyToTour, useReorderTourStops, useOptimizeTourRoute, useDeleteTourStop } from "@workspace/api-client-react"
 import type { TourStop } from "@workspace/api-client-react"
-import { GripVertical, Plus, Route, Loader2, MapPin, Building2 } from "lucide-react"
+import { GripVertical, Plus, Route, Loader2, MapPin, Building2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -12,18 +12,31 @@ import { useToast } from "@/hooks/use-toast"
 import { useQueryClient } from "@tanstack/react-query"
 import { getGetTourQueryKey } from "@workspace/api-client-react"
 import { cn, getStatusColor } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface StopsTabProps {
   tourId: string
   stops: TourStop[]
+  tourStatus?: string
 }
 
-export default function StopsTab({ tourId, stops: initialStops }: StopsTabProps) {
+export default function StopsTab({ tourId, stops: initialStops, tourStatus }: StopsTabProps) {
   const [stops, setStops] = useState<TourStop[]>(initialStops)
   const [isAddOpen, setIsAddOpen] = useState(false)
+  const [stopToDelete, setStopToDelete] = useState<TourStop | null>(null)
   const addProp = useAddPropertyToTour()
   const reorder = useReorderTourStops()
   const optimize = useOptimizeTourRoute()
+  const deleteStop = useDeleteTourStop()
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -74,6 +87,21 @@ export default function StopsTab({ tourId, stops: initialStops }: StopsTabProps)
       await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) })
     } catch {
       toast({ title: "Failed to optimize route", variant: "destructive" })
+    }
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!stopToDelete) return
+    const removedStop = stopToDelete
+    setStopToDelete(null)
+    setStops(prev => prev.filter(s => s.id !== removedStop.id))
+    try {
+      await deleteStop.mutateAsync({ stopId: removedStop.id })
+      toast({ title: "Stop removed from tour" })
+      await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) })
+    } catch {
+      toast({ title: "Failed to remove stop", variant: "destructive" })
+      setStops(initialStops)
     }
   }
 
@@ -155,6 +183,18 @@ export default function StopsTab({ tourId, stops: initialStops }: StopsTabProps)
                             Stop {stop.sequence} · {stop.visited ? "Visited" : "Pending"}
                           </div>
                         </div>
+
+                        {tourStatus !== "published" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setStopToDelete(stop)}
+                            aria-label="Remove stop"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     )}
                   </Draggable>
@@ -165,6 +205,26 @@ export default function StopsTab({ tourId, stops: initialStops }: StopsTabProps)
           </Droppable>
         </DragDropContext>
       )}
+
+      <AlertDialog open={!!stopToDelete} onOpenChange={(open) => { if (!open) setStopToDelete(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Stop</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this stop from the tour? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteStop.isPending ? "Removing..." : "Remove Stop"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

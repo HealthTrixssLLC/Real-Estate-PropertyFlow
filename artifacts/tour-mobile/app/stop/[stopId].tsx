@@ -3,12 +3,16 @@ import {
   useGetTourStop,
   useAddStopNote,
   useUpdateTourStop,
+  useDeleteTourStop,
+  useGetTour,
   getGetTourStopQueryKey,
+  getGetTourQueryKey,
 } from "@workspace/api-client-react";
 import type { UpdateTourStopRequest } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
 import * as Haptics from "expo-haptics";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { SymbolView, type SFSymbol } from "expo-symbols";
 import React, { type ComponentProps, useEffect, useRef, useState } from "react";
 import {
@@ -61,6 +65,9 @@ export default function StopDetailScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const voiceY = useRef(0);
 
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
   const { data, isLoading, refetch } = useGetTourStop(stopId ?? "", {
     query: { queryKey: getGetTourStopQueryKey(stopId ?? ""), enabled: !!stopId },
   });
@@ -73,12 +80,50 @@ export default function StopDetailScreen() {
     mutation: { onSuccess: () => refetch() },
   });
 
+  const { mutate: deleteStop, isPending: isDeletingStop } = useDeleteTourStop();
+
   const stop = data?.stop;
   const property = data?.property;
   const showingRequest = data?.showingRequest;
   const restrictionNote = data?.restrictionNote;
   const voiceNotes = data?.voiceNotes ?? [];
   const summary = data?.propertySummary;
+
+  const { data: tourData } = useGetTour(stop?.tourId ?? "", {
+    query: { enabled: !!stop?.tourId },
+  });
+  const tourStatus = tourData?.tour?.status;
+
+  const handleRemoveStop = () => {
+    if (!stopId || !stop) return;
+    Alert.alert(
+      "Remove Stop",
+      "Are you sure you want to remove this stop from the tour?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            deleteStop(
+              { stopId },
+              {
+                onSuccess: () => {
+                  void queryClient.invalidateQueries({
+                    queryKey: getGetTourQueryKey(stop.tourId),
+                  });
+                  router.replace(`/tour/${stop.tourId}`);
+                },
+                onError: () => {
+                  Alert.alert("Error", "Failed to remove stop. Please try again.");
+                },
+              }
+            );
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     if (property) {
@@ -583,6 +628,30 @@ export default function StopDetailScreen() {
             </View>
           </View>
         )}
+
+        {tourStatus !== undefined && tourStatus !== "published" && (
+          <View style={styles.section}>
+            <Pressable
+              testID="remove-stop-btn"
+              onPress={handleRemoveStop}
+              disabled={isDeletingStop}
+              style={({ pressed }) => [
+                styles.removeStopBtn,
+                { borderColor: C.coral, backgroundColor: pressed ? C.coral + "15" : "transparent" },
+                isDeletingStop && { opacity: 0.5 },
+              ]}
+            >
+              {isIOS ? (
+                <SymbolView name="trash" tintColor={C.coral} size={18} />
+              ) : (
+                <Feather name="trash-2" size={18} color={C.coral} />
+              )}
+              <Text style={[styles.removeStopLabel, { color: C.coral }]}>
+                {isDeletingStop ? "Removing…" : "Remove Stop"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
 
@@ -909,5 +978,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textTransform: "capitalize",
     marginTop: 2,
+  },
+  removeStopBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  removeStopLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
   },
 });

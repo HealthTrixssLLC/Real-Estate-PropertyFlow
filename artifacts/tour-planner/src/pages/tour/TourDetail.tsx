@@ -98,7 +98,7 @@ export default function TourDetail() {
 
         <div className="bg-card rounded-2xl border border-border/50 shadow-sm min-h-[500px]">
           <TabsContent value="stops" className="m-0 p-0 outline-none">
-            <StopsTab tourId={tourId} stops={stops} />
+            <StopsTab tourId={tourId} stops={stops} tourStatus={tour.status} />
           </TabsContent>
           <TabsContent value="map" className="m-0 p-0 outline-none">
             <MapTab stops={stops} properties={properties} />
