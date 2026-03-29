@@ -1,10 +1,11 @@
 import { Feather } from "@expo/vector-icons";
-import { useSkipTourStop } from "@workspace/api-client-react";
+import { useSkipTourStop, getGetTourQueryKey } from "@workspace/api-client-react";
 import type { SkipStopRequestReason } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import React, { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ActivityIndicator,
   Platform,
@@ -40,11 +41,15 @@ export default function SkipStopSheet() {
 
   const [selected, setSelected] = useState<SkipStopRequestReason | null>(null);
   const [notes, setNotes] = useState("");
+  const queryClient = useQueryClient();
 
   const { mutate: skipStop, isPending } = useSkipTourStop({
     mutation: {
       onSuccess: () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (tourId) {
+          void queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) });
+        }
         router.back();
       },
     },

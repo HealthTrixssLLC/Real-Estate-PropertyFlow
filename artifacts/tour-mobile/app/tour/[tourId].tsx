@@ -4,8 +4,9 @@ import {
   useMarkStopArrived,
   useMarkStopCompleted,
 } from "@workspace/api-client-react";
-import type { TourStop } from "@workspace/api-client-react";
+import type { TourStopWithAddress } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
+import { Linking } from "react-native";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useMemo } from "react";
@@ -35,7 +36,7 @@ function StopCard({
   total,
   onPress,
 }: {
-  stop: TourStop;
+  stop: TourStopWithAddress;
   label: "current" | "next";
   index: number;
   total: number;
@@ -45,6 +46,7 @@ function StopCard({
   const C = Colors[scheme];
   const isIOS = Platform.OS === "ios";
   const isCurrent = label === "current";
+  const address = stop.formattedAddress || stop.propertyNickname || `Stop #${index + 1}`;
 
   return (
     <Pressable
@@ -105,7 +107,7 @@ function StopCard({
           ]}
           numberOfLines={2}
         >
-          {(stop as any)._address ?? "Loading address…"}
+          {address}
         </Text>
       </View>
       {stop.visited && (
@@ -115,6 +117,21 @@ function StopCard({
       )}
     </Pressable>
   );
+}
+
+async function openNavigation(address: string) {
+  const encoded = encodeURIComponent(address);
+  if (Platform.OS === "ios") {
+    const googleUrl = `comgooglemaps://?daddr=${encoded}&directionsmode=driving`;
+    const canOpenGoogle = await Linking.canOpenURL(googleUrl);
+    if (canOpenGoogle) {
+      await Linking.openURL(googleUrl);
+    } else {
+      await Linking.openURL(`maps://?q=${encoded}`);
+    }
+  } else {
+    await Linking.openURL(`https://maps.google.com/?q=${encoded}`);
+  }
 }
 
 export default function ActiveTourScreen() {
@@ -131,7 +148,7 @@ export default function ActiveTourScreen() {
   });
 
   const tour = data?.tour;
-  const stops = data?.stops ?? [];
+  const stops: TourStopWithAddress[] = (data?.stops ?? []) as TourStopWithAddress[];
   const buyer = data?.buyer;
 
   const activeStops = useMemo(
@@ -158,15 +175,6 @@ export default function ActiveTourScreen() {
       navigation.setOptions({ title: tour.title });
     }
   }, [tour, navigation]);
-
-  const openMap = (address: string) => {
-    const query = encodeURIComponent(address);
-    const url =
-      isIOS
-        ? `maps://?q=${query}`
-        : `https://maps.google.com/?q=${query}`;
-    import("expo-linking").then(({ openURL }) => openURL(url));
-  };
 
   const handleArrive = () => {
     if (!currentStop) return;
@@ -218,8 +226,8 @@ export default function ActiveTourScreen() {
         sfIcon: "arrow.triangle.turn.up.right.circle.fill",
         featherIcon: "navigation",
         onPress: () => {
-          const addr = (currentStop as any)._address ?? "";
-          if (addr) openMap(addr);
+          const addr = currentStop.formattedAddress || currentStop.propertyNickname || "";
+          if (addr) openNavigation(addr);
         },
       });
       actionButtons.push({
@@ -285,18 +293,6 @@ export default function ActiveTourScreen() {
     );
   }
 
-  const stopListWithAddresses = activeStops.map((s, i) => {
-    const cachedAddr = (s as any)._address;
-    return { ...s, _address: cachedAddr ?? `Stop #${i + 1}` };
-  });
-
-  const currentWithAddr = currentStop
-    ? stopListWithAddresses.find((s) => s.id === currentStop.id) ?? currentStop
-    : null;
-  const nextWithAddr = nextStop
-    ? stopListWithAddresses.find((s) => s.id === nextStop.id) ?? nextStop
-    : null;
-
   const topPad = isWeb ? 67 : 0;
 
   return (
@@ -317,7 +313,7 @@ export default function ActiveTourScreen() {
                 <Feather name="user" size={13} color={C.textSecondary} />
               )}
               <Text style={[styles.buyerName, { color: C.textSecondary }]}>
-                {buyer.name}
+                {(buyer as { name: string }).name}
               </Text>
             </View>
           </View>
@@ -331,23 +327,23 @@ export default function ActiveTourScreen() {
           />
         </View>
 
-        {currentWithAddr && (
+        {currentStop && (
           <StopCard
-            stop={currentWithAddr}
+            stop={currentStop}
             label="current"
             index={currentIdx}
             total={activeStops.length}
-            onPress={() => router.push(`/stop/${currentStop!.id}`)}
+            onPress={() => router.push(`/stop/${currentStop.id}`)}
           />
         )}
 
-        {nextWithAddr && (
+        {nextStop && (
           <StopCard
-            stop={nextWithAddr}
+            stop={nextStop}
             label="next"
             index={currentIdx + 1}
             total={activeStops.length}
-            onPress={() => router.push(`/stop/${nextStop!.id}`)}
+            onPress={() => router.push(`/stop/${nextStop.id}`)}
           />
         )}
 
@@ -368,45 +364,48 @@ export default function ActiveTourScreen() {
         )}
 
         <Text style={[styles.allStopsTitle, { color: C.text }]}>All Stops</Text>
-        {stopListWithAddresses.map((s, i) => (
-          <Pressable
-            key={s.id}
-            testID={`stop-row-${i}`}
-            onPress={() => router.push(`/stop/${s.id}`)}
-            style={({ pressed }) => [
-              styles.stopRow,
-              { backgroundColor: C.surface, borderColor: C.border },
-              pressed && { opacity: 0.8 },
-            ]}
-          >
-            <View style={[styles.stopNum, { backgroundColor: s.skipped ? C.surfaceAlt : s.visited ? C.green : C.accent }]}>
-              <Text style={styles.stopNumText}>{i + 1}</Text>
-            </View>
-            <View style={styles.stopRowContent}>
-              <Text style={[styles.stopRowAddr, { color: C.text }]} numberOfLines={1}>
-                {s._address}
-              </Text>
-              <StatusChip status={s.approvedStatus} small />
-            </View>
-            <View style={styles.stopRowRight}>
-              {s.skipped && (
-                <Text style={[styles.skippedLabel, { color: C.textTertiary }]}>Skipped</Text>
-              )}
-              {s.visited && !s.skipped && (
-                isIOS ? (
-                  <SymbolView name="checkmark.circle.fill" tintColor={C.green} size={18} />
+        {stops.map((s, i) => {
+          const addr = s.formattedAddress || s.propertyNickname || `Stop #${i + 1}`;
+          return (
+            <Pressable
+              key={s.id}
+              testID={`stop-row-${i}`}
+              onPress={() => router.push(`/stop/${s.id}`)}
+              style={({ pressed }) => [
+                styles.stopRow,
+                { backgroundColor: C.surface, borderColor: C.border },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <View style={[styles.stopNum, { backgroundColor: s.skipped ? C.surfaceAlt : s.visited ? C.green : C.accent }]}>
+                <Text style={styles.stopNumText}>{i + 1}</Text>
+              </View>
+              <View style={styles.stopRowContent}>
+                <Text style={[styles.stopRowAddr, { color: C.text }]} numberOfLines={1}>
+                  {addr}
+                </Text>
+                <StatusChip status={s.approvedStatus} small />
+              </View>
+              <View style={styles.stopRowRight}>
+                {s.skipped && (
+                  <Text style={[styles.skippedLabel, { color: C.textTertiary }]}>Skipped</Text>
+                )}
+                {s.visited && !s.skipped && (
+                  isIOS ? (
+                    <SymbolView name="checkmark.circle.fill" tintColor={C.green} size={18} />
+                  ) : (
+                    <Feather name="check-circle" size={18} color={C.green} />
+                  )
+                )}
+                {isIOS ? (
+                  <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
                 ) : (
-                  <Feather name="check-circle" size={18} color={C.green} />
-                )
-              )}
-              {isIOS ? (
-                <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
-              ) : (
-                <Feather name="chevron-right" size={14} color={C.textTertiary} />
-              )}
-            </View>
-          </Pressable>
-        ))}
+                  <Feather name="chevron-right" size={14} color={C.textTertiary} />
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
         <View style={{ height: 120 }} />
       </ScrollView>
 

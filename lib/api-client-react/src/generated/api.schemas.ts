@@ -443,9 +443,19 @@ export interface TourStopDetailResponse {
   propertySummary?: PropertySummary | null;
 }
 
+export type TourStopWithAddress = TourStop & {
+  /** Property address joined from the linked property record */
+  formattedAddress?: string;
+  /**
+   * Optional nickname for the property
+   * @nullable
+   */
+  propertyNickname?: string | null;
+};
+
 export interface TourDetailResponse {
   tour: Tour;
-  stops: TourStop[];
+  stops: TourStopWithAddress[];
   buyer?: Buyer | null;
 }
 

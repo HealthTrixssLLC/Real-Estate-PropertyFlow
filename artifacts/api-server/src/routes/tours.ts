@@ -155,6 +155,23 @@ router.get("/tours/:tourId", async (req: Request, res: Response) => {
       s.approvedStatus === "requested" || s.approvedStatus === "pending"
     ).length;
 
+    const propertyIds = stops.map(s => s.propertyId);
+    const properties = propertyIds.length > 0
+      ? await db.select({ id: propertiesTable.id, formattedAddress: propertiesTable.formattedAddress, nickname: propertiesTable.nickname })
+          .from(propertiesTable)
+          .where(inArray(propertiesTable.id, propertyIds))
+      : [];
+    const propMap = new Map(properties.map(p => [p.id, p]));
+
+    const stopsWithAddress = stops.map(s => {
+      const prop = propMap.get(s.propertyId);
+      return {
+        ...s,
+        formattedAddress: prop?.formattedAddress ?? "",
+        propertyNickname: prop?.nickname ?? null,
+      };
+    });
+
     let buyer = null;
     if (tour.buyerId) {
       const [b] = await db.select().from(buyersTable).where(and(eq(buyersTable.id, tour.buyerId), eq(buyersTable.agentId, user.id)));
@@ -163,7 +180,7 @@ router.get("/tours/:tourId", async (req: Request, res: Response) => {
 
     sendValidated(res, TourDetailResponseSchema, {
       tour: { ...tour, stopCount, approvedCount, pendingShowingsCount },
-      stops,
+      stops: stopsWithAddress,
       buyer,
     });
   } catch (err) {

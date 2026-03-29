@@ -422,39 +422,54 @@ export const GetTourResponse = zod.object({
     updatedAt: zod.coerce.date(),
   }),
   stops: zod.array(
-    zod.object({
-      id: zod.string(),
-      tourId: zod.string(),
-      propertyId: zod.string(),
-      sequence: zod.number(),
-      approvedStatus: zod.enum([
-        "not_requested",
-        "requested",
-        "pending",
-        "approved",
-        "declined",
-        "needs_follow_up",
-        "restricted",
-        "cancelled",
-      ]),
-      skipped: zod.boolean(),
-      skipReason: zod.string().nullish(),
-      skipNotes: zod.string().nullish(),
-      visited: zod.boolean(),
-      arrivalTime: zod.coerce.date().nullish(),
-      departureTime: zod.coerce.date().nullish(),
-      buyerInterest: zod.number().nullish(),
-      kitchenRating: zod.number().nullish(),
-      primarySuiteRating: zod.number().nullish(),
-      backyardRating: zod.number().nullish(),
-      roadNoiseRating: zod.number().nullish(),
-      overallFitRating: zod.number().nullish(),
-      followUpFlag: zod.boolean(),
-      revisitFlag: zod.boolean(),
-      quickTags: zod.array(zod.string()).nullish(),
-      createdAt: zod.coerce.date(),
-      updatedAt: zod.coerce.date(),
-    }),
+    zod
+      .object({
+        id: zod.string(),
+        tourId: zod.string(),
+        propertyId: zod.string(),
+        sequence: zod.number(),
+        approvedStatus: zod.enum([
+          "not_requested",
+          "requested",
+          "pending",
+          "approved",
+          "declined",
+          "needs_follow_up",
+          "restricted",
+          "cancelled",
+        ]),
+        skipped: zod.boolean(),
+        skipReason: zod.string().nullish(),
+        skipNotes: zod.string().nullish(),
+        visited: zod.boolean(),
+        arrivalTime: zod.coerce.date().nullish(),
+        departureTime: zod.coerce.date().nullish(),
+        buyerInterest: zod.number().nullish(),
+        kitchenRating: zod.number().nullish(),
+        primarySuiteRating: zod.number().nullish(),
+        backyardRating: zod.number().nullish(),
+        roadNoiseRating: zod.number().nullish(),
+        overallFitRating: zod.number().nullish(),
+        followUpFlag: zod.boolean(),
+        revisitFlag: zod.boolean(),
+        quickTags: zod.array(zod.string()).nullish(),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      })
+      .and(
+        zod.object({
+          formattedAddress: zod
+            .string()
+            .optional()
+            .describe(
+              "Property address joined from the linked property record",
+            ),
+          propertyNickname: zod
+            .string()
+            .nullish()
+            .describe("Optional nickname for the property"),
+        }),
+      ),
   ),
   buyer: zod
     .union([
@@ -629,8 +644,6 @@ export const SkipTourStopBody = zod.object({
     "other",
   ]),
   notes: zod.string().optional(),
-  currentLat: zod.number().optional(),
-  currentLng: zod.number().optional(),
 });
 
 export const SkipTourStopResponse = zod.object({

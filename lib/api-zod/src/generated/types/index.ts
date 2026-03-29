@@ -68,6 +68,7 @@ export * from "./tourStop";
 export * from "./tourStopApprovedStatus";
 export * from "./tourStopDetailResponse";
 export * from "./tourStopResponse";
+export * from "./tourStopWithAddress";
 export * from "./tourSummary";
 export * from "./tourSummaryResponse";
 export * from "./transcript";

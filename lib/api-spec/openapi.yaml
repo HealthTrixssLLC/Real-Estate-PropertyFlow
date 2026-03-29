@@ -1395,6 +1395,18 @@ components:
             - $ref: '#/components/schemas/PropertySummary'
             - type: 'null'
 
+    TourStopWithAddress:
+      allOf:
+        - $ref: '#/components/schemas/TourStop'
+        - type: object
+          properties:
+            formattedAddress:
+              type: string
+              description: Property address joined from the linked property record
+            propertyNickname:
+              type: [string, 'null']
+              description: Optional nickname for the property
+
     TourDetailResponse:
       type: object
       required: [tour, stops]
@@ -1404,7 +1416,7 @@ components:
         stops:
           type: array
           items:
-            $ref: '#/components/schemas/TourStop'
+            $ref: '#/components/schemas/TourStopWithAddress'
         buyer:
           oneOf:
             - $ref: '#/components/schemas/Buyer'

@@ -7,10 +7,10 @@
  */
 import type { Buyer } from "./buyer";
 import type { Tour } from "./tour";
-import type { TourStop } from "./tourStop";
+import type { TourStopWithAddress } from "./tourStopWithAddress";
 
 export interface TourDetailResponse {
   tour: Tour;
-  stops: TourStop[];
+  stops: TourStopWithAddress[];
   buyer?: Buyer | null;
 }

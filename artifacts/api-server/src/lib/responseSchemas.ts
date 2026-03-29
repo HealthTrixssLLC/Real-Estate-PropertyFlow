@@ -58,9 +58,14 @@ export const TourResponseSchema = z.object({
   tour: TourSchema,
 });
 
+export const TourStopWithAddressSchema = TourStopSchema.extend({
+  formattedAddress: z.string(),
+  propertyNickname: z.string().nullable().optional(),
+});
+
 export const TourDetailResponseSchema = z.object({
   tour: TourSchema,
-  stops: z.array(TourStopSchema),
+  stops: z.array(TourStopWithAddressSchema),
   buyer: z.record(z.unknown()).nullable(),
 });
 

@@ -4,9 +4,10 @@ import {
   useAddStopNote,
   useUpdateTourStop,
 } from "@workspace/api-client-react";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import type { UpdateTourStopRequest } from "@workspace/api-client-react";
+import { useLocalSearchParams, useNavigation } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import React, { useEffect, useState } from "react";
+import React, { type ComponentProps, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -26,6 +27,21 @@ import { StarRating } from "@/components/StarRating";
 import { StatusChip } from "@/components/StatusChip";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import Colors from "@/constants/colors";
+
+type RatingField = "overallFitRating" | "buyerInterest" | "kitchenRating" | "primarySuiteRating" | "backyardRating" | "roadNoiseRating";
+
+const QUICK_TAG_OPTIONS = [
+  "Great location",
+  "Needs work",
+  "Too small",
+  "Great layout",
+  "Good light",
+  "Noisy street",
+  "Nice yard",
+  "Dated kitchen",
+  "Updated bath",
+  "Strong buy",
+];
 
 export default function StopDetailScreen() {
   const { stopId } = useLocalSearchParams<{ stopId: string }>();
@@ -88,9 +104,25 @@ export default function StopDetailScreen() {
     }
   };
 
-  const handleRatingChange = (field: string, val: number) => {
+  const handleRatingChange = (field: RatingField, val: number) => {
     if (!stopId) return;
-    updateStop({ stopId, data: { [field]: val } as any });
+    const patch: UpdateTourStopRequest = { [field]: val };
+    updateStop({ stopId, data: patch });
+  };
+
+  const handleToggleFlag = (field: "followUpFlag" | "revisitFlag") => {
+    if (!stopId || !stop) return;
+    const patch: UpdateTourStopRequest = { [field]: !stop[field] };
+    updateStop({ stopId, data: patch });
+  };
+
+  const handleToggleTag = (tag: string) => {
+    if (!stopId || !stop) return;
+    const current = stop.quickTags ?? [];
+    const next = current.includes(tag)
+      ? current.filter((t) => t !== tag)
+      : [...current, tag];
+    updateStop({ stopId, data: { quickTags: next } });
   };
 
   const topPad = isWeb ? 67 : 0;
@@ -110,6 +142,8 @@ export default function StopDetailScreen() {
       </View>
     );
   }
+
+  const currentTags = stop.quickTags ?? [];
 
   return (
     <KeyboardAvoidingView
@@ -261,14 +295,16 @@ export default function StopDetailScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: C.text }]}>Ratings</Text>
           <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
-            {([
-              ["Overall Fit", "overallFitRating", stop.overallFitRating],
-              ["Buyer Interest", "buyerInterest", stop.buyerInterest],
-              ["Kitchen", "kitchenRating", stop.kitchenRating],
-              ["Primary Suite", "primarySuiteRating", stop.primarySuiteRating],
-              ["Backyard", "backyardRating", stop.backyardRating],
-              ["Road Noise", "roadNoiseRating", stop.roadNoiseRating],
-            ] as [string, string, number | null | undefined][]).map(([label, field, val]) => (
+            {(
+              [
+                ["Overall Fit", "overallFitRating", stop.overallFitRating],
+                ["Buyer Interest", "buyerInterest", stop.buyerInterest],
+                ["Kitchen", "kitchenRating", stop.kitchenRating],
+                ["Primary Suite", "primarySuiteRating", stop.primarySuiteRating],
+                ["Backyard", "backyardRating", stop.backyardRating],
+                ["Road Noise", "roadNoiseRating", stop.roadNoiseRating],
+              ] as [string, RatingField, number | null | undefined][]
+            ).map(([label, field, val]) => (
               <View key={field} style={styles.ratingRow}>
                 <Text style={[styles.ratingLabel, { color: C.text }]}>{label}</Text>
                 <StarRating
@@ -278,6 +314,83 @@ export default function StopDetailScreen() {
                 />
               </View>
             ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Flags</Text>
+          <View style={styles.flagsRow}>
+            <Pressable
+              testID="follow-up-flag-btn"
+              onPress={() => handleToggleFlag("followUpFlag")}
+              style={({ pressed }) => [
+                styles.flagToggle,
+                {
+                  backgroundColor: stop.followUpFlag ? C.amber + "22" : C.card,
+                  borderColor: stop.followUpFlag ? C.amber : C.border,
+                },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              {isIOS ? (
+                <SymbolView name="bookmark.fill" tintColor={stop.followUpFlag ? C.amber : C.textTertiary} size={16} />
+              ) : (
+                <Feather name="bookmark" size={16} color={stop.followUpFlag ? C.amber : C.textTertiary} />
+              )}
+              <Text style={[styles.flagLabel, { color: stop.followUpFlag ? C.amber : C.textSecondary }]}>
+                Follow-up
+              </Text>
+            </Pressable>
+
+            <Pressable
+              testID="revisit-flag-btn"
+              onPress={() => handleToggleFlag("revisitFlag")}
+              style={({ pressed }) => [
+                styles.flagToggle,
+                {
+                  backgroundColor: stop.revisitFlag ? C.accent + "22" : C.card,
+                  borderColor: stop.revisitFlag ? C.accent : C.border,
+                },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              {isIOS ? (
+                <SymbolView name="arrow.uturn.right.circle.fill" tintColor={stop.revisitFlag ? C.accent : C.textTertiary} size={16} />
+              ) : (
+                <Feather name="refresh-ccw" size={16} color={stop.revisitFlag ? C.accent : C.textTertiary} />
+              )}
+              <Text style={[styles.flagLabel, { color: stop.revisitFlag ? C.accent : C.textSecondary }]}>
+                Revisit
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Quick Tags</Text>
+          <View style={styles.tagWrap}>
+            {QUICK_TAG_OPTIONS.map((tag) => {
+              const active = currentTags.includes(tag);
+              return (
+                <Pressable
+                  key={tag}
+                  testID={`tag-${tag}`}
+                  onPress={() => handleToggleTag(tag)}
+                  style={({ pressed }) => [
+                    styles.tagChip,
+                    {
+                      backgroundColor: active ? C.accent : C.card,
+                      borderColor: active ? C.accent : C.border,
+                    },
+                    pressed && { opacity: 0.8 },
+                  ]}
+                >
+                  <Text style={[styles.tagLabel, { color: active ? "#FFF" : C.text }]}>
+                    {tag}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -396,6 +509,8 @@ export default function StopDetailScreen() {
   );
 }
 
+type ColorScheme = (typeof Colors)["light"];
+
 function InfoRow({
   label,
   value,
@@ -410,7 +525,7 @@ function InfoRow({
   sfIcon?: string;
   featherIcon?: string;
   onPress?: () => void;
-  C: any;
+  C: ColorScheme;
   isIOS: boolean;
 }) {
   const content = (
@@ -419,7 +534,7 @@ function InfoRow({
         {sfIcon && isIOS ? (
           <SymbolView name={sfIcon} tintColor={C.textTertiary} size={14} />
         ) : featherIcon ? (
-          <Feather name={featherIcon as any} size={14} color={C.textTertiary} />
+          <Feather name={featherIcon as ComponentProps<typeof Feather>["name"]} size={14} color={C.textTertiary} />
         ) : null}
         <Text style={[styles.infoLabel, { color: C.textSecondary }]}>{label}</Text>
       </View>
@@ -438,9 +553,9 @@ function InfoRow({
   return content;
 }
 
-function FlagRow({ label, C, isIOS }: { label: string; C: any; isIOS: boolean }) {
+function FlagRow({ label, C, isIOS }: { label: string; C: ColorScheme; isIOS: boolean }) {
   return (
-    <View style={[styles.infoRow, styles.flagRow]}>
+    <View style={[styles.infoRow, styles.flagInfoRow]}>
       {isIOS ? (
         <SymbolView name="exclamationmark.triangle" tintColor={C.amber} size={14} />
       ) : (
@@ -523,7 +638,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "right",
   },
-  flagRow: {
+  flagInfoRow: {
     justifyContent: "flex-start",
     gap: 8,
   },
@@ -547,6 +662,38 @@ const styles = StyleSheet.create({
   ratingLabel: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+  },
+  flagsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  flagToggle: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  flagLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  tagWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tagChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  tagLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   voiceRow: {
     flexDirection: "row",
