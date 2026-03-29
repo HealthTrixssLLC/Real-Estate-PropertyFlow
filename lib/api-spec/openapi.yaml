@@ -240,6 +240,84 @@ paths:
         '204':
           description: Buyer deleted
 
+  # ── Standalone Properties ────────────────────────────────────────────────────
+  /properties:
+    get:
+      tags: [properties]
+      operationId: listProperties
+      summary: List all properties
+      responses:
+        '200':
+          description: List of properties
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyListResponse'
+    post:
+      tags: [properties]
+      operationId: createProperty
+      summary: Create a new property
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePropertyBody'
+      responses:
+        '201':
+          description: Property created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyResponse'
+
+  /properties/{propertyId}:
+    get:
+      tags: [properties]
+      operationId: getProperty
+      summary: Get a property by ID
+      parameters:
+        - $ref: '#/components/parameters/PropertyIdParam'
+      responses:
+        '200':
+          description: Property found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyResponse'
+        '404':
+          description: Property not found
+    put:
+      tags: [properties]
+      operationId: updateProperty
+      summary: Update a property
+      parameters:
+        - $ref: '#/components/parameters/PropertyIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePropertyBody'
+      responses:
+        '200':
+          description: Property updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyResponse'
+        '404':
+          description: Property not found
+    delete:
+      tags: [properties]
+      operationId: deleteProperty
+      summary: Delete a property
+      parameters:
+        - $ref: '#/components/parameters/PropertyIdParam'
+      responses:
+        '204':
+          description: Deleted
+
   # ── Tours ───────────────────────────────────────────────────────────────────
   /tours:
     get:
@@ -794,6 +872,12 @@ components:
       description: Browser session cookie.
       schema:
         type: string
+    PropertyIdParam:
+      name: propertyId
+      in: path
+      required: true
+      schema:
+        type: string
     BuyerIdParam:
       name: buyerId
       in: path
@@ -836,9 +920,12 @@ components:
           type: boolean
 
     # ── Auth schemas ──────────────────────────────────────────────────────────
+    UserRole:
+      type: string
+      enum: [agent, assistant]
     AuthUser:
       type: object
-      required: [id, email, firstName, lastName, profileImageUrl]
+      required: [id, email, firstName, lastName, profileImageUrl, role]
       properties:
         id:
           type: string
@@ -851,6 +938,8 @@ components:
           type: [string, 'null']
         profileImageUrl:
           type: [string, 'null']
+        role:
+          $ref: '#/components/schemas/UserRole'
     AuthUserEnvelope:
       type: object
       required: [user]
@@ -897,6 +986,85 @@ components:
       required: [error]
       properties:
         error:
+          type: string
+
+    # ── Standalone Property CRUD schemas ─────────────────────────────────────
+    PropertyListResponse:
+      type: object
+      required: [properties]
+      properties:
+        properties:
+          type: array
+          items:
+            $ref: '#/components/schemas/Property'
+    PropertyResponse:
+      type: object
+      required: [property]
+      properties:
+        property:
+          $ref: '#/components/schemas/Property'
+    CreatePropertyBody:
+      type: object
+      required: [formattedAddress]
+      properties:
+        formattedAddress:
+          type: string
+        placeId:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        city:
+          type: string
+        state:
+          type: string
+        zip:
+          type: string
+        mlsId:
+          type: string
+        listPrice:
+          type: integer
+        beds:
+          type: integer
+        baths:
+          type: number
+        squareFeet:
+          type: integer
+        nickname:
+          type: string
+        notes:
+          type: string
+    UpdatePropertyBody:
+      type: object
+      properties:
+        formattedAddress:
+          type: string
+        placeId:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        city:
+          type: string
+        state:
+          type: string
+        zip:
+          type: string
+        mlsId:
+          type: string
+        listPrice:
+          type: integer
+        beds:
+          type: integer
+        baths:
+          type: number
+        squareFeet:
+          type: integer
+        nickname:
+          type: string
+        notes:
           type: string
 
     # ── Buyer schemas ─────────────────────────────────────────────────────────

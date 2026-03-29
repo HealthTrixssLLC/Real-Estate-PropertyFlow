@@ -13,6 +13,13 @@ export interface SuccessResponse {
   success: boolean;
 }
 
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+
+export const UserRole = {
+  agent: "agent",
+  assistant: "assistant",
+} as const;
+
 export interface AuthUser {
   id: string;
   /** @nullable */
@@ -23,6 +30,7 @@ export interface AuthUser {
   lastName: string | null;
   /** @nullable */
   profileImageUrl: string | null;
+  role: UserRole;
 }
 
 export interface AuthUserEnvelope {
@@ -53,6 +61,81 @@ export type LogoutSuccess = typeof LogoutSuccessValue;
 
 export interface ErrorEnvelope {
   error: string;
+}
+
+export interface Property {
+  id: string;
+  formattedAddress: string;
+  /** @nullable */
+  placeId?: string | null;
+  /** @nullable */
+  lat?: number | null;
+  /** @nullable */
+  lng?: number | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zip?: string | null;
+  /** @nullable */
+  mlsId?: string | null;
+  /** @nullable */
+  listPrice?: number | null;
+  /** @nullable */
+  beds?: number | null;
+  /** @nullable */
+  baths?: number | null;
+  /** @nullable */
+  squareFeet?: number | null;
+  /** @nullable */
+  nickname?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PropertyListResponse {
+  properties: Property[];
+}
+
+export interface PropertyResponse {
+  property: Property;
+}
+
+export interface CreatePropertyBody {
+  formattedAddress: string;
+  placeId?: string;
+  lat?: number;
+  lng?: number;
+  city?: string;
+  state?: string;
+  zip?: string;
+  mlsId?: string;
+  listPrice?: number;
+  beds?: number;
+  baths?: number;
+  squareFeet?: number;
+  nickname?: string;
+  notes?: string;
+}
+
+export interface UpdatePropertyBody {
+  formattedAddress?: string;
+  placeId?: string;
+  lat?: number;
+  lng?: number;
+  city?: string;
+  state?: string;
+  zip?: string;
+  mlsId?: string;
+  listPrice?: number;
+  beds?: number;
+  baths?: number;
+  squareFeet?: number;
+  nickname?: string;
+  notes?: string;
 }
 
 export interface Buyer {
@@ -184,39 +267,6 @@ export interface UpdateTourRequest {
   geographicArea?: string;
   tags?: string[];
   status?: UpdateTourRequestStatus;
-}
-
-export interface Property {
-  id: string;
-  formattedAddress: string;
-  /** @nullable */
-  placeId?: string | null;
-  /** @nullable */
-  lat?: number | null;
-  /** @nullable */
-  lng?: number | null;
-  /** @nullable */
-  city?: string | null;
-  /** @nullable */
-  state?: string | null;
-  /** @nullable */
-  zip?: string | null;
-  /** @nullable */
-  mlsId?: string | null;
-  /** @nullable */
-  listPrice?: number | null;
-  /** @nullable */
-  beds?: number | null;
-  /** @nullable */
-  baths?: number | null;
-  /** @nullable */
-  squareFeet?: number | null;
-  /** @nullable */
-  nickname?: string | null;
-  /** @nullable */
-  notes?: string | null;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export type TourStopApprovedStatus =

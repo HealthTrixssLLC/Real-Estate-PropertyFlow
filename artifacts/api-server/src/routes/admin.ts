@@ -1,12 +1,10 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { SaveAiConfigBody, TestAiConfigBody } from "@workspace/api-zod";
+import { requireRole } from "../middlewares/authMiddleware";
 
 const router: IRouter = Router();
 
-router.get("/admin/ai/config", (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+router.get("/admin/ai/config", requireRole("agent"), (req: Request, res: Response) => {
   const config = {
     transcription: {
       enabled: !!process.env.AZURE_SPEECH_KEY || !!process.env.OPENAI_API_KEY,
@@ -38,9 +36,10 @@ router.get("/admin/ai/config", (req: Request, res: Response) => {
   res.json({ config });
 });
 
-router.post("/admin/ai/config", (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "Unauthorized" });
+router.post("/admin/ai/config", requireRole("agent"), (req: Request, res: Response) => {
+  const parsed = SaveAiConfigBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
     return;
   }
   res.json({
@@ -56,19 +55,16 @@ router.post("/admin/ai/config", (req: Request, res: Response) => {
   });
 });
 
-router.post("/admin/ai/config/test", (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "Unauthorized" });
+router.post("/admin/ai/config/test", requireRole("agent"), (req: Request, res: Response) => {
+  const parsed = TestAiConfigBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
     return;
   }
   res.json({ success: false, error: "AI provider not configured" });
 });
 
-router.get("/admin/ai/health", (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+router.get("/admin/ai/health", requireRole("agent"), (req: Request, res: Response) => {
   res.json({
     providers: {
       azure_openai: {

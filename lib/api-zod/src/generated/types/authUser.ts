@@ -5,6 +5,7 @@
  * TourFlow Real Estate Tour Manager API
  * OpenAPI spec version: 0.1.0
  */
+import type { UserRole } from "./userRole";
 
 export interface AuthUser {
   id: string;
@@ -16,4 +17,5 @@ export interface AuthUser {
   lastName: string | null;
   /** @nullable */
   profileImageUrl: string | null;
+  role: UserRole;
 }

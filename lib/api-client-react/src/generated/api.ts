@@ -27,6 +27,7 @@ import type {
   BuyerListResponse,
   BuyerResponse,
   CreateBuyerRequest,
+  CreatePropertyBody,
   CreateShowingRequestBody,
   CreateTourRequest,
   ErrorEnvelope,
@@ -37,6 +38,8 @@ import type {
   MobileTokenExchangeSuccess,
   OptimizeRouteRequest,
   OptimizeRouteResponse,
+  PropertyListResponse,
+  PropertyResponse,
   PropertySummaryResponse,
   ReorderStopsRequest,
   RestrictionNoteResponse,
@@ -54,6 +57,7 @@ import type {
   TourStopResponse,
   TourSummaryResponse,
   UpdateBuyerRequest,
+  UpdatePropertyBody,
   UpdateShowingRequestBody,
   UpdateTourRequest,
   UpdateTourStopRequest,
@@ -1087,6 +1091,425 @@ export const useDeleteBuyer = <
   TContext
 > => {
   return useMutation(getDeleteBuyerMutationOptions(options));
+};
+
+/**
+ * @summary List all properties
+ */
+export const getListPropertiesUrl = () => {
+  return `/api/properties`;
+};
+
+export const listProperties = async (
+  options?: RequestInit,
+): Promise<PropertyListResponse> => {
+  return customFetch<PropertyListResponse>(getListPropertiesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPropertiesQueryKey = () => {
+  return [`/api/properties`] as const;
+};
+
+export const getListPropertiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProperties>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProperties>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPropertiesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProperties>>> = ({
+    signal,
+  }) => listProperties({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProperties>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPropertiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProperties>>
+>;
+export type ListPropertiesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all properties
+ */
+
+export function useListProperties<
+  TData = Awaited<ReturnType<typeof listProperties>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProperties>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPropertiesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new property
+ */
+export const getCreatePropertyUrl = () => {
+  return `/api/properties`;
+};
+
+export const createProperty = async (
+  createPropertyBody: CreatePropertyBody,
+  options?: RequestInit,
+): Promise<PropertyResponse> => {
+  return customFetch<PropertyResponse>(getCreatePropertyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPropertyBody),
+  });
+};
+
+export const getCreatePropertyMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProperty>>,
+    TError,
+    { data: BodyType<CreatePropertyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProperty>>,
+  TError,
+  { data: BodyType<CreatePropertyBody> },
+  TContext
+> => {
+  const mutationKey = ["createProperty"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProperty>>,
+    { data: BodyType<CreatePropertyBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProperty(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePropertyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProperty>>
+>;
+export type CreatePropertyMutationBody = BodyType<CreatePropertyBody>;
+export type CreatePropertyMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new property
+ */
+export const useCreateProperty = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProperty>>,
+    TError,
+    { data: BodyType<CreatePropertyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProperty>>,
+  TError,
+  { data: BodyType<CreatePropertyBody> },
+  TContext
+> => {
+  return useMutation(getCreatePropertyMutationOptions(options));
+};
+
+/**
+ * @summary Get a property by ID
+ */
+export const getGetPropertyUrl = (propertyId: string) => {
+  return `/api/properties/${propertyId}`;
+};
+
+export const getProperty = async (
+  propertyId: string,
+  options?: RequestInit,
+): Promise<PropertyResponse> => {
+  return customFetch<PropertyResponse>(getGetPropertyUrl(propertyId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPropertyQueryKey = (propertyId: string) => {
+  return [`/api/properties/${propertyId}`] as const;
+};
+
+export const getGetPropertyQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProperty>>,
+  TError = ErrorType<void>,
+>(
+  propertyId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProperty>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPropertyQueryKey(propertyId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getProperty>>> = ({
+    signal,
+  }) => getProperty(propertyId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!propertyId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProperty>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPropertyQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProperty>>
+>;
+export type GetPropertyQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a property by ID
+ */
+
+export function useGetProperty<
+  TData = Awaited<ReturnType<typeof getProperty>>,
+  TError = ErrorType<void>,
+>(
+  propertyId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProperty>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPropertyQueryOptions(propertyId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a property
+ */
+export const getUpdatePropertyUrl = (propertyId: string) => {
+  return `/api/properties/${propertyId}`;
+};
+
+export const updateProperty = async (
+  propertyId: string,
+  updatePropertyBody: UpdatePropertyBody,
+  options?: RequestInit,
+): Promise<PropertyResponse> => {
+  return customFetch<PropertyResponse>(getUpdatePropertyUrl(propertyId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePropertyBody),
+  });
+};
+
+export const getUpdatePropertyMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProperty>>,
+    TError,
+    { propertyId: string; data: BodyType<UpdatePropertyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProperty>>,
+  TError,
+  { propertyId: string; data: BodyType<UpdatePropertyBody> },
+  TContext
+> => {
+  const mutationKey = ["updateProperty"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProperty>>,
+    { propertyId: string; data: BodyType<UpdatePropertyBody> }
+  > = (props) => {
+    const { propertyId, data } = props ?? {};
+
+    return updateProperty(propertyId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePropertyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProperty>>
+>;
+export type UpdatePropertyMutationBody = BodyType<UpdatePropertyBody>;
+export type UpdatePropertyMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a property
+ */
+export const useUpdateProperty = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProperty>>,
+    TError,
+    { propertyId: string; data: BodyType<UpdatePropertyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateProperty>>,
+  TError,
+  { propertyId: string; data: BodyType<UpdatePropertyBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePropertyMutationOptions(options));
+};
+
+/**
+ * @summary Delete a property
+ */
+export const getDeletePropertyUrl = (propertyId: string) => {
+  return `/api/properties/${propertyId}`;
+};
+
+export const deleteProperty = async (
+  propertyId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeletePropertyUrl(propertyId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePropertyMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProperty>>,
+    TError,
+    { propertyId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteProperty>>,
+  TError,
+  { propertyId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteProperty"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteProperty>>,
+    { propertyId: string }
+  > = (props) => {
+    const { propertyId } = props ?? {};
+
+    return deleteProperty(propertyId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePropertyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProperty>>
+>;
+
+export type DeletePropertyMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a property
+ */
+export const useDeleteProperty = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProperty>>,
+    TError,
+    { propertyId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteProperty>>,
+  TError,
+  { propertyId: string },
+  TContext
+> => {
+  return useMutation(getDeletePropertyMutationOptions(options));
 };
 
 /**

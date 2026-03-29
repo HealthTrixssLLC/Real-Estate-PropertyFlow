@@ -1,31 +1,45 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
+import multer from "multer";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router: IRouter = Router();
 
-router.post("/voice-notes/upload", (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const { tourStopId, durationSeconds } = req.body as Record<string, unknown>;
-  if (!tourStopId || typeof tourStopId !== "string") {
-    res.status(400).json({ error: "tourStopId is required" });
-    return;
-  }
-  const now = new Date().toISOString();
-  const voiceNote = {
-    id: randomUUID(),
-    tourStopId,
-    fileUrl: "",
-    durationSeconds: typeof durationSeconds === "number" ? durationSeconds : null,
-    transcriptionStatus: "pending" as const,
-    typedNote: null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  res.status(201).json({ voiceNote });
-});
+router.post(
+  "/voice-notes/upload",
+  upload.single("audio"),
+  (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const tourStopId = req.body?.tourStopId as string | undefined;
+    if (!tourStopId) {
+      res.status(400).json({ error: "tourStopId is required" });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: "audio file is required" });
+      return;
+    }
+    const durationSeconds = req.body?.durationSeconds
+      ? Number(req.body.durationSeconds)
+      : null;
+    const now = new Date().toISOString();
+    const voiceNote = {
+      id: randomUUID(),
+      tourStopId,
+      fileUrl: "",
+      durationSeconds: isNaN(durationSeconds as number) ? null : durationSeconds,
+      transcriptionStatus: "pending" as const,
+      typedNote: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    res.status(201).json({ voiceNote });
+  },
+);
 
 router.post("/voice-notes/:voiceNoteId/transcribe", (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {

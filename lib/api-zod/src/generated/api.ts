@@ -33,6 +33,7 @@ export const GetCurrentAuthUserResponse = zod.object({
       firstName: zod.string().nullable(),
       lastName: zod.string().nullable(),
       profileImageUrl: zod.string().nullable(),
+      role: zod.enum(["agent", "assistant"]),
     }),
     zod.null(),
   ]),
@@ -176,6 +177,135 @@ export const UpdateBuyerResponse = zod.object({
  */
 export const DeleteBuyerParams = zod.object({
   buyerId: zod.coerce.string(),
+});
+
+/**
+ * @summary List all properties
+ */
+export const ListPropertiesResponse = zod.object({
+  properties: zod.array(
+    zod.object({
+      id: zod.string(),
+      formattedAddress: zod.string(),
+      placeId: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      city: zod.string().nullish(),
+      state: zod.string().nullish(),
+      zip: zod.string().nullish(),
+      mlsId: zod.string().nullish(),
+      listPrice: zod.number().nullish(),
+      beds: zod.number().nullish(),
+      baths: zod.number().nullish(),
+      squareFeet: zod.number().nullish(),
+      nickname: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a new property
+ */
+export const CreatePropertyBody = zod.object({
+  formattedAddress: zod.string(),
+  placeId: zod.string().optional(),
+  lat: zod.number().optional(),
+  lng: zod.number().optional(),
+  city: zod.string().optional(),
+  state: zod.string().optional(),
+  zip: zod.string().optional(),
+  mlsId: zod.string().optional(),
+  listPrice: zod.number().optional(),
+  beds: zod.number().optional(),
+  baths: zod.number().optional(),
+  squareFeet: zod.number().optional(),
+  nickname: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Get a property by ID
+ */
+export const GetPropertyParams = zod.object({
+  propertyId: zod.coerce.string(),
+});
+
+export const GetPropertyResponse = zod.object({
+  property: zod.object({
+    id: zod.string(),
+    formattedAddress: zod.string(),
+    placeId: zod.string().nullish(),
+    lat: zod.number().nullish(),
+    lng: zod.number().nullish(),
+    city: zod.string().nullish(),
+    state: zod.string().nullish(),
+    zip: zod.string().nullish(),
+    mlsId: zod.string().nullish(),
+    listPrice: zod.number().nullish(),
+    beds: zod.number().nullish(),
+    baths: zod.number().nullish(),
+    squareFeet: zod.number().nullish(),
+    nickname: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Update a property
+ */
+export const UpdatePropertyParams = zod.object({
+  propertyId: zod.coerce.string(),
+});
+
+export const UpdatePropertyBody = zod.object({
+  formattedAddress: zod.string().optional(),
+  placeId: zod.string().optional(),
+  lat: zod.number().optional(),
+  lng: zod.number().optional(),
+  city: zod.string().optional(),
+  state: zod.string().optional(),
+  zip: zod.string().optional(),
+  mlsId: zod.string().optional(),
+  listPrice: zod.number().optional(),
+  beds: zod.number().optional(),
+  baths: zod.number().optional(),
+  squareFeet: zod.number().optional(),
+  nickname: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+export const UpdatePropertyResponse = zod.object({
+  property: zod.object({
+    id: zod.string(),
+    formattedAddress: zod.string(),
+    placeId: zod.string().nullish(),
+    lat: zod.number().nullish(),
+    lng: zod.number().nullish(),
+    city: zod.string().nullish(),
+    state: zod.string().nullish(),
+    zip: zod.string().nullish(),
+    mlsId: zod.string().nullish(),
+    listPrice: zod.number().nullish(),
+    beds: zod.number().nullish(),
+    baths: zod.number().nullish(),
+    squareFeet: zod.number().nullish(),
+    nickname: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Delete a property
+ */
+export const DeletePropertyParams = zod.object({
+  propertyId: zod.coerce.string(),
 });
 
 /**
