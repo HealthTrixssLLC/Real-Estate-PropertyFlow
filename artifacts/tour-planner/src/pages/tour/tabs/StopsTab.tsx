@@ -137,7 +137,7 @@ export default function StopsTab({ tourId, stops: initialStops }: { tourId: stri
                         
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-foreground truncate flex items-center gap-2">
-                            {stop.propertyId} {/* In a real app we'd join property data here */}
+                            Property #{stop.propertyId?.slice(0, 8) || "—"}
                             <Badge variant="outline" className={cn("text-[10px] uppercase font-bold tracking-wider", getStatusColor(stop.approvedStatus))}>
                               {stop.approvedStatus.replace('_', ' ')}
                             </Badge>

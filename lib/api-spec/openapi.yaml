@@ -922,7 +922,7 @@ components:
     # ── Auth schemas ──────────────────────────────────────────────────────────
     UserRole:
       type: string
-      enum: [agent, assistant]
+      enum: [agent, assistant, admin]
     AuthUser:
       type: object
       required: [id, email, firstName, lastName, profileImageUrl, role]

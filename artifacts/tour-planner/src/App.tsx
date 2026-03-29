@@ -3,9 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Toaster } from "@/components/ui/toaster"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
-// Pages & Layout
 import { Shell } from "@/components/layout/Shell"
 import { AuthGuard } from "@/components/shared/AuthGuard"
+import { RoleGuard } from "@/components/shared/RoleGuard"
 import Login from "@/pages/Login"
 import Dashboard from "@/pages/Dashboard"
 import Properties from "@/pages/Properties"
@@ -29,7 +29,11 @@ function ProtectedRoutes() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/properties" component={Properties} />
-          <Route path="/admin/ai" component={AdminAI} />
+          <Route path="/admin/ai">
+            <RoleGuard roles={["admin"]}>
+              <AdminAI />
+            </RoleGuard>
+          </Route>
           <Route path="/tours/:id" component={TourDetail} />
           <Route component={NotFound} />
         </Switch>
@@ -40,8 +44,8 @@ function ProtectedRoutes() {
 
 function MainRouter() {
   const [loc] = useLocation()
-  
-  if (loc === '/login') {
+
+  if (loc === "/login") {
     return <Login />
   }
 

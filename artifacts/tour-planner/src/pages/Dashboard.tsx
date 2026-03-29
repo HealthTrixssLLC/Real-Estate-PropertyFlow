@@ -34,11 +34,13 @@ export default function Dashboard() {
         data: {
           title: fd.get("title") as string,
           date: fd.get("date") as string,
-          buyerId: fd.get("buyerId") as string || undefined,
-          startAddress: fd.get("startAddress") as string,
-          startTime: fd.get("startTime") as string || undefined,
-          buyerNotes: fd.get("buyerNotes") as string,
-          tags: (fd.get("tags") as string).split(',').map(s => s.trim()).filter(Boolean)
+          buyerId: (fd.get("buyerId") as string) || undefined,
+          startAddress: (fd.get("startAddress") as string) || undefined,
+          endAddress: (fd.get("endAddress") as string) || undefined,
+          startTime: (fd.get("startTime") as string) || undefined,
+          geographicArea: (fd.get("geographicArea") as string) || undefined,
+          buyerNotes: (fd.get("buyerNotes") as string) || undefined,
+          tags: (fd.get("tags") as string).split(",").map(s => s.trim()).filter(Boolean),
         }
       })
       toast({ title: "Tour created successfully!" })
@@ -95,11 +97,19 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="startAddress">Starting Address / Meeting Point</Label>
-                  <Input id="startAddress" name="startAddress" placeholder="123 Main St, Office..." />
+                  <Input id="startAddress" name="startAddress" placeholder="123 Main St, City, State" />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="endAddress">Ending Address</Label>
+                  <Input id="endAddress" name="endAddress" placeholder="456 Oak Ave (leave blank to return to start)" />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="geographicArea">Geographic Target Area</Label>
+                  <Input id="geographicArea" name="geographicArea" placeholder="e.g. Downtown Austin, North Loop, ZIP 78701" />
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="buyerNotes">Client Preferences / Notes</Label>
-                  <Textarea id="buyerNotes" name="buyerNotes" placeholder="Looking for a large backyard..." />
+                  <Textarea id="buyerNotes" name="buyerNotes" placeholder="Looking for a large backyard, min 3 beds..." />
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="tags">Tags (comma separated)</Label>

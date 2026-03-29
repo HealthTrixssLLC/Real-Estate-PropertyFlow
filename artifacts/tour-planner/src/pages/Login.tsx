@@ -40,7 +40,7 @@ export default function Login() {
               className="w-full h-12 text-base font-semibold shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all duration-200" 
               onClick={() => window.location.href = '/api/login'}
             >
-              Sign In with Replit
+              Sign In
             </Button>
             <p className="text-center text-xs text-muted-foreground px-4">
               By signing in, you agree to our Terms of Service and Privacy Policy.

@@ -69,7 +69,6 @@ export default function Properties() {
               <div className="space-y-2">
                 <Label>Full Address *</Label>
                 <Input name="formattedAddress" required placeholder="123 Oak St, City, State" />
-                <p className="text-xs text-muted-foreground">Tip: In a full integration, this would be a Google Places Autocomplete.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -126,7 +125,6 @@ export default function Properties() {
           {filtered.map(prop => (
             <Card key={prop.id} className="overflow-hidden hover:shadow-xl transition-all border-border/50 group">
               <div className="h-32 bg-muted relative flex items-center justify-center">
-                {/* Real integration would have a photo here */}
                 <Home className="h-10 w-10 text-muted-foreground/30" />
                 <div className="absolute top-3 left-3 flex gap-2">
                   {prop.mlsId && <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm shadow-sm">MLS: {prop.mlsId}</Badge>}

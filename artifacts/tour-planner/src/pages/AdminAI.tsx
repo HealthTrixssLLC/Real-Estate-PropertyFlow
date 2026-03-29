@@ -1,4 +1,5 @@
 import { useGetAiConfig, useGetAiHealth, useSaveAiConfig, useTestAiConfig } from "@workspace/api-client-react"
+import { SaveAiConfigRequestTranscriptionProvider, SaveAiConfigRequestSummarizationProvider } from "@workspace/api-client-react"
 import { Bot, CheckCircle2, XCircle, Loader2, Save, Activity, Settings2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 export default function AdminAI() {
   const { data: configData, isLoading: configLoading, refetch } = useGetAiConfig()
@@ -24,12 +25,14 @@ export default function AdminAI() {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     try {
+      const txProvider = fd.get("tx_provider") as string
+      const sumProvider = fd.get("sum_provider") as string
       await saveConfig.mutateAsync({
         data: {
           transcriptionEnabled: fd.get("tx_enabled") === "on",
-          transcriptionProvider: fd.get("tx_provider") as any,
+          transcriptionProvider: txProvider as SaveAiConfigRequestTranscriptionProvider,
           summarizationEnabled: fd.get("sum_enabled") === "on",
-          summarizationProvider: fd.get("sum_provider") as any,
+          summarizationProvider: sumProvider as SaveAiConfigRequestSummarizationProvider,
           draftingEnabled: fd.get("draft_enabled") === "on",
           patternAnalysisEnabled: fd.get("pattern_enabled") === "on",
         }

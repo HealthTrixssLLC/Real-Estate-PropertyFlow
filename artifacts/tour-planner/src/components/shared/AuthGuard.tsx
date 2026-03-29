@@ -3,11 +3,7 @@ import { useGetCurrentAuthUser } from "@workspace/api-client-react"
 import { Loader2 } from "lucide-react"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { data, isLoading, error } = useGetCurrentAuthUser({
-    query: {
-      retry: false,
-    }
-  })
+  const { data, isLoading, error } = useGetCurrentAuthUser()
 
   if (isLoading) {
     return (
