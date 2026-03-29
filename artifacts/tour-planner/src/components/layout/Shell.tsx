@@ -1,6 +1,6 @@
 import React from "react"
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Building2, Settings, LogOut, Compass } from "lucide-react"
+import { LayoutDashboard, Building2, Settings, LogOut } from "lucide-react"
 import { useGetCurrentAuthUser, UserRole } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -31,9 +31,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen w-full bg-background overflow-hidden">
       <aside className="w-64 border-r border-border bg-card flex flex-col shadow-sm z-10 hidden md:flex">
         <div className="h-16 flex items-center px-6 border-b border-border/50">
-          <div className="flex items-center gap-2 text-primary">
-            <Compass className="h-6 w-6 fill-primary/20" />
-            <span className="font-display font-bold text-xl tracking-tight text-foreground">TourFlow</span>
+          <div className="flex items-center gap-2">
+            <img src={`${import.meta.env.BASE_URL}images/logo-pin.png`} alt="Tour Flow" className="h-9 w-9 object-contain" />
+            <span className="font-display font-bold text-xl tracking-tight text-foreground">Tour Flow</span>
           </div>
         </div>
 

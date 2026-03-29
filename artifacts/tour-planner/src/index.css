@@ -78,49 +78,49 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
+  --background: 38 33% 93%;
+  --foreground: 195 64% 21%;
   
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
+  --card-foreground: 195 64% 21%;
+  --card-border: 170 27% 86%;
   
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 91%;
+  --popover-foreground: 195 64% 21%;
+  --popover-border: 170 27% 86%;
 
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 196 71% 21%;
+  --primary-foreground: 38 33% 93%;
 
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 184 49% 36%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
+  --muted: 170 27% 86%;
+  --muted-foreground: 196 30% 40%;
 
-  --accent: 210 40% 96%;
-  --accent-foreground: 222 47% 11%;
+  --accent: 32 57% 50%;
+  --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 38 33% 93%;
 
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
+  --border: 170 27% 86%;
+  --input: 170 27% 86%;
+  --ring: 196 71% 21%;
 
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 222 47% 11%;
-  --sidebar-border: 214 32% 91%;
-  --sidebar-primary: 221 83% 53%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 210 40% 96%;
-  --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 221 83% 53%;
+  --sidebar-foreground: 195 64% 21%;
+  --sidebar-border: 170 27% 86%;
+  --sidebar-primary: 196 71% 21%;
+  --sidebar-primary-foreground: 38 33% 93%;
+  --sidebar-accent: 170 27% 86%;
+  --sidebar-accent-foreground: 195 64% 21%;
+  --sidebar-ring: 196 71% 21%;
 
-  --chart-1: 221 83% 53%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
+  --chart-1: 196 71% 21%;
+  --chart-2: 184 49% 36%;
+  --chart-3: 32 57% 50%;
+  --chart-4: 170 27% 56%;
   --chart-5: 27 87% 67%;
 
   --radius: 0.75rem;

@@ -1,6 +1,4 @@
-import { Link } from "wouter"
 import { Button } from "@/components/ui/button"
-import { Compass } from "lucide-react"
 
 export default function Login() {
   return (
@@ -21,17 +19,12 @@ export default function Login() {
       
       {/* Right side: Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-background relative">
-        <div className="absolute top-8 left-8 lg:hidden flex items-center gap-2 text-primary">
-          <Compass className="h-8 w-8" />
-          <span className="font-display font-bold text-2xl tracking-tight text-foreground">TourFlow</span>
-        </div>
-        
         <div className="w-full max-w-sm space-y-8">
           <div className="space-y-3 text-center lg:text-left">
-            <div className="hidden lg:flex h-16 w-16 bg-primary/10 text-primary rounded-2xl items-center justify-center mb-6 shadow-inner">
-              <Compass className="h-8 w-8" />
+            <div className="mb-6">
+              <img src={`${import.meta.env.BASE_URL}images/logo-wordmark.png`} alt="Tour Flow" className="h-14 object-contain mx-auto lg:mx-0" />
             </div>
-            <h1 className="text-4xl font-display font-bold tracking-tight text-foreground">Welcome back</h1>
+            <h1 className="text-4xl font-display font-bold tracking-tight text-foreground">Tour Flow</h1>
             <p className="text-muted-foreground text-lg">Sign in to your agent dashboard</p>
           </div>
           
