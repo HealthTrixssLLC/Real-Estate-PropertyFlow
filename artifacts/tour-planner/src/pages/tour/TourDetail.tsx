@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useGetTour, useListProperties } from "@workspace/api-client-react"
 import { useRoute } from "wouter"
 import { Calendar, MapPin, User, ChevronLeft, Building2, Map as MapIcon, ListChecks, CheckCircle2, Loader2 } from "lucide-react"
@@ -11,10 +12,12 @@ import StopsTab from "./tabs/StopsTab"
 import MapTab from "./tabs/MapTab"
 import ShowingsTab from "./tabs/ShowingsTab"
 import ReadinessTab from "./tabs/ReadinessTab"
+import EditTourDialog from "./EditTourDialog"
 
 export default function TourDetail() {
   const [, params] = useRoute("/tours/:id")
   const tourId = params?.id || ""
+  const [editOpen, setEditOpen] = useState(false)
   
   const { data, isLoading } = useGetTour(tourId)
   const { data: propertiesData } = useListProperties()
@@ -70,10 +73,18 @@ export default function TourDetail() {
           </div>
 
           <div className="flex gap-3 w-full md:w-auto z-10">
-            <Button variant="outline" className="flex-1 md:flex-none bg-background shadow-sm hover-elevate">Edit Details</Button>
+            <Button
+              variant="outline"
+              className="flex-1 md:flex-none bg-background shadow-sm hover-elevate"
+              onClick={() => setEditOpen(true)}
+            >
+              Edit Details
+            </Button>
           </div>
         </div>
       </div>
+
+      <EditTourDialog open={editOpen} onOpenChange={setEditOpen} tour={tour} />
 
       {/* Tabs */}
       <Tabs defaultValue="stops" className="w-full">
