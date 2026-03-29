@@ -1,4 +1,4 @@
-import { useGetTour } from "@workspace/api-client-react"
+import { useGetTour, useListProperties } from "@workspace/api-client-react"
 import { useRoute } from "wouter"
 import { Calendar, MapPin, User, ChevronLeft, Building2, Map as MapIcon, ListChecks, CheckCircle2, Loader2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -17,12 +17,14 @@ export default function TourDetail() {
   const tourId = params?.id || ""
   
   const { data, isLoading } = useGetTour(tourId)
+  const { data: propertiesData } = useListProperties()
 
   if (isLoading) return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   if (!data?.tour) return <div>Tour not found.</div>
 
   const tour = data.tour
   const stops = data.stops || []
+  const properties = propertiesData?.properties ?? []
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-20">
@@ -99,7 +101,7 @@ export default function TourDetail() {
             <StopsTab tourId={tourId} stops={stops} />
           </TabsContent>
           <TabsContent value="map" className="m-0 p-0 outline-none">
-            <MapTab stops={stops} />
+            <MapTab stops={stops} properties={properties} />
           </TabsContent>
           <TabsContent value="showings" className="m-0 p-0 outline-none">
             <ShowingsTab stops={stops} />

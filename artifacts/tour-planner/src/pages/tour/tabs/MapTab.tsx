@@ -1,159 +1,223 @@
 import { useEffect, useRef } from "react"
-import type { TourStop } from "@workspace/api-client-react"
-import { Navigation } from "lucide-react"
-import "leaflet/dist/leaflet.css"
+import type { TourStop, Property } from "@workspace/api-client-react"
+import { useGoogleMaps } from "@/hooks/useGoogleMaps"
+import { Loader2, MapPin, AlertCircle, Navigation } from "lucide-react"
 
 interface MapTabProps {
   stops: TourStop[]
+  properties: Property[]
 }
 
-export default function MapTab({ stops }: MapTabProps) {
+const STATUS_COLORS: Record<string, string> = {
+  approved: "#22c55e",
+  pending: "#f59e0b",
+  declined: "#ef4444",
+  not_requested: "#94a3b8",
+  requested: "#3b82f6",
+  needs_follow_up: "#f97316",
+  restricted: "#a855f7",
+  cancelled: "#6b7280",
+}
+
+export default function MapTab({ stops, properties }: MapTabProps) {
+  const { status, hasApiKey } = useGoogleMaps()
   const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<L.Map | null>(null)
+  const mapInstanceRef = useRef<google.maps.Map | null>(null)
+  const markersRef = useRef<google.maps.Marker[]>([])
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
 
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return
+    if (status !== "ready" || !mapRef.current) return
 
-    let L: typeof import("leaflet")
-
-    const initMap = async () => {
-      L = await import("leaflet")
-
-      delete (L.Icon.Default.prototype as { _getIconUrl?: () => void })._getIconUrl
-      L.Icon.Default.mergeOptions({
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    const stopsWithCoords = stops
+      .slice()
+      .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+      .map(stop => {
+        const prop = properties.find(p => p.id === stop.propertyId)
+        if (!prop?.lat || !prop?.lng) return null
+        return { stop, prop, lat: prop.lat, lng: prop.lng }
       })
+      .filter((s): s is NonNullable<typeof s> => s !== null)
 
-      const stopsWithCoords = stops.filter(
-        s => typeof (s as TourStop & { lat?: number; lng?: number }).lat === "number"
-      ) as (TourStop & { lat: number; lng: number })[]
+    const defaultCenter = stopsWithCoords.length > 0
+      ? { lat: stopsWithCoords[0].lat, lng: stopsWithCoords[0].lng }
+      : { lat: 37.7749, lng: -122.4194 }
 
-      const defaultCenter: [number, number] = stopsWithCoords.length > 0
-        ? [stopsWithCoords[0].lat, stopsWithCoords[0].lng]
-        : [37.7749, -122.4194]
-
-      const map = L.map(mapRef.current!, {
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new google.maps.Map(mapRef.current, {
         center: defaultCenter,
         zoom: stopsWithCoords.length > 0 ? 13 : 10,
+        mapTypeControl: false,
+        fullscreenControl: true,
+        streetViewControl: false,
         zoomControl: true,
+        styles: [
+          { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+        ],
       })
-
-      mapInstanceRef.current = map
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(map)
-
-      const statusColors: Record<string, string> = {
-        approved: "#22c55e",
-        pending: "#f59e0b",
-        declined: "#ef4444",
-        not_requested: "#94a3b8",
-        requested: "#3b82f6",
-        needs_follow_up: "#f97316",
-        restricted: "#a855f7",
-        cancelled: "#6b7280",
-      }
-
-      const markerBounds: L.LatLng[] = []
-
-      stopsWithCoords.forEach((stop, index) => {
-        const color = statusColors[stop.approvedStatus] ?? "#94a3b8"
-        const icon = L.divIcon({
-          html: `<div style="background:${color};width:28px;height:28px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;color:#fff">${index + 1}</div>`,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14],
-          className: "",
-        })
-
-        const latlng = L.latLng(stop.lat, stop.lng)
-        markerBounds.push(latlng)
-
-        L.marker(latlng, { icon })
-          .addTo(map)
-          .bindPopup(`
-            <div style="min-width:180px">
-              <strong>Stop ${index + 1}</strong><br/>
-              <span style="font-size:11px;color:#6b7280">Status: ${stop.approvedStatus.replace(/_/g, " ")}</span><br/>
-              <span style="font-size:11px;color:#6b7280">${stop.visited ? "✓ Visited" : "Scheduled"}</span>
-            </div>
-          `)
-      })
-
-      if (stopsWithCoords.length > 1) {
-        const polyline = L.polyline(
-          stopsWithCoords.map(s => [s.lat, s.lng]),
-          { color: "#6366f1", weight: 3, dashArray: "6 4", opacity: 0.7 }
-        ).addTo(map)
-        map.fitBounds(polyline.getBounds().pad(0.2))
-      } else if (markerBounds.length === 1) {
-        map.setView(markerBounds[0], 14)
-      }
+      infoWindowRef.current = new google.maps.InfoWindow()
     }
 
-    initMap()
+    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current = []
 
+    stopsWithCoords.forEach(({ stop, prop, lat, lng }, idx) => {
+      const color = stop.skipped
+        ? "#6b7280"
+        : (STATUS_COLORS[stop.approvedStatus] ?? "#3b82f6")
+
+      const marker = new google.maps.Marker({
+        position: { lat, lng },
+        map: mapInstanceRef.current!,
+        label: {
+          text: String(stop.sequence ?? idx + 1),
+          color: "#fff",
+          fontWeight: "bold",
+          fontSize: "12px",
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 18,
+          fillColor: color,
+          fillOpacity: stop.skipped ? 0.5 : 1,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+        },
+        title: prop.formattedAddress,
+        zIndex: stop.skipped ? 1 : 10,
+      })
+
+      marker.addListener("click", () => {
+        infoWindowRef.current!.setContent(`
+          <div style="max-width:240px;font-family:system-ui,sans-serif;padding:4px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#111">
+              Stop ${stop.sequence ?? idx + 1}${stop.skipped ? " (Skipped)" : ""}
+            </div>
+            <div style="font-size:13px;color:#374151;margin-bottom:6px">${prop.formattedAddress}</div>
+            <div style="display:flex;gap:8px;font-size:12px;color:#6b7280;flex-wrap:wrap">
+              ${prop.beds != null ? `<span>${prop.beds} bd</span>` : ""}
+              ${prop.baths != null ? `<span>${prop.baths} ba</span>` : ""}
+              ${prop.squareFeet != null ? `<span>${prop.squareFeet.toLocaleString()} sqft</span>` : ""}
+              ${prop.listPrice != null ? `<span style="font-weight:600;color:#111">$${prop.listPrice.toLocaleString()}</span>` : ""}
+            </div>
+            <div style="margin-top:8px;padding:3px 8px;border-radius:999px;display:inline-block;
+              font-size:11px;font-weight:600;
+              background:${color}20;color:${color};border:1px solid ${color}50">
+              ${stop.skipped ? `Skipped: ${stop.skipReason ?? ""}` : stop.approvedStatus.replace(/_/g, " ")}
+            </div>
+          </div>
+        `)
+        infoWindowRef.current!.open(mapInstanceRef.current!, marker)
+      })
+
+      markersRef.current.push(marker)
+    })
+
+    if (stopsWithCoords.length > 1) {
+      new google.maps.Polyline({
+        path: stopsWithCoords.map(({ lat, lng }) => ({ lat, lng })),
+        map: mapInstanceRef.current,
+        strokeColor: "#6366f1",
+        strokeOpacity: 0.7,
+        strokeWeight: 3,
+        icons: [{
+          icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3 },
+          offset: "100%",
+          repeat: "80px",
+        }],
+      })
+    }
+
+    if (stopsWithCoords.length > 0 && mapInstanceRef.current) {
+      const bounds = new google.maps.LatLngBounds()
+      stopsWithCoords.forEach(({ lat, lng }) => bounds.extend({ lat, lng }))
+      mapInstanceRef.current.fitBounds(bounds, 60)
+    }
+  }, [status, stops, properties])
+
+  useEffect(() => {
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove()
-        mapInstanceRef.current = null
-      }
+      markersRef.current.forEach(m => m.setMap(null))
+      markersRef.current = []
     }
   }, [])
 
-  useEffect(() => {
-    if (!mapInstanceRef.current || stops.length === 0) return
-    const stopsWithCoords = stops.filter(
-      s => typeof (s as TourStop & { lat?: number }).lat === "number"
+  if (!hasApiKey) {
+    return (
+      <div className="h-[500px] flex flex-col items-center justify-center gap-4 text-muted-foreground p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-amber-500" />
+        <div>
+          <p className="font-semibold text-foreground text-lg">Google Maps API Key Required</p>
+          <p className="text-sm mt-2 max-w-sm">
+            Add <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">VITE_GOOGLE_MAPS_API_KEY</code> to your environment secrets to enable the interactive map with color-coded stop markers.
+          </p>
+        </div>
+      </div>
     )
-    if (stopsWithCoords.length > 0) return
-  }, [stops])
+  }
 
-  const stopsWithCoords = stops.filter(
-    s => typeof (s as TourStop & { lat?: number }).lat === "number"
-  )
+  if (status === "error") {
+    return (
+      <div className="h-[500px] flex flex-col items-center justify-center gap-3 text-muted-foreground">
+        <AlertCircle className="h-10 w-10 text-red-500" />
+        <p className="font-medium">Failed to load Google Maps. Check your API key and enabled APIs.</p>
+      </div>
+    )
+  }
+
+  if (status !== "ready") {
+    return (
+      <div className="h-[500px] flex items-center justify-center gap-3 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <span>Loading map...</span>
+      </div>
+    )
+  }
+
+  const mappableCount = stops.filter(s => {
+    const prop = properties.find(p => p.id === s.propertyId)
+    return prop?.lat && prop?.lng
+  }).length
 
   return (
     <div className="relative h-[600px] rounded-b-2xl overflow-hidden">
-      <div ref={mapRef} className="h-full w-full z-0" />
+      <div ref={mapRef} className="h-full w-full" />
 
-      <div className="absolute top-4 right-4 z-10 bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-lg text-sm space-y-2 min-w-[160px]">
-        <div className="font-semibold text-foreground flex items-center gap-2 mb-1">
-          <Navigation className="h-4 w-4 text-primary" />
+      <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 text-xs space-y-1.5 border border-border/30 min-w-[160px]">
+        <p className="font-semibold text-foreground flex items-center gap-1.5 mb-2">
+          <Navigation className="h-3.5 w-3.5 text-primary" />
           Route Summary
+        </p>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Total stops</span>
+          <span className="font-semibold text-foreground">{stops.length}</span>
         </div>
-        <div className="flex justify-between text-muted-foreground">
-          <span>Total stops</span>
-          <span className="font-medium text-foreground">{stops.length}</span>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Mapped</span>
+          <span className="font-semibold text-foreground">{mappableCount}</span>
         </div>
-        <div className="flex justify-between text-muted-foreground">
-          <span>Mapped</span>
-          <span className="font-medium text-foreground">{stopsWithCoords.length}</span>
-        </div>
-
-        {stops.length > 0 && stopsWithCoords.length === 0 && (
-          <div className="text-xs text-amber-600 pt-1 border-t border-border/50">
-            Stops have no coordinates yet. Add lat/lng data to see markers.
-          </div>
-        )}
-
-        <div className="pt-2 border-t border-border/50 space-y-1">
+        <div className="pt-2 border-t border-border/50 space-y-1.5 mt-1">
           {[
-            { label: "Approved", color: "#22c55e" },
-            { label: "Pending", color: "#f59e0b" },
-            { label: "Declined", color: "#ef4444" },
-            { label: "Not requested", color: "#94a3b8" },
-          ].map(({ label, color }) => (
-            <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="h-3 w-3 rounded-full border border-white/80 shadow-sm flex-shrink-0" style={{ backgroundColor: color }} />
-              {label}
+            { key: "approved", label: "Approved" },
+            { key: "pending", label: "Pending" },
+            { key: "requested", label: "Requested" },
+            { key: "not_requested", label: "Not Requested" },
+            { key: "declined", label: "Declined" },
+          ].map(({ key, label }) => (
+            <div key={key} className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-full flex-shrink-0 border border-white shadow-sm" style={{ background: STATUS_COLORS[key] }} />
+              <span className="text-muted-foreground">{label}</span>
             </div>
           ))}
         </div>
       </div>
+
+      {mappableCount < stops.length && stops.length > 0 && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-xs text-amber-700 flex items-center gap-1.5 shadow-sm">
+          <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+          {stops.length - mappableCount} stop{stops.length - mappableCount !== 1 ? "s" : ""} missing geocoordinates
+        </div>
+      )}
     </div>
   )
 }

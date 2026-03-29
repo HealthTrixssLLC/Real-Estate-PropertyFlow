@@ -15,6 +15,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { cn, formatDate, getStatusColor } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
+import PlacesAutocomplete from "@/components/shared/PlacesAutocomplete"
+import type { PlaceResult } from "@/components/shared/PlacesAutocomplete"
+
+interface AddressPlace {
+  formatted: string
+  lat?: number
+  lng?: number
+}
 
 export default function Dashboard() {
   const { data: toursData, isLoading } = useListTours()
@@ -23,32 +31,43 @@ export default function Dashboard() {
   const createTour = useCreateTour()
   const { toast } = useToast()
   const [, setLocation] = useLocation()
+  const [startAddr, setStartAddr] = useState<AddressPlace>({ formatted: "" })
+  const [endAddr, setEndAddr] = useState<AddressPlace>({ formatted: "" })
 
-  const activeTours = toursData?.tours.filter(t => t.status === 'active' || t.status === 'draft') || []
-  const publishedTours = toursData?.tours.filter(t => t.status === 'published') || []
+  const activeTours = toursData?.tours.filter(t => t.status === "active" || t.status === "draft") || []
+  const publishedTours = toursData?.tours.filter(t => t.status === "published") || []
+
+  const handleCreateClose = () => {
+    setIsCreateOpen(false)
+    setStartAddr({ formatted: "" })
+    setEndAddr({ formatted: "" })
+  }
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
-    
     try {
       const res = await createTour.mutateAsync({
         data: {
           title: fd.get("title") as string,
           date: fd.get("date") as string,
           buyerId: (fd.get("buyerId") as string) || undefined,
-          startAddress: (fd.get("startAddress") as string) || undefined,
-          endAddress: (fd.get("endAddress") as string) || undefined,
+          startAddress: startAddr.formatted || undefined,
+          startLat: startAddr.lat,
+          startLng: startAddr.lng,
+          endAddress: endAddr.formatted || undefined,
+          endLat: endAddr.lat,
+          endLng: endAddr.lng,
           startTime: (fd.get("startTime") as string) || undefined,
           geographicArea: (fd.get("geographicArea") as string) || undefined,
           buyerNotes: (fd.get("buyerNotes") as string) || undefined,
           tags: (fd.get("tags") as string).split(",").map(s => s.trim()).filter(Boolean),
-        }
+        },
       })
       toast({ title: "Tour created successfully!" })
-      setIsCreateOpen(false)
+      handleCreateClose()
       setLocation(`/tours/${res.tour.id}`)
-    } catch (err) {
+    } catch {
       toast({ title: "Failed to create tour", variant: "destructive" })
     }
   }
@@ -61,9 +80,12 @@ export default function Dashboard() {
           <p className="text-muted-foreground mt-1">Manage your active property tours and showings.</p>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={open => !open && handleCreateClose()}>
           <DialogTrigger asChild>
-            <Button className="shadow-lg shadow-primary/25 hover:-translate-y-0.5 transition-transform gap-2">
+            <Button
+              className="shadow-lg shadow-primary/25 hover:-translate-y-0.5 transition-transform gap-2"
+              onClick={() => setIsCreateOpen(true)}
+            >
               <Plus className="h-4 w-4" />
               New Tour
             </Button>
@@ -99,11 +121,23 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="startAddress">Starting Address / Meeting Point</Label>
-                  <Input id="startAddress" name="startAddress" placeholder="123 Main St, City, State" />
+                  <PlacesAutocomplete
+                    id="startAddress"
+                    value={startAddr.formatted}
+                    onChange={v => setStartAddr({ formatted: v })}
+                    onPlaceSelected={(p: PlaceResult) => setStartAddr({ formatted: p.formattedAddress, lat: p.lat, lng: p.lng })}
+                    placeholder="123 Main St, City, State"
+                  />
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="endAddress">Ending Address</Label>
-                  <Input id="endAddress" name="endAddress" placeholder="456 Oak Ave (leave blank to return to start)" />
+                  <PlacesAutocomplete
+                    id="endAddress"
+                    value={endAddr.formatted}
+                    onChange={v => setEndAddr({ formatted: v })}
+                    onPlaceSelected={(p: PlaceResult) => setEndAddr({ formatted: p.formattedAddress, lat: p.lat, lng: p.lng })}
+                    placeholder="456 Oak Ave (leave blank to return to start)"
+                  />
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="geographicArea">Geographic Target Area</Label>
@@ -119,7 +153,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="outline" type="button" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                <Button variant="outline" type="button" onClick={handleCreateClose}>Cancel</Button>
                 <Button type="submit" disabled={createTour.isPending}>
                   {createTour.isPending ? "Creating..." : "Create Tour"}
                 </Button>
