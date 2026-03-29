@@ -10,8 +10,6 @@ import {
   showingRequestsTable,
   tourSummariesTable,
   propertySummariesTable,
-  voiceNotesTable,
-  transcriptsTable,
 } from "@workspace/db";
 import {
   CreateTourBody,
@@ -27,16 +25,26 @@ import { aiConfig } from "../lib/aiConfig";
 
 const router: IRouter = Router();
 
-async function getTourWithCounts(tourId: string) {
+async function assertTourOwner(tourId: string, agentId: string, res: Response): Promise<typeof toursTable.$inferSelect | null> {
   const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, tourId));
-  if (!tour) return null;
-  const stops = await db.select().from(tourStopsTable).where(eq(tourStopsTable.tourId, tourId)).orderBy(tourStopsTable.sequence);
-  const stopCount = stops.length;
-  const approvedCount = stops.filter(s => s.approvedStatus === "approved").length;
-  const pendingShowingsCount = stops.filter(s =>
-    s.approvedStatus === "requested" || s.approvedStatus === "pending"
-  ).length;
-  return { ...tour, stopCount, approvedCount, pendingShowingsCount };
+  if (!tour) {
+    res.status(404).json({ error: "Tour not found" });
+    return null;
+  }
+  if (tour.agentId !== agentId) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return tour;
+}
+
+async function getStopCounts(tourId: string) {
+  const stops = await db.select().from(tourStopsTable).where(eq(tourStopsTable.tourId, tourId));
+  return {
+    stopCount: stops.length,
+    approvedCount: stops.filter(s => s.approvedStatus === "approved").length,
+    pendingShowingsCount: stops.filter(s => s.approvedStatus === "requested" || s.approvedStatus === "pending").length,
+  };
 }
 
 router.get("/tours", async (req: Request, res: Response) => {
@@ -47,15 +55,18 @@ router.get("/tours", async (req: Request, res: Response) => {
   const user = (req as Express.AuthedRequest).user;
   try {
     const rows = await db.select().from(toursTable).where(eq(toursTable.agentId, user.id)).orderBy(toursTable.createdAt);
-    const stopsAgg = await db
-      .select({
-        tourId: tourStopsTable.tourId,
-        stopCount: sql<number>`count(*)::int`,
-        approvedCount: sql<number>`count(*) filter (where ${tourStopsTable.approvedStatus} = 'approved')::int`,
-        pendingCount: sql<number>`count(*) filter (where ${tourStopsTable.approvedStatus} in ('requested','pending'))::int`,
-      })
-      .from(tourStopsTable)
-      .groupBy(tourStopsTable.tourId);
+    const stopsAgg = rows.length > 0
+      ? await db
+          .select({
+            tourId: tourStopsTable.tourId,
+            stopCount: sql<number>`count(*)::int`,
+            approvedCount: sql<number>`count(*) filter (where ${tourStopsTable.approvedStatus} = 'approved')::int`,
+            pendingCount: sql<number>`count(*) filter (where ${tourStopsTable.approvedStatus} in ('requested','pending'))::int`,
+          })
+          .from(tourStopsTable)
+          .where(inArray(tourStopsTable.tourId, rows.map(t => t.id)))
+          .groupBy(tourStopsTable.tourId)
+      : [];
     const aggMap = new Map(stopsAgg.map(a => [a.tourId, a]));
     const tours = rows.map(t => ({
       ...t,
@@ -97,12 +108,11 @@ router.get("/tours/:tourId", async (req: Request, res: Response) => {
   }
   const params = parseParams(idParams.tourId, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, params.tourId));
-    if (!tour) {
-      res.status(404).json({ error: "Tour not found" });
-      return;
-    }
+    const tour = await assertTourOwner(params.tourId, user.id, res);
+    if (!tour) return;
+
     const stops = await db
       .select()
       .from(tourStopsTable)
@@ -140,23 +150,18 @@ router.put("/tours/:tourId", async (req: Request, res: Response) => {
   if (!params) return;
   const body = parseBody(UpdateTourBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const existing = await assertTourOwner(params.tourId, user.id, res);
+    if (!existing) return;
+
     const [tour] = await db
       .update(toursTable)
       .set({ ...body, updatedAt: new Date() })
       .where(eq(toursTable.id, params.tourId))
       .returning();
-    if (!tour) {
-      res.status(404).json({ error: "Tour not found" });
-      return;
-    }
-    const stops = await db.select().from(tourStopsTable).where(eq(tourStopsTable.tourId, params.tourId));
-    const stopCount = stops.length;
-    const approvedCount = stops.filter(s => s.approvedStatus === "approved").length;
-    const pendingShowingsCount = stops.filter(s =>
-      s.approvedStatus === "requested" || s.approvedStatus === "pending"
-    ).length;
-    res.json({ tour: { ...tour, stopCount, approvedCount, pendingShowingsCount } });
+    const counts = await getStopCounts(params.tourId);
+    res.json({ tour: { ...tour, ...counts } });
   } catch (err) {
     req.log.error({ err }, "Failed to update tour");
     res.status(500).json({ error: "Internal server error" });
@@ -170,7 +175,10 @@ router.delete("/tours/:tourId", async (req: Request, res: Response) => {
   }
   const params = parseParams(idParams.tourId, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const tour = await assertTourOwner(params.tourId, user.id, res);
+    if (!tour) return;
     await db.delete(toursTable).where(eq(toursTable.id, params.tourId));
     res.status(204).send();
   } catch (err) {
@@ -188,12 +196,10 @@ router.post("/tours/:tourId/properties", async (req: Request, res: Response) => 
   if (!params) return;
   const body = parseBody(AddPropertyToTourBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, params.tourId));
-    if (!tour) {
-      res.status(404).json({ error: "Tour not found" });
-      return;
-    }
+    const tour = await assertTourOwner(params.tourId, user.id, res);
+    if (!tour) return;
 
     let propertyId = body.propertyId;
 
@@ -258,29 +264,23 @@ async function googleDistanceMatrix(
   if (data.status !== "OK") throw new Error(`Distance Matrix status: ${data.status}`);
 
   return data.rows.map(row =>
-    row.elements.map(el => (el.status === "OK" ? el.duration.value : 99999))
+    row.elements.map(el => (el.status === "OK" ? el.duration.value : 999999))
   );
 }
 
-function nearestNeighborOrder(
-  stopIds: string[],
-  coords: Array<{ lat: number; lng: number } | null>,
-  travelTimes: number[][],
-  startIdx: number,
-): string[] {
-  const n = stopIds.length;
+function nearestNeighborOrder(n: number, matrix: number[][], startIdx: number): number[] {
   const visited = new Array(n).fill(false);
-  const ordered: string[] = [];
+  const ordered: number[] = [];
   let current = startIdx;
 
   while (ordered.length < n) {
     visited[current] = true;
-    ordered.push(stopIds[current]);
+    ordered.push(current);
     let best = -1;
     let bestTime = Infinity;
     for (let j = 0; j < n; j++) {
-      if (!visited[j] && travelTimes[current][j] < bestTime) {
-        bestTime = travelTimes[current][j];
+      if (!visited[j] && matrix[current][j] < bestTime) {
+        bestTime = matrix[current][j];
         best = j;
       }
     }
@@ -299,13 +299,11 @@ router.post("/tours/:tourId/optimize", async (req: Request, res: Response) => {
   if (!params) return;
   const body = parseBody(OptimizeTourRouteBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
 
   try {
-    const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, params.tourId));
-    if (!tour) {
-      res.status(404).json({ error: "Tour not found" });
-      return;
-    }
+    const tour = await assertTourOwner(params.tourId, user.id, res);
+    if (!tour) return;
 
     let stops = await db
       .select()
@@ -316,80 +314,86 @@ router.post("/tours/:tourId/optimize", async (req: Request, res: Response) => {
     if (body.includeApprovedOnly) {
       stops = stops.filter(s => s.approvedStatus === "approved" || s.approvedStatus === "not_requested");
     }
-    stops = stops.filter(s => !s.skipped);
+    const activeStops = stops.filter(s => !s.skipped);
 
-    if (stops.length === 0) {
+    if (activeStops.length === 0) {
       res.json({ orderedStopIds: [], estimatedDriveTimeMinutes: 0 });
       return;
     }
-    if (stops.length === 1) {
-      res.json({ orderedStopIds: [stops[0].id], estimatedDriveTimeMinutes: 0 });
+    if (activeStops.length === 1) {
+      res.json({ orderedStopIds: [activeStops[0].id], estimatedDriveTimeMinutes: 0 });
       return;
     }
 
     const properties = await db
       .select()
       .from(propertiesTable)
-      .where(inArray(propertiesTable.id, stops.map(s => s.propertyId)));
+      .where(inArray(propertiesTable.id, activeStops.map(s => s.propertyId)));
     const propMap = new Map(properties.map(p => [p.id, p]));
 
-    const coords = stops.map(s => {
+    const geoStopIndices: number[] = [];
+    const ungeoStopIndices: number[] = [];
+    const coords: Array<{ lat: number; lng: number }> = [];
+
+    activeStops.forEach((s, i) => {
       const p = propMap.get(s.propertyId);
-      return p?.lat != null && p?.lng != null ? { lat: p.lat, lng: p.lng } : null;
+      if (p?.lat != null && p?.lng != null) {
+        geoStopIndices.push(i);
+        coords.push({ lat: p.lat, lng: p.lng });
+      } else {
+        ungeoStopIndices.push(i);
+      }
     });
 
-    const validCoords = coords.filter((c): c is { lat: number; lng: number } => c !== null);
-    if (validCoords.length < 2) {
-      res.json({ orderedStopIds: stops.map(s => s.id), estimatedDriveTimeMinutes: 0 });
-      return;
-    }
-
-    let startPoint: { lat: number; lng: number } | null = null;
-    if (tour.startLat != null && tour.startLng != null) {
-      startPoint = { lat: tour.startLat, lng: tour.startLng };
-    }
-
-    let orderedIds: string[];
+    let orderedIds: string[] = [];
     let totalDriveSeconds = 0;
 
-    try {
-      const allPoints = startPoint ? [startPoint, ...validCoords] : validCoords;
-      const matrix = await googleDistanceMatrix(allPoints, allPoints);
+    if (coords.length >= 2) {
+      try {
+        let matrixPoints: Array<{ lat: number; lng: number }> = coords;
+        let startOffset = 0;
+        if (tour.startLat != null && tour.startLng != null) {
+          matrixPoints = [{ lat: tour.startLat, lng: tour.startLng }, ...coords];
+          startOffset = 1;
+        }
 
-      if (startPoint) {
-        const stopMatrix = matrix.slice(1).map(row => row.slice(1));
-        const startRow = matrix[0].slice(1);
-        const combined = stopMatrix.map((row, i) => row.map((v, j) => (i === j ? 0 : v)));
-        const startScores = startRow;
-        const firstIdx = startScores.indexOf(Math.min(...startScores));
-        orderedIds = nearestNeighborOrder(stops.map(s => s.id), coords, combined, firstIdx);
-        totalDriveSeconds = startRow[firstIdx];
-        for (let k = 0; k < orderedIds.length - 1; k++) {
-          const fromIdx = stops.findIndex(s => s.id === orderedIds[k]);
-          const toIdx = stops.findIndex(s => s.id === orderedIds[k + 1]);
-          if (fromIdx >= 0 && toIdx >= 0) totalDriveSeconds += combined[fromIdx][toIdx];
+        const fullMatrix = await googleDistanceMatrix(matrixPoints, matrixPoints);
+        const coordsMatrix = fullMatrix
+          .slice(startOffset)
+          .map(row => row.slice(startOffset));
+
+        let firstGeoIdx = 0;
+        if (startOffset === 1) {
+          const startRow = fullMatrix[0].slice(startOffset);
+          firstGeoIdx = startRow.indexOf(Math.min(...startRow));
+          totalDriveSeconds += fullMatrix[0][startOffset + firstGeoIdx];
         }
-      } else {
-        orderedIds = nearestNeighborOrder(stops.map(s => s.id), coords, matrix, 0);
-        for (let k = 0; k < orderedIds.length - 1; k++) {
-          const fromIdx = stops.findIndex(s => s.id === orderedIds[k]);
-          const toIdx = stops.findIndex(s => s.id === orderedIds[k + 1]);
-          if (fromIdx >= 0 && toIdx >= 0) totalDriveSeconds += matrix[fromIdx][toIdx];
+
+        const orderedGeoLocalIdx = nearestNeighborOrder(coords.length, coordsMatrix, firstGeoIdx);
+
+        for (let k = 0; k < orderedGeoLocalIdx.length - 1; k++) {
+          totalDriveSeconds += coordsMatrix[orderedGeoLocalIdx[k]][orderedGeoLocalIdx[k + 1]];
         }
+
+        const orderedGeoStopIds = orderedGeoLocalIdx.map(li => activeStops[geoStopIndices[li]].id);
+        const ungeoStopIds = ungeoStopIndices.map(i => activeStops[i].id);
+        orderedIds = [...orderedGeoStopIds, ...ungeoStopIds];
+      } catch (optimizeErr) {
+        req.log.warn({ optimizeErr }, "Google Maps optimization failed, falling back to current order");
+        orderedIds = activeStops.map(s => s.id);
       }
-
-      await db.transaction(async (tx) => {
-        for (let i = 0; i < orderedIds.length; i++) {
-          await tx
-            .update(tourStopsTable)
-            .set({ sequence: i, updatedAt: new Date() })
-            .where(eq(tourStopsTable.id, orderedIds[i]));
-        }
-      });
-    } catch (optimizeErr) {
-      req.log.warn({ optimizeErr }, "Google Maps optimization failed, falling back to current order");
-      orderedIds = stops.map(s => s.id);
+    } else {
+      orderedIds = activeStops.map(s => s.id);
     }
+
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < orderedIds.length; i++) {
+        await tx
+          .update(tourStopsTable)
+          .set({ sequence: i, updatedAt: new Date() })
+          .where(eq(tourStopsTable.id, orderedIds[i]));
+      }
+    });
 
     res.json({
       orderedStopIds: orderedIds,
@@ -410,7 +414,11 @@ router.put("/tours/:tourId/stops/order", async (req: Request, res: Response) => 
   if (!params) return;
   const body = parseBody(ReorderTourStopsBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const tour = await assertTourOwner(params.tourId, user.id, res);
+    if (!tour) return;
+
     await db.transaction(async (tx) => {
       for (let i = 0; i < body.orderedStopIds.length; i++) {
         await tx
@@ -440,8 +448,12 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
   if (!params) return;
   const body = parseBody(SkipTourStopBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const [stop] = await db
+    const tour = await assertTourOwner(params.tourId, user.id, res);
+    if (!tour) return;
+
+    const [targetStop] = await db
       .select()
       .from(tourStopsTable)
       .where(
@@ -450,8 +462,8 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
           eq(tourStopsTable.tourId, params.tourId),
         ),
       );
-    if (!stop) {
-      res.status(404).json({ error: "Stop not found" });
+    if (!targetStop) {
+      res.status(404).json({ error: "Stop not found in this tour" });
       return;
     }
 
@@ -478,10 +490,52 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
       )
       .orderBy(tourStopsTable.sequence);
 
-    const afterSkipped = remaining.filter(s => s.sequence > stop.sequence);
-    const nextStop = afterSkipped[0] ?? remaining[0] ?? null;
+    const nextStop = remaining[0] ?? null;
 
-    res.json({ skippedStop, nextStop });
+    if (remaining.length >= 2) {
+      const properties = await db
+        .select()
+        .from(propertiesTable)
+        .where(inArray(propertiesTable.id, remaining.map(s => s.propertyId)));
+      const propMap = new Map(properties.map(p => [p.id, p]));
+      const geoIdx: number[] = [];
+      const coords: Array<{ lat: number; lng: number }> = [];
+
+      remaining.forEach((s, i) => {
+        const p = propMap.get(s.propertyId);
+        if (p?.lat != null && p?.lng != null) {
+          geoIdx.push(i);
+          coords.push({ lat: p.lat, lng: p.lng });
+        }
+      });
+
+      if (coords.length >= 2 && process.env.GOOGLE_MAPS_API_KEY) {
+        try {
+          const matrix = await googleDistanceMatrix(coords, coords);
+          const orderedLocalIdx = nearestNeighborOrder(coords.length, matrix, 0);
+          const orderedStopIds = orderedLocalIdx.map(li => remaining[geoIdx[li]].id);
+          const ungeo = remaining.filter((_, i) => !geoIdx.includes(i)).map(s => s.id);
+          const allOrdered = [...orderedStopIds, ...ungeo];
+
+          await db.transaction(async (tx) => {
+            for (let i = 0; i < allOrdered.length; i++) {
+              await tx
+                .update(tourStopsTable)
+                .set({ sequence: i, updatedAt: new Date() })
+                .where(eq(tourStopsTable.id, allOrdered[i]));
+            }
+          });
+        } catch (e) {
+          req.log.warn({ err: e }, "Reroute optimization failed after skip");
+        }
+      }
+    }
+
+    const [refreshedNext] = nextStop
+      ? await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, nextStop.id))
+      : [null];
+
+    res.json({ skippedStop, nextStop: refreshedNext ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to skip stop");
     res.status(500).json({ error: "Internal server error" });
@@ -495,25 +549,18 @@ router.post("/tours/:tourId/publish", async (req: Request, res: Response) => {
   }
   const params = parseParams(idParams.tourId, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const existing = await assertTourOwner(params.tourId, user.id, res);
+    if (!existing) return;
+
     const [tour] = await db
       .update(toursTable)
       .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
       .where(eq(toursTable.id, params.tourId))
       .returning();
-    if (!tour) {
-      res.status(404).json({ error: "Tour not found" });
-      return;
-    }
-    const stops = await db.select().from(tourStopsTable).where(eq(tourStopsTable.tourId, params.tourId));
-    res.json({
-      tour: {
-        ...tour,
-        stopCount: stops.length,
-        approvedCount: stops.filter(s => s.approvedStatus === "approved").length,
-        pendingShowingsCount: stops.filter(s => s.approvedStatus === "requested" || s.approvedStatus === "pending").length,
-      },
-    });
+    const counts = await getStopCounts(params.tourId);
+    res.json({ tour: { ...tour, ...counts } });
   } catch (err) {
     req.log.error({ err }, "Failed to publish tour");
     res.status(500).json({ error: "Internal server error" });
@@ -527,7 +574,11 @@ router.get("/tours/:tourId/readiness", async (req: Request, res: Response) => {
   }
   const params = parseParams(idParams.tourId, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const tour = await assertTourOwner(params.tourId, user.id, res);
+    if (!tour) return;
+
     const stops = await db
       .select()
       .from(tourStopsTable)
@@ -541,7 +592,6 @@ router.get("/tours/:tourId/readiness", async (req: Request, res: Response) => {
       : [];
 
     const srMap = new Map(showingRequests.map(sr => [sr.tourStopId, sr]));
-
     const approvedCount = showingRequests.filter(sr => sr.status === "approved").length;
     const pendingCount = showingRequests.filter(sr => sr.status === "pending" || sr.status === "requested").length;
     const declinedCount = showingRequests.filter(sr => sr.status === "declined" || sr.status === "cancelled").length;
@@ -576,12 +626,10 @@ router.post("/tours/:tourId/generate-summary", async (req: Request, res: Respons
   }
   const params = parseParams(idParams.tourId, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, params.tourId));
-    if (!tour) {
-      res.status(404).json({ error: "Tour not found" });
-      return;
-    }
+    const tour = await assertTourOwner(params.tourId, user.id, res);
+    if (!tour) return;
 
     const stops = await db
       .select()
@@ -623,8 +671,7 @@ Generate a comprehensive end-of-tour summary with the following sections:
 
 Format as JSON with keys: summaryText, topHomes, homesToEliminate, buyerPreferences, nextActions`;
 
-    const provider = aiConfig.summarizationProvider ?? (process.env.AZURE_OPENAI_API_KEY ? "azure_openai" : "openai");
-    const result = await generateText(prompt, provider as "azure_openai" | "openai");
+    const result = await generateText(prompt, aiConfig.summarizationProvider);
 
     let parsed: { summaryText?: string; topHomes?: string[]; homesToEliminate?: string[]; buyerPreferences?: string[]; nextActions?: string[] } = {};
     try {

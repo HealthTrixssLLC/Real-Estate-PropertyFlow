@@ -6,6 +6,7 @@ import {
   showingRequestsTable,
   restrictionNotesTable,
   tourStopsTable,
+  toursTable,
 } from "@workspace/db";
 import {
   CreateShowingRequestBody,
@@ -19,6 +20,24 @@ const stopIdSchema = z.object({ stopId: z.string().min(1) });
 
 const router: IRouter = Router();
 
+async function assertStopOwner(
+  stopId: string,
+  agentId: string,
+  res: Response,
+): Promise<typeof tourStopsTable.$inferSelect | null> {
+  const [stop] = await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, stopId));
+  if (!stop) {
+    res.status(404).json({ error: "Stop not found" });
+    return null;
+  }
+  const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, stop.tourId));
+  if (!tour || tour.agentId !== agentId) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return stop;
+}
+
 router.get("/tour-stops/:stopId/showing-request", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -26,7 +45,11 @@ router.get("/tour-stops/:stopId/showing-request", async (req: Request, res: Resp
   }
   const params = parseParams(stopIdSchema, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const stop = await assertStopOwner(params.stopId, user.id, res);
+    if (!stop) return;
+
     const [showingRequest] = await db
       .select()
       .from(showingRequestsTable)
@@ -51,15 +74,10 @@ router.post("/tour-stops/:stopId/showing-request", async (req: Request, res: Res
   if (!params) return;
   const body = parseBody(CreateShowingRequestBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const [stop] = await db
-      .select()
-      .from(tourStopsTable)
-      .where(eq(tourStopsTable.id, params.stopId));
-    if (!stop) {
-      res.status(404).json({ error: "Stop not found" });
-      return;
-    }
+    const stop = await assertStopOwner(params.stopId, user.id, res);
+    if (!stop) return;
 
     const [existing] = await db
       .select()
@@ -116,7 +134,11 @@ router.put("/tour-stops/:stopId/showing-request", async (req: Request, res: Resp
   if (!params) return;
   const body = parseBody(UpdateShowingRequestBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const stop = await assertStopOwner(params.stopId, user.id, res);
+    if (!stop) return;
+
     const [existing] = await db
       .select()
       .from(showingRequestsTable)
@@ -152,7 +174,11 @@ router.get("/tour-stops/:stopId/restrictions", async (req: Request, res: Respons
   }
   const params = parseParams(stopIdSchema, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const stop = await assertStopOwner(params.stopId, user.id, res);
+    if (!stop) return;
+
     const [restrictionNote] = await db
       .select()
       .from(restrictionNotesTable)
@@ -173,7 +199,11 @@ router.put("/tour-stops/:stopId/restrictions", async (req: Request, res: Respons
   if (!params) return;
   const body = parseBody(UpsertRestrictionNoteBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const stop = await assertStopOwner(params.stopId, user.id, res);
+    if (!stop) return;
+
     const [existing] = await db
       .select()
       .from(restrictionNotesTable)

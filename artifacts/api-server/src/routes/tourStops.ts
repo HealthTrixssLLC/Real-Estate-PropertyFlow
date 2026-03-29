@@ -1,9 +1,10 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
-import { eq, inArray } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   db,
   tourStopsTable,
+  toursTable,
   propertiesTable,
   showingRequestsTable,
   restrictionNotesTable,
@@ -20,6 +21,24 @@ const stopIdSchema = z.object({ stopId: z.string().min(1) });
 
 const router: IRouter = Router();
 
+async function assertStopOwner(
+  stopId: string,
+  agentId: string,
+  res: Response,
+): Promise<typeof tourStopsTable.$inferSelect | null> {
+  const [stop] = await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, stopId));
+  if (!stop) {
+    res.status(404).json({ error: "Stop not found" });
+    return null;
+  }
+  const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, stop.tourId));
+  if (!tour || tour.agentId !== agentId) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return stop;
+}
+
 router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -27,15 +46,12 @@ router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
   }
   const params = parseParams(stopIdSchema, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const [stop] = await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, params.stopId));
-    if (!stop) {
-      res.status(404).json({ error: "Stop not found" });
-      return;
-    }
-    const [property] = stop.propertyId
-      ? await db.select().from(propertiesTable).where(eq(propertiesTable.id, stop.propertyId))
-      : [undefined];
+    const stop = await assertStopOwner(params.stopId, user.id, res);
+    if (!stop) return;
+
+    const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, stop.propertyId));
     const [showingRequest] = await db
       .select()
       .from(showingRequestsTable)
@@ -55,7 +71,7 @@ router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
 
     res.json({
       stop,
-      property: property ?? undefined,
+      property: property ?? null,
       showingRequest: showingRequest ?? null,
       restrictionNote: restrictionNote ?? null,
       voiceNotes,
@@ -76,16 +92,16 @@ router.put("/tour-stops/:stopId", async (req: Request, res: Response) => {
   if (!params) return;
   const body = parseBody(UpdateTourStopBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const existing = await assertStopOwner(params.stopId, user.id, res);
+    if (!existing) return;
+
     const [stop] = await db
       .update(tourStopsTable)
       .set({ ...body, updatedAt: new Date() })
       .where(eq(tourStopsTable.id, params.stopId))
       .returning();
-    if (!stop) {
-      res.status(404).json({ error: "Stop not found" });
-      return;
-    }
     res.json({ stop });
   } catch (err) {
     req.log.error({ err }, "Failed to update tour stop");
@@ -100,7 +116,10 @@ router.delete("/tour-stops/:stopId", async (req: Request, res: Response) => {
   }
   const params = parseParams(stopIdSchema, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const stop = await assertStopOwner(params.stopId, user.id, res);
+    if (!stop) return;
     await db.delete(tourStopsTable).where(eq(tourStopsTable.id, params.stopId));
     res.status(204).send();
   } catch (err) {
@@ -116,16 +135,16 @@ router.post("/tour-stops/:stopId/arrive", async (req: Request, res: Response) =>
   }
   const params = parseParams(stopIdSchema, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const existing = await assertStopOwner(params.stopId, user.id, res);
+    if (!existing) return;
+
     const [stop] = await db
       .update(tourStopsTable)
       .set({ arrivalTime: new Date(), visited: true, updatedAt: new Date() })
       .where(eq(tourStopsTable.id, params.stopId))
       .returning();
-    if (!stop) {
-      res.status(404).json({ error: "Stop not found" });
-      return;
-    }
     res.json({ stop });
   } catch (err) {
     req.log.error({ err }, "Failed to mark stop as arrived");
@@ -140,16 +159,16 @@ router.post("/tour-stops/:stopId/complete", async (req: Request, res: Response) 
   }
   const params = parseParams(stopIdSchema, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
+    const existing = await assertStopOwner(params.stopId, user.id, res);
+    if (!existing) return;
+
     const [stop] = await db
       .update(tourStopsTable)
       .set({ departureTime: new Date(), visited: true, updatedAt: new Date() })
       .where(eq(tourStopsTable.id, params.stopId))
       .returning();
-    if (!stop) {
-      res.status(404).json({ error: "Stop not found" });
-      return;
-    }
     res.json({ stop });
   } catch (err) {
     req.log.error({ err }, "Failed to mark stop as completed");
@@ -166,25 +185,22 @@ router.post("/tour-stops/:stopId/note", async (req: Request, res: Response) => {
   if (!params) return;
   const body = parseBody(AddStopNoteBody, req, res);
   if (!body) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const [existing] = await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, params.stopId));
-    if (!existing) {
-      res.status(404).json({ error: "Stop not found" });
-      return;
-    }
+    const existing = await assertStopOwner(params.stopId, user.id, res);
+    if (!existing) return;
 
+    const typedNote = body.note;
     const existingNotes = await db
       .select()
       .from(voiceNotesTable)
-      .where(eq(voiceNotesTable.tourStopId, params.stopId));
+      .where(and(eq(voiceNotesTable.tourStopId, params.stopId), eq(voiceNotesTable.fileUrl, "")));
 
-    const typedNote = body.note;
-    const existingTyped = existingNotes.find(n => n.typedNote != null && n.fileUrl === "");
-    if (existingTyped) {
+    if (existingNotes.length > 0) {
       await db
         .update(voiceNotesTable)
         .set({ typedNote, updatedAt: new Date() })
-        .where(eq(voiceNotesTable.id, existingTyped.id));
+        .where(eq(voiceNotesTable.id, existingNotes[0].id));
     } else {
       await db.insert(voiceNotesTable).values({
         id: randomUUID(),
@@ -210,12 +226,10 @@ router.post("/tour-stops/:stopId/summarize", async (req: Request, res: Response)
   }
   const params = parseParams(stopIdSchema, req, res);
   if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const [stop] = await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, params.stopId));
-    if (!stop) {
-      res.status(404).json({ error: "Stop not found" });
-      return;
-    }
+    const stop = await assertStopOwner(params.stopId, user.id, res);
+    if (!stop) return;
 
     const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, stop.propertyId));
     const voiceNotes = await db.select().from(voiceNotesTable).where(eq(voiceNotesTable.tourStopId, params.stopId));
@@ -249,8 +263,7 @@ Generate a concise property summary with:
 
 Return as JSON with those exact keys.`;
 
-    const provider = aiConfig.summarizationProvider ?? (process.env.AZURE_OPENAI_API_KEY ? "azure_openai" : "openai");
-    const result = await generateText(prompt, provider as "azure_openai" | "openai");
+    const result = await generateText(prompt, aiConfig.summarizationProvider);
 
     let parsed: { summaryText?: string; positives?: string[]; negatives?: string[]; questions?: string[] } = {};
     try {

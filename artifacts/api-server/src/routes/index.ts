@@ -9,6 +9,7 @@ import showingsRouter from "./showings";
 import voiceNotesRouter from "./voiceNotes";
 import adminRouter from "./admin";
 import storageRouter from "./storage";
+import listingAgentContactsRouter from "./listingAgentContacts";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(tourStopsRouter);
 router.use(showingsRouter);
 router.use(voiceNotesRouter);
 router.use(adminRouter);
+router.use(listingAgentContactsRouter);
 
 export default router;

@@ -2,7 +2,13 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { SaveAiConfigBody, TestAiConfigBody } from "@workspace/api-zod";
 import { requireRole } from "../middlewares/authMiddleware";
 import { aiConfig, updateAiConfig, getAiConfigResponse } from "../lib/aiConfig";
-import { generateText, pingTextProvider, pingSpeechProvider } from "../lib/ai";
+import {
+  generateText,
+  azureOpenAiProvider,
+  openAiProvider,
+  azureSpeechProvider,
+  resolveSpeechProvider,
+} from "../lib/ai";
 
 export { aiConfig };
 
@@ -56,8 +62,8 @@ router.post("/admin/ai/config/test", requireRole("agent"), async (req: Request, 
 
   try {
     if (feature === "transcription") {
-      const provider = aiConfig.transcriptionProvider as "azure_speech" | "openai";
-      const result = await pingSpeechProvider(provider);
+      const speechProvider = resolveSpeechProvider(aiConfig.transcriptionProvider);
+      const result = await speechProvider.ping();
       res.json({
         success: result.healthy,
         result: result.healthy ? "Speech provider is reachable" : undefined,
@@ -66,9 +72,8 @@ router.post("/admin/ai/config/test", requireRole("agent"), async (req: Request, 
       return;
     }
 
-    const provider = aiConfig.summarizationProvider as "azure_openai" | "openai";
     const testPrompt = prompt ?? "Reply with the single word: OK";
-    const result = await generateText(testPrompt, provider);
+    const result = await generateText(testPrompt, aiConfig.summarizationProvider);
     res.json({ success: true, result: result.text });
   } catch (err) {
     res.json({ success: false, error: err instanceof Error ? err.message : String(err) });
@@ -77,9 +82,9 @@ router.post("/admin/ai/config/test", requireRole("agent"), async (req: Request, 
 
 router.get("/admin/ai/health", requireRole("agent"), async (_req: Request, res: Response) => {
   const [azureOpenAi, azureSpeech, openaiResult] = await Promise.all([
-    pingTextProvider("azure_openai").catch(e => ({ healthy: false, error: String(e) })),
-    pingSpeechProvider("azure_speech").catch(e => ({ healthy: false, error: String(e) })),
-    pingTextProvider("openai").catch(e => ({ healthy: false, error: String(e) })),
+    azureOpenAiProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
+    azureSpeechProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
+    openAiProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
   ]);
 
   res.json({
