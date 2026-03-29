@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { UpdateTourStopBody, AddStopNoteBody } from "@workspace/api-zod";
 import { parseParams, parseBody } from "../lib/validate";
+import { sendValidated, TourStopResponseSchema } from "../lib/responseSchemas";
 import { z } from "zod";
 import { generateText } from "../lib/ai";
 import { aiConfig } from "../lib/aiConfig";
@@ -69,14 +70,7 @@ router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
       .from(propertySummariesTable)
       .where(eq(propertySummariesTable.tourStopId, params.stopId));
 
-    res.json({
-      stop,
-      property: property ?? null,
-      showingRequest: showingRequest ?? null,
-      restrictionNote: restrictionNote ?? null,
-      voiceNotes,
-      propertySummary: propertySummary ?? null,
-    });
+    res.json({ stop, property: property ?? null, showingRequest: showingRequest ?? null, restrictionNote: restrictionNote ?? null, voiceNotes, propertySummary: propertySummary ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to get tour stop");
     res.status(500).json({ error: "Internal server error" });
@@ -102,7 +96,7 @@ router.put("/tour-stops/:stopId", async (req: Request, res: Response) => {
       .set({ ...body, updatedAt: new Date() })
       .where(eq(tourStopsTable.id, params.stopId))
       .returning();
-    res.json({ stop });
+    sendValidated(res, TourStopResponseSchema, { stop });
   } catch (err) {
     req.log.error({ err }, "Failed to update tour stop");
     res.status(500).json({ error: "Internal server error" });
@@ -145,7 +139,7 @@ router.post("/tour-stops/:stopId/arrive", async (req: Request, res: Response) =>
       .set({ arrivalTime: new Date(), visited: true, updatedAt: new Date() })
       .where(eq(tourStopsTable.id, params.stopId))
       .returning();
-    res.json({ stop });
+    sendValidated(res, TourStopResponseSchema, { stop });
   } catch (err) {
     req.log.error({ err }, "Failed to mark stop as arrived");
     res.status(500).json({ error: "Internal server error" });
@@ -169,7 +163,7 @@ router.post("/tour-stops/:stopId/complete", async (req: Request, res: Response) 
       .set({ departureTime: new Date(), visited: true, updatedAt: new Date() })
       .where(eq(tourStopsTable.id, params.stopId))
       .returning();
-    res.json({ stop });
+    sendValidated(res, TourStopResponseSchema, { stop });
   } catch (err) {
     req.log.error({ err }, "Failed to mark stop as completed");
     res.status(500).json({ error: "Internal server error" });
@@ -212,7 +206,7 @@ router.post("/tour-stops/:stopId/note", async (req: Request, res: Response) => {
     }
 
     const [stop] = await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, params.stopId));
-    res.json({ stop });
+    sendValidated(res, TourStopResponseSchema, { stop });
   } catch (err) {
     req.log.error({ err }, "Failed to add stop note");
     res.status(500).json({ error: "Internal server error" });

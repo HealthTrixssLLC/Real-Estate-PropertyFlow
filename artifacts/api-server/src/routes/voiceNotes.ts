@@ -10,6 +10,7 @@ import {
   toursTable,
 } from "@workspace/db";
 import { idParams, parseParams } from "../lib/validate";
+import { sendValidated, VoiceNoteResponseSchema } from "../lib/responseSchemas";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { transcribeAudio, isSpeechAiAvailable } from "../lib/ai";
 import { aiConfig } from "../lib/aiConfig";
@@ -110,7 +111,7 @@ router.post(
         })
         .returning();
 
-      res.status(201).json({ voiceNote });
+      sendValidated(res, VoiceNoteResponseSchema, { voiceNote }, 201);
     } catch (err) {
       req.log.error({ err }, "Failed to upload voice note");
       res.status(500).json({ error: "Internal server error" });
@@ -131,7 +132,7 @@ router.post("/voice-notes/:voiceNoteId/transcribe", async (req: Request, res: Re
     if (!voiceNote) return;
 
     if (voiceNote.transcriptionStatus === "completed") {
-      res.json({ voiceNote });
+      sendValidated(res, VoiceNoteResponseSchema, { voiceNote });
       return;
     }
 
@@ -146,7 +147,7 @@ router.post("/voice-notes/:voiceNoteId/transcribe", async (req: Request, res: Re
         .set({ transcriptionStatus: "failed", updatedAt: new Date() })
         .where(eq(voiceNotesTable.id, params.voiceNoteId))
         .returning();
-      res.json({ voiceNote: updated });
+      sendValidated(res, VoiceNoteResponseSchema, { voiceNote: updated });
       return;
     }
 
@@ -171,7 +172,7 @@ router.post("/voice-notes/:voiceNoteId/transcribe", async (req: Request, res: Re
         .where(eq(voiceNotesTable.id, params.voiceNoteId))
         .returning();
 
-      res.json({ voiceNote: updated });
+      sendValidated(res, VoiceNoteResponseSchema, { voiceNote: updated });
     } catch (transcribeErr) {
       req.log.error({ transcribeErr }, "Transcription failed");
       const [updated] = await db
@@ -179,7 +180,7 @@ router.post("/voice-notes/:voiceNoteId/transcribe", async (req: Request, res: Re
         .set({ transcriptionStatus: "failed", updatedAt: new Date() })
         .where(eq(voiceNotesTable.id, params.voiceNoteId))
         .returning();
-      res.json({ voiceNote: updated });
+      sendValidated(res, VoiceNoteResponseSchema, { voiceNote: updated });
     }
   } catch (err) {
     req.log.error({ err }, "Failed to transcribe voice note");
@@ -203,7 +204,7 @@ router.get("/voice-notes/:voiceNoteId", async (req: Request, res: Response) => {
       .select()
       .from(transcriptsTable)
       .where(eq(transcriptsTable.voiceNoteId, params.voiceNoteId));
-    res.json({ voiceNote, transcript: transcript ?? null });
+    res.json({ voiceNote, transcript: transcript ?? null });  
   } catch (err) {
     req.log.error({ err }, "Failed to get voice note");
     res.status(500).json({ error: "Internal server error" });

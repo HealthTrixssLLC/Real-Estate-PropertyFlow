@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, listingAgentContactsTable, tourStopsTable, toursTable } from "@workspace/db";
 import { parseParams, parseBody } from "../lib/validate";
 import { z } from "zod";
+import { sendValidated, ListingAgentContactResponseSchema } from "../lib/responseSchemas";
 
 const stopIdSchema = z.object({ stopId: z.string().min(1) });
 
@@ -52,7 +53,7 @@ router.get("/tour-stops/:stopId/listing-agent", async (req: Request, res: Respon
       .select()
       .from(listingAgentContactsTable)
       .where(eq(listingAgentContactsTable.tourStopId, params.stopId));
-    res.json({ contact: contact ?? null });
+    sendValidated(res, ListingAgentContactResponseSchema, { contact: contact ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to get listing agent contact");
     res.status(500).json({ error: "Internal server error" });
@@ -92,7 +93,7 @@ router.put("/tour-stops/:stopId/listing-agent", async (req: Request, res: Respon
         .returning();
     }
 
-    res.json({ contact });
+    sendValidated(res, ListingAgentContactResponseSchema, { contact });
   } catch (err) {
     req.log.error({ err }, "Failed to upsert listing agent contact");
     res.status(500).json({ error: "Internal server error" });

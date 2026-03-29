@@ -463,11 +463,6 @@ router.put("/tours/:tourId/stops/order", async (req: Request, res: Response) => 
   }
 });
 
-const SkipWithLocationBody = SkipTourStopBody.extend({
-  currentLat: require("zod").z.number().optional(),
-  currentLng: require("zod").z.number().optional(),
-});
-
 router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });

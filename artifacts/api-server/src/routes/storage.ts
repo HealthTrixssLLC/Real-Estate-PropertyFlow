@@ -77,7 +77,6 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     const voiceNotes = await db
       .select({
         id: voiceNotesTable.id,
-        tourStopId: voiceNotesTable.tourStopId,
         fileUrl: voiceNotesTable.fileUrl,
         agentId: toursTable.agentId,
       })
@@ -86,12 +85,14 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       .innerJoin(toursTable, eq(toursTable.id, tourStopsTable.tourId))
       .where(like(voiceNotesTable.fileUrl, `%${wildcardPath}%`));
 
-    if (voiceNotes.length > 0) {
-      const ownsObject = voiceNotes.some(vn => vn.agentId === user.id);
-      if (!ownsObject) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
-      }
+    if (voiceNotes.length === 0) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const ownsObject = voiceNotes.some(vn => vn.agentId === user.id);
+    if (!ownsObject) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
     }
 
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);

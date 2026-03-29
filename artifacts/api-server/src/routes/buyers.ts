@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, buyersTable } from "@workspace/db";
 import { CreateBuyerBody, UpdateBuyerBody } from "@workspace/api-zod";
 import { idParams, parseParams, parseBody } from "../lib/validate";
+import { sendValidated, BuyerResponseSchema, BuyerListResponseSchema } from "../lib/responseSchemas";
 
 const router: IRouter = Router();
 
@@ -14,7 +15,7 @@ router.get("/buyers", async (req: Request, res: Response) => {
   }
   try {
     const buyers = await db.select().from(buyersTable).orderBy(buyersTable.createdAt);
-    res.json({ buyers });
+    sendValidated(res, BuyerListResponseSchema, { buyers });
   } catch (err) {
     req.log.error({ err }, "Failed to list buyers");
     res.status(500).json({ error: "Internal server error" });
@@ -30,7 +31,7 @@ router.post("/buyers", async (req: Request, res: Response) => {
   if (!body) return;
   try {
     const [buyer] = await db.insert(buyersTable).values({ id: randomUUID(), ...body }).returning();
-    res.status(201).json({ buyer });
+    sendValidated(res, BuyerResponseSchema, { buyer }, 201);
   } catch (err) {
     req.log.error({ err }, "Failed to create buyer");
     res.status(500).json({ error: "Internal server error" });
@@ -50,7 +51,7 @@ router.get("/buyers/:buyerId", async (req: Request, res: Response) => {
       res.status(404).json({ error: "Buyer not found" });
       return;
     }
-    res.json({ buyer });
+    sendValidated(res, BuyerResponseSchema, { buyer });
   } catch (err) {
     req.log.error({ err }, "Failed to get buyer");
     res.status(500).json({ error: "Internal server error" });
@@ -76,7 +77,7 @@ router.put("/buyers/:buyerId", async (req: Request, res: Response) => {
       res.status(404).json({ error: "Buyer not found" });
       return;
     }
-    res.json({ buyer });
+    sendValidated(res, BuyerResponseSchema, { buyer });
   } catch (err) {
     req.log.error({ err }, "Failed to update buyer");
     res.status(500).json({ error: "Internal server error" });

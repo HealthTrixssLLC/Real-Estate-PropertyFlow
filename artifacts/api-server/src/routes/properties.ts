@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, propertiesTable } from "@workspace/db";
 import { CreatePropertyBody, UpdatePropertyBody } from "@workspace/api-zod";
 import { idParams, parseParams, parseBody } from "../lib/validate";
+import { sendValidated, PropertyResponseSchema, PropertyListResponseSchema } from "../lib/responseSchemas";
 
 const router: IRouter = Router();
 
@@ -14,7 +15,7 @@ router.get("/properties", async (req: Request, res: Response) => {
   }
   try {
     const properties = await db.select().from(propertiesTable).orderBy(propertiesTable.createdAt);
-    res.json({ properties });
+    sendValidated(res, PropertyListResponseSchema, { properties });
   } catch (err) {
     req.log.error({ err }, "Failed to list properties");
     res.status(500).json({ error: "Internal server error" });
@@ -33,7 +34,7 @@ router.post("/properties", async (req: Request, res: Response) => {
       .insert(propertiesTable)
       .values({ id: randomUUID(), ...body })
       .returning();
-    res.status(201).json({ property });
+    sendValidated(res, PropertyResponseSchema, { property }, 201);
   } catch (err) {
     req.log.error({ err }, "Failed to create property");
     res.status(500).json({ error: "Internal server error" });
@@ -56,7 +57,7 @@ router.get("/properties/:propertyId", async (req: Request, res: Response) => {
       res.status(404).json({ error: "Property not found" });
       return;
     }
-    res.json({ property });
+    sendValidated(res, PropertyResponseSchema, { property });
   } catch (err) {
     req.log.error({ err }, "Failed to get property");
     res.status(500).json({ error: "Internal server error" });
@@ -82,7 +83,7 @@ router.put("/properties/:propertyId", async (req: Request, res: Response) => {
       res.status(404).json({ error: "Property not found" });
       return;
     }
-    res.json({ property });
+    sendValidated(res, PropertyResponseSchema, { property });
   } catch (err) {
     req.log.error({ err }, "Failed to update property");
     res.status(500).json({ error: "Internal server error" });

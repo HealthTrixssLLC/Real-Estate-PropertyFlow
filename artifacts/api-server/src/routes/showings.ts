@@ -15,6 +15,7 @@ import {
 } from "@workspace/api-zod";
 import { parseParams, parseBody } from "../lib/validate";
 import { z } from "zod";
+import { sendValidated, ShowingRequestResponseSchema, RestrictionNoteResponseSchema } from "../lib/responseSchemas";
 
 const stopIdSchema = z.object({ stopId: z.string().min(1) });
 
@@ -58,7 +59,7 @@ router.get("/tour-stops/:stopId/showing-request", async (req: Request, res: Resp
       res.status(404).json({ error: "Showing request not found" });
       return;
     }
-    res.json({ showingRequest });
+    sendValidated(res, ShowingRequestResponseSchema, { showingRequest });
   } catch (err) {
     req.log.error({ err }, "Failed to get showing request");
     res.status(500).json({ error: "Internal server error" });
@@ -96,7 +97,7 @@ router.post("/tour-stops/:stopId/showing-request", async (req: Request, res: Res
           .set({ approvedStatus: body.status, updatedAt: new Date() })
           .where(eq(tourStopsTable.id, params.stopId));
       }
-      res.status(201).json({ showingRequest });
+      sendValidated(res, ShowingRequestResponseSchema, { showingRequest }, 201);
       return;
     }
 
@@ -118,7 +119,7 @@ router.post("/tour-stops/:stopId/showing-request", async (req: Request, res: Res
         .where(eq(tourStopsTable.id, params.stopId));
     }
 
-    res.status(201).json({ showingRequest });
+    sendValidated(res, ShowingRequestResponseSchema, { showingRequest }, 201);
   } catch (err) {
     req.log.error({ err }, "Failed to create showing request");
     res.status(500).json({ error: "Internal server error" });
@@ -160,7 +161,7 @@ router.put("/tour-stops/:stopId/showing-request", async (req: Request, res: Resp
         .where(eq(tourStopsTable.id, params.stopId));
     }
 
-    res.json({ showingRequest });
+    sendValidated(res, ShowingRequestResponseSchema, { showingRequest });
   } catch (err) {
     req.log.error({ err }, "Failed to update showing request");
     res.status(500).json({ error: "Internal server error" });
@@ -183,7 +184,7 @@ router.get("/tour-stops/:stopId/restrictions", async (req: Request, res: Respons
       .select()
       .from(restrictionNotesTable)
       .where(eq(restrictionNotesTable.tourStopId, params.stopId));
-    res.json({ restrictionNote: restrictionNote ?? null });
+    sendValidated(res, RestrictionNoteResponseSchema, { restrictionNote: restrictionNote ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to get restriction note");
     res.status(500).json({ error: "Internal server error" });
@@ -231,7 +232,7 @@ router.put("/tour-stops/:stopId/restrictions", async (req: Request, res: Respons
         .returning();
     }
 
-    res.json({ restrictionNote });
+    sendValidated(res, RestrictionNoteResponseSchema, { restrictionNote });
   } catch (err) {
     req.log.error({ err }, "Failed to upsert restriction note");
     res.status(500).json({ error: "Internal server error" });
