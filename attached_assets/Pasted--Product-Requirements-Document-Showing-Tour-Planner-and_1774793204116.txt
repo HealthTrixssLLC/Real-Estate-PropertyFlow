@@ -1,0 +1,974 @@
+# Product Requirements Document
+
+## Showing Tour Planner and Mobile Tour Assistant
+
+### Product working name
+
+TourFlow for Real Estate
+
+### Document status
+
+Draft v1.0
+
+### Product owner
+
+Heather Baker and team
+
+### Build target
+
+Single product with:
+
+* Web app for planning and coordination
+* Native iOS app for tour execution in the field
+* Shared backend and database hosted from Replit
+
+---
+
+## 1. Executive summary
+
+Heather needs a system that helps her build efficient multi-property showing tours for out-of-town buyers, request and track showing approvals, execute the tour on her phone with reliable navigation, skip properties when plans change, capture notes immediately after each showing, and generate an end-of-tour review.
+
+The product will consist of a web application for planning and administration and a mobile iPhone application for live tour execution. The mobile experience must be optimized for one-handed use, quick decision making, safe navigation handoff, and rapid note capture between showings.
+
+AI should be used selectively. The system does not need an LLM for core route planning, address validation, or status tracking. AI should be used where it adds real value: transcription, summarization, pattern detection, suggested communications, and end-of-tour analysis.
+
+---
+
+## 2. Problem statement
+
+Buyer tours for out-of-town clients are operationally messy. Agents often manage property lists manually, create ad hoc routes, request showings across many listing agents, and track approvals or restrictions in scattered notes, texts, and email threads. During the tour, it is easy to lose time due to inefficient routing, uncertainty about which properties are approved, confusion about restrictions, and inconsistent note taking. After the tour, valuable impressions are often trapped in memory or voice memos and are hard to turn into a useful summary.
+
+---
+
+## 3. Product vision
+
+Create a simple but powerful planning and execution platform that helps a real estate agent:
+
+* Build a geographically sensible showing tour
+* Optimize the sequence of homes to reduce drive time and friction
+* Request and track showings with full visibility into approvals and constraints
+* Navigate smoothly between stops on iPhone
+* Skip, reroute, and recover in real time when the day changes
+* Capture structured and unstructured notes after each showing
+* Generate a high quality review of the tour for the agent and optionally for the buyer
+
+---
+
+## 4. Goals
+
+### Business goals
+
+* Reduce administrative friction in building tours
+* Increase the number of homes that can be shown in a day without reducing quality
+* Improve organization and professionalism in communication with listing agents and buyers
+* Preserve showing insights in a reusable form
+* Create a repeatable platform that can later support teams and assistants
+
+### User goals
+
+* Build a tour quickly
+* Avoid bad routing decisions
+* Know exactly which homes are approved and what restrictions apply
+* Navigate with minimal taps
+* Capture notes immediately while impressions are fresh
+* Leave the day with a clear, organized summary
+
+### Success metrics
+
+* Time to create a tour
+* Average drive time saved per tour compared with manual planning
+* Percentage of tour stops with confirmed showing status before start time
+* Average time required to reroute after skipping a property
+* Percentage of properties with completed notes
+* Number of end-of-tour summaries generated
+* User satisfaction with mobile execution workflow
+
+---
+
+## 5. Users and roles
+
+### Primary user
+
+* Buyer’s agent, primarily Heather
+
+### Secondary users
+
+* Real estate assistant or coordinator
+* Optional buyer read-only viewer in later release
+
+### User permissions
+
+#### Agent
+
+* Full access to create, edit, request, route, navigate, note, summarize, and share
+
+#### Assistant
+
+* Can add properties, request showings, update statuses, enter restrictions, prepare tours
+* Cannot publish buyer-facing summaries unless allowed
+
+#### Buyer viewer
+
+* Read-only access to itinerary and selected property information if enabled
+
+---
+
+## 6. Scope
+
+### In scope for MVP
+
+* Tour creation and management
+* Property address search and validation
+* Map visualization of candidate properties
+* Start point and optional end point selection
+* Route optimization
+* Manual drag-and-drop reordering of stops
+* Showing request tracking
+* Approval and restriction tracking
+* iOS tour execution experience
+* Google Maps turn-by-turn handoff
+* Skip stop and reroute
+* Voice recording and text notes tied to properties
+* End-of-tour review dashboard
+* AI transcription and summary features
+
+### In scope for phase 2
+
+* Suggested showing request drafts
+* Buyer-facing summary generation
+* Smart preference extraction across properties
+* Calendar integration
+* Push notifications and reminders
+* Assistant workflow enhancements
+* Shareable tour links
+
+### Out of scope for MVP
+
+* Full MLS integration unless data source becomes available
+* Embedded in-app navigation using Google Navigation SDK
+* Automated texting from personal phone number without approved messaging infrastructure
+* Contract or offer generation
+* CRM replacement
+
+---
+
+## 7. Key use cases
+
+1. Agent creates a tour for a buyer coming from out of town
+2. Agent adds ten to twenty candidate homes by address search
+3. System maps the homes and proposes an efficient route
+4. Agent requests showings and tracks approvals, pending responses, and restrictions
+5. Agent publishes the final itinerary to the iPhone app
+6. During the tour, the agent launches navigation to each stop
+7. A property becomes unavailable, so the agent skips it and the system reroutes to the next best approved stop
+8. After each showing, the agent records a voice memo and or enters quick ratings
+9. At the end of the day, the system transcribes notes and generates a summary of top picks, concerns, and follow-ups
+
+---
+
+## 8. Functional requirements
+
+## 8.1 Web app requirements
+
+### 8.1.1 Tour creation
+
+The system shall allow the agent to create a new tour with:
+
+* Buyer name
+* Tour title
+* Tour date
+* Planned start time
+* Start location
+* Optional end location
+* General buyer profile notes
+* Geographic target area
+* Optional tags such as budget, school preference, lot size preference, style preference
+
+### 8.1.2 Property intake and address validation
+
+The system shall allow the agent to add properties through:
+
+* Google address autocomplete
+* Place lookup
+* Manual address entry fallback
+* CSV import in a later phase
+
+The system shall store:
+
+* Full formatted address
+* Latitude and longitude
+* Place ID
+* Nickname or label if needed
+* MLS ID if entered manually
+* Listing agent contact details if known
+
+### 8.1.3 Map visualization
+
+The system shall display all selected properties on an interactive map and synchronized list.
+The system shall support:
+
+* Marker selection
+* Zoom to fit all stops
+* Status color coding
+* Filtering by approval state or area
+
+### 8.1.4 Route planning and optimization
+
+The system shall allow the agent to:
+
+* Choose a start location
+* Choose an optional end location
+* Optimize stop order based on travel time and efficiency
+* Manually reorder stops after optimization
+* Save the final stop sequence
+
+The route optimizer shall account for:
+
+* Current stop list
+* Confirmed approved properties only by default
+* User option to include pending properties
+* Expected travel time between homes
+* Planned start time
+
+Later versions may support appointment windows and priority scoring.
+
+### 8.1.5 Showing request management
+
+The system shall allow the agent or assistant to create a showing request record for each property.
+Each showing request shall support:
+
+* Listing agent name
+* Brokerage name
+* Email
+* Phone
+* Request method
+* Request time
+* Requested time window
+* Notes
+* Status
+
+Status values shall include:
+
+* Not requested
+* Requested
+* Pending
+* Approved
+* Declined
+* Needs follow-up
+* Restricted
+* Cancelled
+
+### 8.1.6 Restriction and access notes
+
+For each property, the system shall support structured and unstructured restrictions including:
+
+* Occupied
+* Tenant notice required
+* Gate code
+* Alarm instructions
+* Pet instructions
+* Do not use bathroom
+* Remove shoes
+* Park location rule
+* Time-specific restriction
+* Offer deadline note
+* Free text notes
+
+### 8.1.7 Tour readiness view
+
+The system shall provide a readiness screen that shows:
+
+* Approved stops
+* Pending stops
+* Declined stops
+* Missing listing agent information
+* Unresolved restrictions
+* Estimated total drive time
+* Estimated total tour duration
+
+### 8.1.8 Publish to mobile
+
+The system shall publish the selected itinerary to the iOS app, including:
+
+* Final stop order
+* Status
+* Restrictions
+* Contact data
+* Property notes
+* Route metadata
+
+---
+
+## 8.2 iOS mobile app requirements
+
+### 8.2.1 Mobile design goals
+
+The iOS app must feel like an execution tool, not a desktop interface squeezed onto a phone. It must be fast, thumb-friendly, readable outdoors, and safe to use while moving between appointments.
+
+### 8.2.2 Phone form factor requirements
+
+The iOS UI shall be explicitly designed for modern iPhone screen sizes and notches.
+The app shall:
+
+* Respect safe areas at top and bottom
+* Use large tap targets
+* Use high contrast typography and status chips
+* Keep primary actions in thumb reachable zones
+* Use sticky bottom action bars for key actions
+* Support Dynamic Type where practical
+* Avoid overloaded tables on narrow screens
+* Prefer cards, bottom sheets, segmented controls, and progressive disclosure
+* Minimize text entry during live tour execution
+* Support portrait orientation as the primary mode
+
+### 8.2.3 iOS home screen
+
+The app shall present:
+
+* Today’s tours
+* Upcoming tours
+* Quick resume active tour
+* Tour status indicators
+* Total approved stops and pending issues
+
+### 8.2.4 Active tour screen
+
+The active tour screen shall show:
+
+* Current stop card
+* Next stop preview
+* Progress indicator such as 3 of 8
+* Time and distance to next stop
+* Approval status
+* Restriction summary
+* Primary actions
+
+Primary actions:
+
+* Start navigation
+* Mark arrived
+* Complete showing
+* Skip stop
+* View details
+* Record note
+
+### 8.2.5 Stop detail screen
+
+The stop detail screen shall show:
+
+* Address
+* Map preview
+* Listing agent contact
+* Showing status
+* Restrictions and instructions
+* Notes timeline
+* Voice memo list
+* Quick rating controls
+
+Quick rating controls may include:
+
+* Buyer interest level
+* Kitchen
+* Primary suite
+* Backyard
+* Road noise
+* Overall fit
+
+### 8.2.6 Navigation behavior
+
+For MVP, the iOS app shall launch Google Maps for turn-by-turn navigation to the next stop.
+The system shall support:
+
+* Start navigation to current stop
+* Start navigation to next stop
+* Return to the app after arrival
+* Fallback to Apple Maps if Google Maps is unavailable
+
+### 8.2.7 Skip and reroute behavior
+
+The iOS app shall allow the agent to skip a stop.
+When a stop is skipped, the system shall:
+
+* Prompt for skip reason
+* Mark the stop as skipped
+* Recompute the remaining itinerary
+* Present the next best stop
+* Allow immediate launch of navigation to the new next stop
+
+Skip reasons shall include:
+
+* Not approved
+* Client changed mind
+* Running late
+* Access issue
+* Traffic issue
+* Duplicate choice
+* Other
+
+### 8.2.8 Voice notes and quick notes
+
+The iOS app shall allow voice recording tied to a specific property.
+The app shall also support:
+
+* Typed notes
+* Quick tags
+* Star rating or ranking
+* Follow-up flag
+* Revisit flag
+
+### 8.2.9 End of tour review on mobile
+
+The app shall provide an end-of-tour summary screen with:
+
+* Properties visited
+* Properties skipped
+* Properties most liked
+* Outstanding follow-up items
+* Recorded notes pending transcription or summary
+
+---
+
+## 9. iOS UX and UI standards
+
+### 9.1 Layout principles
+
+* Use a bottom tab structure with Today, Tours, Notes, Settings
+* Use a large top title for static screens and compact header for active tour mode
+* Keep the active tour screen focused on one primary decision at a time
+* Use a sticky bottom action tray in active tour mode
+* Use cards with strong visual grouping
+* Use clear status color tokens for Approved, Pending, Restricted, Skipped, Completed
+
+### 9.2 Interaction principles
+
+* Maximum two taps to start navigation
+* Maximum one tap to begin voice recording from the active stop screen
+* Confirmation required before skipping a stop
+* Haptic feedback for record, save, skip, and completed actions
+* Offline tolerant behavior for viewing cached stops and saving notes locally until sync succeeds
+
+### 9.3 Accessibility and readability
+
+* Support larger font sizes where possible
+* Avoid placing critical actions only in small icons
+* Use plain language labels
+* Ensure strong contrast for outdoor viewing
+* Use concise restrictions text with expandable detail
+
+### 9.4 Recommended visual components
+
+* Card-based stop list
+* Progress chip and stop counter
+* Compact map preview panel
+* Bottom sheet for actions and notes
+* Floating microphone button on stop detail screen
+* Large primary navigation button
+
+---
+
+## 10. AI and LLM strategy
+
+## 10.1 Guiding principle
+
+Use deterministic software for operations. Use AI for interpretation, summarization, and communication assistance.
+
+## 10.2 Recommended LLM uses
+
+### 10.2.1 Voice note transcription
+
+Purpose:
+
+* Convert recorded voice notes into text tied to the property and stop
+
+Value:
+
+* Makes notes searchable
+* Enables downstream summary generation
+* Preserves immediate spoken impressions
+
+Required:
+
+* AI recommended
+* Not required for core recording feature
+
+### 10.2.2 Property note summarization
+
+Purpose:
+
+* Summarize multiple notes for a property into a short structured brief
+
+Output examples:
+
+* Top positives
+* Top negatives
+* Questions to follow up on
+* Buyer fit assessment
+
+Required:
+
+* Optional but recommended
+
+### 10.2.3 End-of-tour summary
+
+Purpose:
+
+* Generate a final summary across all properties shown
+
+Output examples:
+
+* Top three homes
+* Homes to eliminate
+* Common buyer preferences detected during the day
+* Suggested next actions
+
+Required:
+
+* Optional but highly recommended
+
+### 10.2.4 Preference pattern extraction
+
+Purpose:
+
+* Detect recurring likes and dislikes across the day
+
+Output examples:
+
+* Repeated concern about road noise
+* Strong preference for large kitchens and natural light
+* Backyard size repeatedly mentioned as important
+
+Required:
+
+* Optional advanced feature
+
+### 10.2.5 Showing request draft assistance
+
+Purpose:
+
+* Draft professional emails or messages to listing agents requesting showings
+
+Required:
+
+* Optional convenience feature
+
+### 10.2.6 Buyer summary drafting
+
+Purpose:
+
+* Draft a polished buyer-facing recap after the tour
+
+Required:
+
+* Optional convenience feature
+
+## 10.3 Features that should not rely on an LLM
+
+* Address matching
+* Property geocoding
+* Route optimization
+* Approval state tracking
+* Restriction storage
+* Navigation logic
+* Skip and reroute calculation
+* CRUD operations and record integrity
+
+## 10.4 AI output safety rules
+
+* AI-generated summaries must always remain editable
+* Raw notes and transcripts must remain accessible
+* The system shall never delete or overwrite source notes with an AI summary
+* Buyer-facing communication shall require human review before sending
+
+---
+
+## 11. Azure LLM and AI configuration requirements
+
+### 11.1 Objective
+
+The product shall support AI through configurable providers, with Azure as a first-class option. Azure setup must allow the team to plug in their own deployments and endpoints without code rewrites.
+
+### 11.2 Provider abstraction
+
+The backend shall implement a provider abstraction layer for AI services so the product can support:
+
+* Azure OpenAI
+* OpenAI public API
+* Azure Speech
+* Future providers if needed
+
+### 11.3 Required environment configuration
+
+#### Azure OpenAI text generation and summarization
+
+* AZURE_OPENAI_API_KEY
+* AZURE_OPENAI_BASE_URL
+* AZURE_OPENAI_MODEL
+* AZURE_OPENAI_API_VERSION if needed by the chosen SDK or endpoint mode
+
+#### Azure Speech or Azure transcription option
+
+* AZURE_SPEECH_KEY
+* AZURE_SPEECH_REGION
+
+#### Optional Microsoft identity path for enterprise deployments
+
+* Use managed identity or Entra based auth in later enterprise version
+
+### 11.4 Azure usage by feature
+
+#### Summarization and drafting
+
+Use Azure OpenAI for:
+
+* Property summary generation
+* End-of-tour summary generation
+* Listing agent communication draft suggestions
+* Buyer summary draft suggestions
+
+#### Transcription
+
+Recommended options:
+
+* Azure OpenAI Whisper deployment if the team wants transcription inside Azure OpenAI workflow
+* Azure Speech if the team wants dedicated speech-to-text service and possibly better operational separation
+
+### 11.5 Configuration admin screen
+
+The web app shall include an admin-only AI configuration screen where an authorized user can:
+
+* Select provider for each AI feature
+* Save endpoint details securely through environment-backed configuration
+* Enable or disable specific AI features
+* Run test prompts and transcription health checks
+* View provider status and latest error logs
+
+### 11.6 Feature-by-feature provider mapping
+
+The system should allow feature routing such as:
+
+* Transcription provider = Azure Speech
+* Summary provider = Azure OpenAI
+* Drafting provider = Azure OpenAI
+* Pattern analysis provider = Azure OpenAI
+
+### 11.7 Recommended model routing
+
+* Fast summary model for property-level summaries
+* Higher-quality model for end-of-tour synthesis and buyer-facing outputs
+* Dedicated transcription model or service for audio
+
+---
+
+## 12. Technical architecture
+
+### 12.1 Recommended stack
+
+#### Web app
+
+* React with TypeScript
+* Server-rendered or hybrid architecture depending team preference
+* Map UI integrated with Google Maps JavaScript components
+
+#### iOS app
+
+* React Native with Expo
+* Shared design system aligned to mobile form factors
+* Local storage for offline resilience during tours
+
+#### Backend
+
+* Node.js with TypeScript
+* REST or typed RPC API
+* Queue or background job support for transcription and summary generation
+
+#### Database
+
+* PostgreSQL
+
+#### Storage
+
+* Object storage for audio recordings and attachments
+
+#### AI layer
+
+* Provider abstraction service
+* Prompt templates by feature
+* Audit log for AI inputs and outputs where permitted
+
+### 12.2 Shared backend model
+
+One backend shall support both web and mobile clients.
+The backend shall handle:
+
+* Authentication
+* Property CRUD
+* Tour CRUD
+* Route optimization requests
+* Showing request state changes
+* Audio upload and storage
+* Transcription job orchestration
+* Summary generation jobs
+* Sync between web and mobile
+
+---
+
+## 13. Data model
+
+### 13.1 Core entities
+
+* User
+* Buyer
+* Tour
+* Property
+* TourStop
+* ShowingRequest
+* RestrictionNote
+* ListingAgentContact
+* VoiceNote
+* Transcript
+* PropertySummary
+* TourSummary
+* SyncEvent
+
+### 13.2 Example fields
+
+#### Tour
+
+* id
+* buyerId
+* title
+* date
+* startTime
+* startAddress
+* startLat
+* startLng
+* endAddress
+* endLat
+* endLng
+* status
+
+#### Property
+
+* id
+* formattedAddress
+* placeId
+* lat
+* lng
+* city
+* state
+* zip
+* mlsId
+* listPrice
+* beds
+* baths
+* squareFeet
+
+#### TourStop
+
+* id
+* tourId
+* propertyId
+* sequence
+* approvedStatus
+* skippedFlag
+* visitedFlag
+* arrivalTime
+* departureTime
+* skipReason
+
+#### VoiceNote
+
+* id
+* tourStopId
+* fileUrl
+* durationSeconds
+* createdAt
+* transcriptionStatus
+
+#### Transcript
+
+* id
+* voiceNoteId
+* text
+* provider
+* confidenceMetadata
+
+#### PropertySummary
+
+* id
+* propertyId
+* summaryText
+* positives
+* negatives
+* questions
+* generatedAt
+* provider
+
+---
+
+## 14. API requirements
+
+### 14.1 Web and mobile APIs
+
+* POST /api/tours
+* GET /api/tours/:id
+* POST /api/tours/:id/properties
+* POST /api/tours/:id/optimize
+* POST /api/tours/:id/publish
+* POST /api/showings/:id/request
+* POST /api/showings/:id/status
+* POST /api/tours/:id/skip-stop
+* POST /api/voice-notes/upload
+* POST /api/voice-notes/:id/transcribe
+* POST /api/properties/:id/summarize
+* POST /api/tours/:id/generate-summary
+* GET /api/mobile/tours/active
+
+### 14.2 Admin AI APIs
+
+* GET /api/admin/ai/config
+* POST /api/admin/ai/config/test
+* POST /api/admin/ai/config
+* GET /api/admin/ai/health
+
+---
+
+## 15. Routing and navigation requirements
+
+### 15.1 MVP routing approach
+
+* Use Google route calculation for planning
+* Use external Google Maps launch for navigation on iPhone
+* Preserve route order in backend
+* Recompute route after skip events
+
+### 15.2 Advanced navigation future state
+
+A future release may embed navigation directly in the iOS app if the team decides the additional complexity is justified.
+
+---
+
+## 16. Notifications and sync
+
+The system should support:
+
+* Real-time sync of approval statuses to mobile
+* Background refresh of active tour state
+* Push notifications for newly approved or declined stops in later phase
+* Conflict handling if both web and mobile edit the same stop
+
+---
+
+## 17. Security and privacy requirements
+
+* Secure authentication with role-based access
+* Encrypt sensitive data in transit and at rest
+* Restrict audio and note access by user permissions
+* Maintain action audit logs for status changes
+* Protect API keys and endpoints through secure environment variables
+* Never expose Azure secrets directly to the client app
+* Proxy AI calls through backend only
+
+---
+
+## 18. Non-functional requirements
+
+* Mobile actions must feel fast under poor field conditions
+* Tour data should remain accessible if connectivity is unstable
+* Voice notes must queue for upload if temporarily offline
+* Summary jobs may be asynchronous but must report status clearly
+* The app should support at least twenty to thirty stops in a tour without degraded performance
+
+---
+
+## 19. Analytics requirements
+
+Track the following:
+
+* Tour creation counts
+* Average stops per tour
+* Route optimization usage
+* Skip rate and skip reasons
+* Voice note usage
+* Transcription completion rate
+* Summary generation usage
+* Most common buyer preference tags generated by the AI layer
+
+---
+
+## 20. Release plan
+
+### Phase 1
+
+* Web tour creation
+* Property intake and map view
+* Route optimization
+* Showing request tracking
+* iPhone execution app
+* Google Maps navigation handoff
+* Skip and reroute
+* Voice recording and manual notes
+
+### Phase 2
+
+* Transcription
+* Property summaries
+* End-of-tour summaries
+* Drafted communications
+* Improved analytics
+
+### Phase 3
+
+* Buyer-facing recaps
+* Team workflows
+* Calendar and CRM integrations
+* Embedded in-app navigation if justified
+
+---
+
+## 21. Acceptance criteria
+
+### Tour planning
+
+* Agent can create a tour and add at least ten properties successfully
+* Agent can select a start point and generate an optimized route
+* Agent can manually reorder stops and save
+
+### Showing management
+
+* Agent can store request status for every property
+* Agent can record restrictions and see them clearly in both web and mobile
+
+### Mobile execution
+
+* Agent can open an active tour and navigate to the current stop in two taps or less
+* Agent can skip a stop and be rerouted to the next best stop
+* Agent can record a voice memo and attach it to the correct property
+
+### AI
+
+* Agent can transcribe a voice memo
+* Agent can generate a property-level summary
+* Agent can generate an end-of-tour summary
+* Agent can disable AI features without breaking the core workflow
+
+### Admin configuration
+
+* Admin can configure Azure endpoints and model deployment settings without code changes
+* System can validate provider configuration with a health test
+
+---
+
+## 22. Open questions
+
+* Will MLS data be entered manually or integrated later?
+* Should the buyer ever receive a live itinerary during the tour?
+* Should showing requests be sent from inside the platform in phase 1 or only tracked?
+* What summary style does Heather prefer for buyers versus internal use?
+* Should assistant workflows launch in MVP or phase 2?
+
+---
+
+## 23. Final recommendation
+
+Build the product with a strong deterministic core and selective AI augmentation. Keep route planning, approvals, and navigation logic fully software-driven. Use Azure-based AI only where it materially improves productivity and polish: transcription, summarization, pattern extraction, and communication assistance. Prioritize the iPhone execution flow as a field tool built for speed, clarity, and minimal friction on real phone screens.
