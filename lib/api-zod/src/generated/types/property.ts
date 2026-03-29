@@ -35,6 +35,7 @@ export interface Property {
   nickname?: string | null;
   /** @nullable */
   notes?: string | null;
+  archived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -246,6 +246,13 @@ paths:
       tags: [properties]
       operationId: listProperties
       summary: List all properties
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          description: When true, include archived properties in the response
+          schema:
+            type: boolean
       responses:
         '200':
           description: List of properties
@@ -1066,6 +1073,8 @@ components:
           type: string
         notes:
           type: string
+        archived:
+          type: boolean
 
     # ── Buyer schemas ─────────────────────────────────────────────────────────
     Buyer:
@@ -1178,6 +1187,15 @@ components:
         pendingShowingsCount:
           type: integer
           description: Number of stops with pending or requested showing status
+        buyerName:
+          type: [string, 'null']
+          description: Name of the buyer associated with this tour
+        lat:
+          type: [number, 'null']
+          description: Latitude of the tour start address
+        lng:
+          type: [number, 'null']
+          description: Longitude of the tour start address
         createdAt:
           type: string
           format: date-time
@@ -1268,7 +1286,7 @@ components:
     # ── TourStop schemas ──────────────────────────────────────────────────────
     Property:
       type: object
-      required: [id, formattedAddress, createdAt, updatedAt]
+      required: [id, formattedAddress, archived, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1300,6 +1318,8 @@ components:
           type: [string, 'null']
         notes:
           type: [string, 'null']
+        archived:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -1406,6 +1426,12 @@ components:
             propertyNickname:
               type: [string, 'null']
               description: Optional nickname for the property
+            lat:
+              type: [number, 'null']
+              description: Latitude of the property
+            lng:
+              type: [number, 'null']
+              description: Longitude of the property
 
     TourDetailResponse:
       type: object
@@ -1421,6 +1447,9 @@ components:
           oneOf:
             - $ref: '#/components/schemas/Buyer'
             - type: 'null'
+        pendingTranscriptions:
+          type: integer
+          description: Number of voice notes with pending transcription
 
     AddPropertyToTourRequest:
       type: object

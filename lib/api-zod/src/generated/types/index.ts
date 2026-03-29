@@ -33,6 +33,7 @@ export * from "./createTourRequest";
 export * from "./errorEnvelope";
 export * from "./handleBrowserLoginCallbackParams";
 export * from "./healthStatus";
+export * from "./listPropertiesParams";
 export * from "./logoutSuccess";
 export * from "./mobileTokenExchangeRequest";
 export * from "./mobileTokenExchangeSuccess";

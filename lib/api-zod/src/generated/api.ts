@@ -182,6 +182,13 @@ export const DeleteBuyerParams = zod.object({
 /**
  * @summary List all properties
  */
+export const ListPropertiesQueryParams = zod.object({
+  includeArchived: zod.coerce
+    .boolean()
+    .optional()
+    .describe("When true, include archived properties in the response"),
+});
+
 export const ListPropertiesResponse = zod.object({
   properties: zod.array(
     zod.object({
@@ -200,6 +207,7 @@ export const ListPropertiesResponse = zod.object({
       squareFeet: zod.number().nullish(),
       nickname: zod.string().nullish(),
       notes: zod.string().nullish(),
+      archived: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -250,6 +258,7 @@ export const GetPropertyResponse = zod.object({
     squareFeet: zod.number().nullish(),
     nickname: zod.string().nullish(),
     notes: zod.string().nullish(),
+    archived: zod.boolean(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -277,6 +286,7 @@ export const UpdatePropertyBody = zod.object({
   squareFeet: zod.number().optional(),
   nickname: zod.string().optional(),
   notes: zod.string().optional(),
+  archived: zod.boolean().optional(),
 });
 
 export const UpdatePropertyResponse = zod.object({
@@ -296,6 +306,7 @@ export const UpdatePropertyResponse = zod.object({
     squareFeet: zod.number().nullish(),
     nickname: zod.string().nullish(),
     notes: zod.string().nullish(),
+    archived: zod.boolean(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -349,6 +360,18 @@ export const ListToursResponse = zod.object({
         .number()
         .optional()
         .describe("Number of stops with pending or requested showing status"),
+      buyerName: zod
+        .string()
+        .nullish()
+        .describe("Name of the buyer associated with this tour"),
+      lat: zod
+        .number()
+        .nullish()
+        .describe("Latitude of the tour start address"),
+      lng: zod
+        .number()
+        .nullish()
+        .describe("Longitude of the tour start address"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -418,6 +441,12 @@ export const GetTourResponse = zod.object({
       .number()
       .optional()
       .describe("Number of stops with pending or requested showing status"),
+    buyerName: zod
+      .string()
+      .nullish()
+      .describe("Name of the buyer associated with this tour"),
+    lat: zod.number().nullish().describe("Latitude of the tour start address"),
+    lng: zod.number().nullish().describe("Longitude of the tour start address"),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -468,6 +497,8 @@ export const GetTourResponse = zod.object({
             .string()
             .nullish()
             .describe("Optional nickname for the property"),
+          lat: zod.number().nullish().describe("Latitude of the property"),
+          lng: zod.number().nullish().describe("Longitude of the property"),
         }),
       ),
   ),
@@ -485,6 +516,10 @@ export const GetTourResponse = zod.object({
       zod.null(),
     ])
     .optional(),
+  pendingTranscriptions: zod
+    .number()
+    .optional()
+    .describe("Number of voice notes with pending transcription"),
 });
 
 /**
@@ -550,6 +585,12 @@ export const UpdateTourResponse = zod.object({
       .number()
       .optional()
       .describe("Number of stops with pending or requested showing status"),
+    buyerName: zod
+      .string()
+      .nullish()
+      .describe("Name of the buyer associated with this tour"),
+    lat: zod.number().nullish().describe("Latitude of the tour start address"),
+    lng: zod.number().nullish().describe("Longitude of the tour start address"),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -764,6 +805,12 @@ export const PublishTourResponse = zod.object({
       .number()
       .optional()
       .describe("Number of stops with pending or requested showing status"),
+    buyerName: zod
+      .string()
+      .nullish()
+      .describe("Name of the buyer associated with this tour"),
+    lat: zod.number().nullish().describe("Latitude of the tour start address"),
+    lng: zod.number().nullish().describe("Longitude of the tour start address"),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -849,6 +896,18 @@ export const GetActiveMobileToursResponse = zod.object({
         .number()
         .optional()
         .describe("Number of stops with pending or requested showing status"),
+      buyerName: zod
+        .string()
+        .nullish()
+        .describe("Name of the buyer associated with this tour"),
+      lat: zod
+        .number()
+        .nullish()
+        .describe("Latitude of the tour start address"),
+      lng: zod
+        .number()
+        .nullish()
+        .describe("Longitude of the tour start address"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -913,6 +972,7 @@ export const GetTourStopResponse = zod.object({
       squareFeet: zod.number().nullish(),
       nickname: zod.string().nullish(),
       notes: zod.string().nullish(),
+      archived: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     })

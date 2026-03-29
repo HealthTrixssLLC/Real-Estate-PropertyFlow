@@ -21,4 +21,5 @@ export interface UpdatePropertyBody {
   squareFeet?: number;
   nickname?: string;
   notes?: string;
+  archived?: boolean;
 }

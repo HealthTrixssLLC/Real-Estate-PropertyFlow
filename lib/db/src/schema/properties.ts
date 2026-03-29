@@ -1,4 +1,4 @@
-import { doublePrecision, integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./auth";
@@ -20,6 +20,7 @@ export const propertiesTable = pgTable("properties", {
   squareFeet: integer("square_feet"),
   nickname: varchar("nickname", { length: 255 }),
   notes: text("notes"),
+  archived: boolean("archived").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

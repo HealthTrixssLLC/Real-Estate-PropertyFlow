@@ -43,6 +43,21 @@ export interface Tour {
   approvedCount?: number;
   /** Number of stops with pending or requested showing status */
   pendingShowingsCount?: number;
+  /**
+   * Name of the buyer associated with this tour
+   * @nullable
+   */
+  buyerName?: string | null;
+  /**
+   * Latitude of the tour start address
+   * @nullable
+   */
+  lat?: number | null;
+  /**
+   * Longitude of the tour start address
+   * @nullable
+   */
+  lng?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

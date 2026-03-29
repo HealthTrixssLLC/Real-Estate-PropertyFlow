@@ -14,11 +14,15 @@ router.get("/properties", async (req: Request, res: Response) => {
     return;
   }
   const user = (req as Express.AuthedRequest).user;
+  const includeArchived = req.query.includeArchived === "true";
   try {
+    const conditions = includeArchived
+      ? eq(propertiesTable.agentId, user.id)
+      : and(eq(propertiesTable.agentId, user.id), eq(propertiesTable.archived, false));
     const properties = await db
       .select()
       .from(propertiesTable)
-      .where(eq(propertiesTable.agentId, user.id))
+      .where(conditions)
       .orderBy(propertiesTable.createdAt);
     sendValidated(res, PropertyListResponseSchema, { properties });
   } catch (err) {

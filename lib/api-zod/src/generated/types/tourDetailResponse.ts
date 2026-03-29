@@ -13,4 +13,6 @@ export interface TourDetailResponse {
   tour: Tour;
   stops: TourStopWithAddress[];
   buyer?: Buyer | null;
+  /** Number of voice notes with pending transcription */
+  pendingTranscriptions?: number;
 }

@@ -33,6 +33,7 @@ import type {
   ErrorEnvelope,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
+  ListPropertiesParams,
   LogoutSuccess,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
@@ -1096,41 +1097,57 @@ export const useDeleteBuyer = <
 /**
  * @summary List all properties
  */
-export const getListPropertiesUrl = () => {
-  return `/api/properties`;
+export const getListPropertiesUrl = (params?: ListPropertiesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/properties?${stringifiedParams}`
+    : `/api/properties`;
 };
 
 export const listProperties = async (
+  params?: ListPropertiesParams,
   options?: RequestInit,
 ): Promise<PropertyListResponse> => {
-  return customFetch<PropertyListResponse>(getListPropertiesUrl(), {
+  return customFetch<PropertyListResponse>(getListPropertiesUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListPropertiesQueryKey = () => {
-  return [`/api/properties`] as const;
+export const getListPropertiesQueryKey = (params?: ListPropertiesParams) => {
+  return [`/api/properties`, ...(params ? [params] : [])] as const;
 };
 
 export const getListPropertiesQueryOptions = <
   TData = Awaited<ReturnType<typeof listProperties>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listProperties>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListPropertiesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProperties>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListPropertiesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListPropertiesQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listProperties>>> = ({
     signal,
-  }) => listProperties({ signal, ...requestOptions });
+  }) => listProperties(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listProperties>>,
@@ -1151,15 +1168,18 @@ export type ListPropertiesQueryError = ErrorType<unknown>;
 export function useListProperties<
   TData = Awaited<ReturnType<typeof listProperties>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listProperties>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListPropertiesQueryOptions(options);
+>(
+  params?: ListPropertiesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProperties>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPropertiesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

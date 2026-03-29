@@ -93,6 +93,7 @@ export interface Property {
   nickname?: string | null;
   /** @nullable */
   notes?: string | null;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -137,6 +138,7 @@ export interface UpdatePropertyBody {
   squareFeet?: number;
   nickname?: string;
   notes?: string;
+  archived?: boolean;
 }
 
 export interface Buyer {
@@ -220,8 +222,21 @@ export interface Tour {
   approvedCount?: number;
   /** Number of stops with pending or requested showing status */
   pendingShowingsCount?: number;
-  /** @nullable */
+  /**
+   * Name of the buyer associated with this tour
+   * @nullable
+   */
   buyerName?: string | null;
+  /**
+   * Latitude of the tour start address
+   * @nullable
+   */
+  lat?: number | null;
+  /**
+   * Longitude of the tour start address
+   * @nullable
+   */
+  lng?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -453,9 +468,15 @@ export type TourStopWithAddress = TourStop & {
    * @nullable
    */
   propertyNickname?: string | null;
-  /** @nullable */
+  /**
+   * Latitude of the property
+   * @nullable
+   */
   lat?: number | null;
-  /** @nullable */
+  /**
+   * Longitude of the property
+   * @nullable
+   */
   lng?: number | null;
 };
 
@@ -463,6 +484,7 @@ export interface TourDetailResponse {
   tour: Tour;
   stops: TourStopWithAddress[];
   buyer?: Buyer | null;
+  /** Number of voice notes with pending transcription */
   pendingTranscriptions?: number;
 }
 
@@ -807,6 +829,13 @@ export type HandleBrowserLoginCallbackParams = {
   code?: string;
   state?: string;
   iss?: string;
+};
+
+export type ListPropertiesParams = {
+  /**
+   * When true, include archived properties in the response
+   */
+  includeArchived?: boolean;
 };
 
 export type UploadVoiceNoteBody = {

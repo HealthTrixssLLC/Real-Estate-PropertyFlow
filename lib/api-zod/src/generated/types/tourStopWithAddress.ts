@@ -15,4 +15,14 @@ export type TourStopWithAddress = TourStop & {
    * @nullable
    */
   propertyNickname?: string | null;
+  /**
+   * Latitude of the property
+   * @nullable
+   */
+  lat?: number | null;
+  /**
+   * Longitude of the property
+   * @nullable
+   */
+  lng?: number | null;
 };

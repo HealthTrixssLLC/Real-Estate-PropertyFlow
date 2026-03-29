@@ -115,6 +115,7 @@ export const PropertySchema = z.object({
   squareFeet: z.number().nullable().optional(),
   nickname: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  archived: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
