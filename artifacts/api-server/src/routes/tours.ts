@@ -91,7 +91,7 @@ router.get("/tours", async (req: Request, res: Response) => {
     const aggMap = new Map(stopsAgg.map(a => [a.tourId, a]));
     const buyerIds = rows.map(t => t.buyerId).filter((id): id is string => !!id);
     const buyerRows = buyerIds.length > 0
-      ? await db.select({ id: buyersTable.id, name: buyersTable.name }).from(buyersTable).where(inArray(buyersTable.id, buyerIds))
+      ? await db.select({ id: buyersTable.id, name: buyersTable.name }).from(buyersTable).where(and(inArray(buyersTable.id, buyerIds), eq(buyersTable.agentId, user.id)))
       : [];
     const buyerMap = new Map(buyerRows.map(b => [b.id, b.name]));
     const tours = rows.map(t => ({
@@ -869,7 +869,7 @@ router.get("/mobile/tours/active", async (req: Request, res: Response) => {
     const aggMap = new Map(stopsAgg.map(a => [a.tourId, a]));
     const buyerIds2 = rows.map(t => t.buyerId).filter((id): id is string => !!id);
     const buyerRows2 = buyerIds2.length > 0
-      ? await db.select({ id: buyersTable.id, name: buyersTable.name }).from(buyersTable).where(inArray(buyersTable.id, buyerIds2))
+      ? await db.select({ id: buyersTable.id, name: buyersTable.name }).from(buyersTable).where(and(inArray(buyersTable.id, buyerIds2), eq(buyersTable.agentId, user.id)))
       : [];
     const buyerMap2 = new Map(buyerRows2.map(b => [b.id, b.name]));
     const tours = rows.map(t => ({
