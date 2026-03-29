@@ -30,6 +30,9 @@ import {
   TourStopResponseSchema,
   SkipStopResponseSchema,
   OptimizeResponseSchema,
+  SuccessResponseSchema,
+  TourReadinessResponseSchema,
+  TourSummaryResponseSchema,
 } from "../lib/responseSchemas";
 
 const router: IRouter = Router();
@@ -456,7 +459,7 @@ router.put("/tours/:tourId/stops/order", async (req: Request, res: Response) => 
           );
       }
     });
-    res.json({ success: true });
+    sendValidated(res, SuccessResponseSchema, { success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to reorder tour stops");
     res.status(500).json({ error: "Internal server error" });
@@ -660,7 +663,7 @@ router.get("/tours/:tourId/readiness", async (req: Request, res: Response) => {
     const estimatedTotalMinutes = stops.length * (MINUTES_PER_STOP + DRIVE_MINUTES_PER_STOP);
     const estimatedDriveTimeMinutes = stops.length * DRIVE_MINUTES_PER_STOP;
 
-    res.json({
+    sendValidated(res, TourReadinessResponseSchema, {
       approvedCount,
       pendingCount,
       declinedCount,
@@ -751,7 +754,7 @@ Format as JSON with keys: summaryText, topHomes, homesToEliminate, buyerPreferen
       })
       .returning();
 
-    res.json({ summary });
+    sendValidated(res, TourSummaryResponseSchema, { summary });
   } catch (err) {
     req.log.error({ err }, "Failed to generate tour summary");
     res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });

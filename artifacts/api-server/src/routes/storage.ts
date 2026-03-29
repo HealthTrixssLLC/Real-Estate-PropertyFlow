@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { z } from "zod";
+import { sendValidated, UploadUrlResponseSchema } from "../lib/responseSchemas";
 import { eq, like } from "drizzle-orm";
 import { db, voiceNotesTable, tourStopsTable, toursTable } from "@workspace/db";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
@@ -29,7 +30,7 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     const { name, size, contentType } = parsed.data;
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+    sendValidated(res, UploadUrlResponseSchema, { uploadURL, objectPath, metadata: { name, size, contentType } });
   } catch (error) {
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });

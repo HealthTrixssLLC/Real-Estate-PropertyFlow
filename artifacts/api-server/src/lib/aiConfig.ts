@@ -1,3 +1,6 @@
+import { db, appSettingsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+
 export interface AiConfigState {
   transcriptionEnabled: boolean;
   transcriptionProvider: string;
@@ -6,6 +9,8 @@ export interface AiConfigState {
   draftingEnabled: boolean;
   patternAnalysisEnabled: boolean;
 }
+
+const CONFIG_KEY = "ai_config";
 
 function buildDefaultConfig(): AiConfigState {
   return {
@@ -20,8 +25,27 @@ function buildDefaultConfig(): AiConfigState {
 
 export const aiConfig: AiConfigState = buildDefaultConfig();
 
+export async function loadAiConfigFromDb(): Promise<void> {
+  try {
+    const [row] = await db
+      .select()
+      .from(appSettingsTable)
+      .where(eq(appSettingsTable.key, CONFIG_KEY));
+    if (row) {
+      const saved = JSON.parse(row.value) as Partial<AiConfigState>;
+      Object.assign(aiConfig, saved);
+    }
+  } catch {
+  }
+}
+
 export function updateAiConfig(updates: Partial<AiConfigState>): void {
   Object.assign(aiConfig, updates);
+  const value = JSON.stringify(aiConfig);
+  db.insert(appSettingsTable)
+    .values({ key: CONFIG_KEY, value, updatedAt: new Date() })
+    .onConflictDoUpdate({ target: appSettingsTable.key, set: { value, updatedAt: new Date() } })
+    .catch(() => {});
 }
 
 export function getAiConfigResponse() {

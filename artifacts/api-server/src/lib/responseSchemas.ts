@@ -90,22 +90,20 @@ export const BuyerSchema = z.object({
 
 export const PropertySchema = z.object({
   id: z.string(),
-  formattedAddress: z.string().nullable().optional(),
-  streetAddress: z.string().nullable().optional(),
-  city: z.string().nullable().optional(),
-  state: z.string().nullable().optional(),
-  zipCode: z.string().nullable().optional(),
+  formattedAddress: z.string(),
+  placeId: z.string().nullable().optional(),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
+  city: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  zip: z.string().nullable().optional(),
+  mlsId: z.string().nullable().optional(),
+  listPrice: z.number().nullable().optional(),
   beds: z.number().nullable().optional(),
   baths: z.number().nullable().optional(),
   squareFeet: z.number().nullable().optional(),
-  listPrice: z.number().nullable().optional(),
-  yearBuilt: z.number().nullable().optional(),
-  garageSpaces: z.number().nullable().optional(),
-  mlsId: z.string().nullable().optional(),
+  nickname: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  photoUrl: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -168,6 +166,114 @@ export const ListingAgentContactSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
 });
+
+export const TranscriptSchema = z.object({
+  id: z.string(),
+  voiceNoteId: z.string(),
+  text: z.string(),
+  provider: z.string().nullable().optional(),
+  confidence: z.number().nullable().optional(),
+  createdAt: z.date(),
+});
+
+export const PropertySummarySchema = z.object({
+  id: z.string(),
+  tourStopId: z.string(),
+  summaryText: z.string(),
+  positives: z.array(z.string()).nullable().optional(),
+  negatives: z.array(z.string()).nullable().optional(),
+  questions: z.array(z.string()).nullable().optional(),
+  provider: z.string().nullable().optional(),
+  generatedAt: z.date(),
+  createdAt: z.date(),
+});
+
+export const TourSummarySchema = z.object({
+  id: z.string(),
+  tourId: z.string(),
+  summaryText: z.string(),
+  topHomes: z.array(z.string()).nullable().optional(),
+  homesToEliminate: z.array(z.string()).nullable().optional(),
+  buyerPreferences: z.array(z.string()).nullable().optional(),
+  nextActions: z.array(z.string()).nullable().optional(),
+  provider: z.string().nullable().optional(),
+  generatedAt: z.date(),
+  createdAt: z.date(),
+});
+
+const AiFeatureConfigSchema = z.object({
+  enabled: z.boolean(),
+  provider: z.string(),
+});
+
+export const AiConfigResponseSchema = z.object({
+  config: z.object({
+    transcription: AiFeatureConfigSchema,
+    summarization: AiFeatureConfigSchema,
+    drafting: AiFeatureConfigSchema,
+    patternAnalysis: AiFeatureConfigSchema,
+    azureOpenAiConfigured: z.boolean(),
+    azureSpeechConfigured: z.boolean(),
+    openAiConfigured: z.boolean(),
+  }),
+});
+
+export const AiTestResponseSchema = z.object({
+  success: z.boolean(),
+  result: z.string().nullable().optional(),
+  error: z.string().nullable().optional(),
+});
+
+const ProviderHealthSchema = z.object({
+  healthy: z.boolean(),
+  error: z.string().nullable().optional(),
+});
+
+export const AiHealthResponseSchema = z.object({
+  providers: z.object({
+    azure_openai: ProviderHealthSchema,
+    azure_speech: ProviderHealthSchema,
+    openai: ProviderHealthSchema,
+  }),
+});
+
+export const UploadUrlResponseSchema = z.object({
+  uploadURL: z.string(),
+  objectPath: z.string(),
+  metadata: z.object({
+    name: z.string(),
+    size: z.number(),
+    contentType: z.string(),
+  }),
+});
+
+export const SuccessResponseSchema = z.object({ success: z.boolean() });
+
+export const TourReadinessResponseSchema = z.object({
+  approvedCount: z.number(),
+  pendingCount: z.number(),
+  declinedCount: z.number(),
+  missingAgentInfoCount: z.number(),
+  estimatedDriveTimeMinutes: z.number(),
+  estimatedTotalMinutes: z.number(),
+});
+
+export const TourStopDetailResponseSchema = z.object({
+  stop: TourStopSchema,
+  property: PropertySchema.nullable(),
+  showingRequest: ShowingRequestSchema.nullable(),
+  restrictionNote: RestrictionNoteSchema.nullable(),
+  voiceNotes: z.array(VoiceNoteSchema),
+  propertySummary: PropertySummarySchema.nullable(),
+});
+
+export const VoiceNoteDetailResponseSchema = z.object({
+  voiceNote: VoiceNoteSchema,
+  transcript: TranscriptSchema.nullable(),
+});
+
+export const PropertySummaryResponseSchema = z.object({ summary: PropertySummarySchema });
+export const TourSummaryResponseSchema = z.object({ summary: TourSummarySchema });
 
 export const BuyerResponseSchema = z.object({ buyer: BuyerSchema });
 export const BuyerListResponseSchema = z.object({ buyers: z.array(BuyerSchema) });

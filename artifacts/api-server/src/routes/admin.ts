@@ -9,13 +9,19 @@ import {
   azureSpeechProvider,
   resolveSpeechProvider,
 } from "../lib/ai";
+import {
+  sendValidated,
+  AiConfigResponseSchema,
+  AiTestResponseSchema,
+  AiHealthResponseSchema,
+} from "../lib/responseSchemas";
 
 export { aiConfig };
 
 const router: IRouter = Router();
 
 router.get("/admin/ai/config", requireRole("agent"), (_req: Request, res: Response) => {
-  res.json({ config: getAiConfigResponse() });
+  sendValidated(res, AiConfigResponseSchema, { config: getAiConfigResponse() });
 });
 
 router.post("/admin/ai/config", requireRole("agent"), (req: Request, res: Response) => {
@@ -49,7 +55,7 @@ router.post("/admin/ai/config", requireRole("agent"), (req: Request, res: Respon
   if (body.azureOpenAiModel) process.env.AZURE_OPENAI_MODEL = body.azureOpenAiModel;
   if (body.azureSpeechRegion) process.env.AZURE_SPEECH_REGION = body.azureSpeechRegion;
 
-  res.json({ config: getAiConfigResponse() });
+  sendValidated(res, AiConfigResponseSchema, { config: getAiConfigResponse() });
 });
 
 router.post("/admin/ai/config/test", requireRole("agent"), async (req: Request, res: Response) => {
@@ -64,19 +70,22 @@ router.post("/admin/ai/config/test", requireRole("agent"), async (req: Request, 
     if (feature === "transcription") {
       const speechProvider = resolveSpeechProvider(aiConfig.transcriptionProvider);
       const result = await speechProvider.ping();
-      res.json({
+      sendValidated(res, AiTestResponseSchema, {
         success: result.healthy,
-        result: result.healthy ? "Speech provider is reachable" : undefined,
-        error: result.error ?? undefined,
+        result: result.healthy ? "Speech provider is reachable" : null,
+        error: result.error ?? null,
       });
       return;
     }
 
     const testPrompt = prompt ?? "Reply with the single word: OK";
     const result = await generateText(testPrompt, aiConfig.summarizationProvider);
-    res.json({ success: true, result: result.text });
+    sendValidated(res, AiTestResponseSchema, { success: true, result: result.text });
   } catch (err) {
-    res.json({ success: false, error: err instanceof Error ? err.message : String(err) });
+    sendValidated(res, AiTestResponseSchema, {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 });
 
@@ -87,7 +96,7 @@ router.get("/admin/ai/health", requireRole("agent"), async (_req: Request, res: 
     openAiProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
   ]);
 
-  res.json({
+  sendValidated(res, AiHealthResponseSchema, {
     providers: {
       azure_openai: azureOpenAi,
       azure_speech: azureSpeech,

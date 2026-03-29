@@ -13,7 +13,12 @@ import {
 } from "@workspace/db";
 import { UpdateTourStopBody, AddStopNoteBody } from "@workspace/api-zod";
 import { parseParams, parseBody } from "../lib/validate";
-import { sendValidated, TourStopResponseSchema } from "../lib/responseSchemas";
+import {
+  sendValidated,
+  TourStopResponseSchema,
+  TourStopDetailResponseSchema,
+  PropertySummaryResponseSchema,
+} from "../lib/responseSchemas";
 import { z } from "zod";
 import { generateText } from "../lib/ai";
 import { aiConfig } from "../lib/aiConfig";
@@ -70,7 +75,7 @@ router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
       .from(propertySummariesTable)
       .where(eq(propertySummariesTable.tourStopId, params.stopId));
 
-    res.json({ stop, property: property ?? null, showingRequest: showingRequest ?? null, restrictionNote: restrictionNote ?? null, voiceNotes, propertySummary: propertySummary ?? null });
+    sendValidated(res, TourStopDetailResponseSchema, { stop, property: property ?? null, showingRequest: showingRequest ?? null, restrictionNote: restrictionNote ?? null, voiceNotes, propertySummary: propertySummary ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to get tour stop");
     res.status(500).json({ error: "Internal server error" });
@@ -282,7 +287,7 @@ Return as JSON with those exact keys.`;
       })
       .returning();
 
-    res.json({ summary });
+    sendValidated(res, PropertySummaryResponseSchema, { summary });
   } catch (err) {
     req.log.error({ err }, "Failed to summarize property");
     res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });

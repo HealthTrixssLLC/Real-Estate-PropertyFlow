@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import type { Logger } from "pino";
 import { randomUUID } from "crypto";
 import multer from "multer";
 import { eq } from "drizzle-orm";
@@ -10,7 +11,7 @@ import {
   toursTable,
 } from "@workspace/db";
 import { idParams, parseParams } from "../lib/validate";
-import { sendValidated, VoiceNoteResponseSchema } from "../lib/responseSchemas";
+import { sendValidated, VoiceNoteResponseSchema, VoiceNoteDetailResponseSchema } from "../lib/responseSchemas";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { transcribeAudio, isSpeechAiAvailable } from "../lib/ai";
 import { aiConfig } from "../lib/aiConfig";
@@ -119,6 +120,36 @@ router.post(
   },
 );
 
+async function runTranscriptionJob(voiceNoteId: string, fileUrl: string, log: Logger): Promise<void> {
+  try {
+    const audioFile = await storageService.getObjectEntityFile(fileUrl);
+    const [metadata] = await audioFile.getMetadata();
+    const mimeType = (metadata as { contentType?: string }).contentType ?? "audio/webm";
+    const [audioBuffer] = await audioFile.download();
+    const result = await transcribeAudio(audioBuffer, mimeType, aiConfig.transcriptionProvider);
+
+    await db.insert(transcriptsTable).values({
+      id: randomUUID(),
+      voiceNoteId,
+      text: result.text,
+      provider: result.provider,
+      confidence: result.confidence ?? null,
+    });
+
+    await db
+      .update(voiceNotesTable)
+      .set({ transcriptionStatus: "completed", typedNote: result.text, updatedAt: new Date() })
+      .where(eq(voiceNotesTable.id, voiceNoteId));
+  } catch (err) {
+    log.error({ err, voiceNoteId }, "Background transcription job failed");
+    await db
+      .update(voiceNotesTable)
+      .set({ transcriptionStatus: "failed", updatedAt: new Date() })
+      .where(eq(voiceNotesTable.id, voiceNoteId))
+      .catch(() => {});
+  }
+}
+
 router.post("/voice-notes/:voiceNoteId/transcribe", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -136,11 +167,6 @@ router.post("/voice-notes/:voiceNoteId/transcribe", async (req: Request, res: Re
       return;
     }
 
-    await db
-      .update(voiceNotesTable)
-      .set({ transcriptionStatus: "in_progress", updatedAt: new Date() })
-      .where(eq(voiceNotesTable.id, params.voiceNoteId));
-
     if (!isSpeechAiAvailable() || !voiceNote.fileUrl) {
       const [updated] = await db
         .update(voiceNotesTable)
@@ -151,39 +177,19 @@ router.post("/voice-notes/:voiceNoteId/transcribe", async (req: Request, res: Re
       return;
     }
 
-    try {
-      const audioFile = await storageService.getObjectEntityFile(voiceNote.fileUrl);
-      const [metadata] = await audioFile.getMetadata();
-      const mimeType = (metadata as { contentType?: string }).contentType ?? "audio/webm";
-      const [audioBuffer] = await audioFile.download();
-      const result = await transcribeAudio(audioBuffer, mimeType, aiConfig.transcriptionProvider);
+    const [inProgress] = await db
+      .update(voiceNotesTable)
+      .set({ transcriptionStatus: "in_progress", updatedAt: new Date() })
+      .where(eq(voiceNotesTable.id, params.voiceNoteId))
+      .returning();
 
-      await db.insert(transcriptsTable).values({
-        id: randomUUID(),
-        voiceNoteId: params.voiceNoteId,
-        text: result.text,
-        provider: result.provider,
-        confidence: result.confidence ?? null,
-      });
+    setImmediate(() => {
+      runTranscriptionJob(params.voiceNoteId, voiceNote.fileUrl!, req.log).catch(() => {});
+    });
 
-      const [updated] = await db
-        .update(voiceNotesTable)
-        .set({ transcriptionStatus: "completed", typedNote: result.text, updatedAt: new Date() })
-        .where(eq(voiceNotesTable.id, params.voiceNoteId))
-        .returning();
-
-      sendValidated(res, VoiceNoteResponseSchema, { voiceNote: updated });
-    } catch (transcribeErr) {
-      req.log.error({ transcribeErr }, "Transcription failed");
-      const [updated] = await db
-        .update(voiceNotesTable)
-        .set({ transcriptionStatus: "failed", updatedAt: new Date() })
-        .where(eq(voiceNotesTable.id, params.voiceNoteId))
-        .returning();
-      sendValidated(res, VoiceNoteResponseSchema, { voiceNote: updated });
-    }
+    sendValidated(res, VoiceNoteResponseSchema, { voiceNote: inProgress }, 202);
   } catch (err) {
-    req.log.error({ err }, "Failed to transcribe voice note");
+    req.log.error({ err }, "Failed to enqueue transcription");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -204,7 +210,7 @@ router.get("/voice-notes/:voiceNoteId", async (req: Request, res: Response) => {
       .select()
       .from(transcriptsTable)
       .where(eq(transcriptsTable.voiceNoteId, params.voiceNoteId));
-    res.json({ voiceNote, transcript: transcript ?? null });  
+    sendValidated(res, VoiceNoteDetailResponseSchema, { voiceNote, transcript: transcript ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to get voice note");
     res.status(500).json({ error: "Internal server error" });
