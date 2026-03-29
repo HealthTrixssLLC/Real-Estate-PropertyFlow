@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import {
   useGetTour,
   useGenerateTourSummary,
+  getGetTourQueryKey,
 } from "@workspace/api-client-react";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -30,7 +31,7 @@ export default function TourSummaryScreen() {
   const isWeb = Platform.OS === "web";
 
   const { data, isLoading, refetch } = useGetTour(tourId ?? "", {
-    query: { enabled: !!tourId },
+    query: { queryKey: getGetTourQueryKey(tourId ?? ""), enabled: !!tourId },
   });
 
   const { mutate: generateSummary, isPending: isGenerating } = useGenerateTourSummary({
@@ -47,6 +48,9 @@ export default function TourSummaryScreen() {
   const topRated = [...visited]
     .filter((s) => (s.overallFitRating ?? 0) >= 4)
     .sort((a, b) => (b.overallFitRating ?? 0) - (a.overallFitRating ?? 0));
+
+  const followUps = visited.filter((s) => s.followUpFlag);
+  const revisits = visited.filter((s) => s.revisitFlag);
 
   const topPad = isWeb ? 67 : 0;
 
@@ -93,6 +97,20 @@ export default function TourSummaryScreen() {
             <Text style={styles.statLabel}>Top Rated</Text>
           </View>
         </View>
+        {(followUps.length > 0 || revisits.length > 0) && (
+          <View style={styles.notesStat}>
+            {followUps.length > 0 && (
+              <Text style={styles.notesStatText}>
+                {followUps.length} follow-up{followUps.length !== 1 ? "s" : ""}
+              </Text>
+            )}
+            {revisits.length > 0 && (
+              <Text style={styles.notesStatText}>
+                {revisits.length} second look{revisits.length !== 1 ? "s" : ""}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
       {topRated.length > 0 && (
@@ -122,6 +140,76 @@ export default function TourSummaryScreen() {
                     {" "}Overall fit: {s.overallFitRating}/5
                   </Text>
                 </View>
+              </View>
+              {isIOS ? (
+                <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
+              ) : (
+                <Feather name="chevron-right" size={14} color={C.textTertiary} />
+              )}
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {(followUps.length > 0 || revisits.length > 0) && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Action Items</Text>
+          {followUps.map((s) => (
+            <Pressable
+              key={`fu-${s.id}`}
+              onPress={() => router.push(`/stop/${s.id}`)}
+              style={({ pressed }) => [
+                styles.actionRow,
+                { backgroundColor: C.card, borderColor: C.border },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              {isIOS ? (
+                <SymbolView name="bookmark.fill" tintColor={C.amber} size={16} />
+              ) : (
+                <Feather name="bookmark" size={16} color={C.amber} />
+              )}
+              <View style={styles.actionRowContent}>
+                <Text style={[styles.actionRowLabel, { color: C.text }]}>
+                  Stop #{s.sequence} — Follow Up
+                </Text>
+                {s.quickTags && s.quickTags.length > 0 && (
+                  <Text style={[styles.actionRowSub, { color: C.textSecondary }]} numberOfLines={1}>
+                    {s.quickTags.join(", ")}
+                  </Text>
+                )}
+              </View>
+              {isIOS ? (
+                <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
+              ) : (
+                <Feather name="chevron-right" size={14} color={C.textTertiary} />
+              )}
+            </Pressable>
+          ))}
+          {revisits.map((s) => (
+            <Pressable
+              key={`rv-${s.id}`}
+              onPress={() => router.push(`/stop/${s.id}`)}
+              style={({ pressed }) => [
+                styles.actionRow,
+                { backgroundColor: C.card, borderColor: C.border },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              {isIOS ? (
+                <SymbolView name="arrow.uturn.right.circle.fill" tintColor={C.accent} size={16} />
+              ) : (
+                <Feather name="refresh-cw" size={16} color={C.accent} />
+              )}
+              <View style={styles.actionRowContent}>
+                <Text style={[styles.actionRowLabel, { color: C.text }]}>
+                  Stop #{s.sequence} — Second Look
+                </Text>
+                {s.quickTags && s.quickTags.length > 0 && (
+                  <Text style={[styles.actionRowSub, { color: C.textSecondary }]} numberOfLines={1}>
+                    {s.quickTags.join(", ")}
+                  </Text>
+                )}
               </View>
               {isIOS ? (
                 <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
@@ -287,6 +375,40 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 2,
     textTransform: "capitalize",
+  },
+  notesStat: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  notesStatText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.65)",
+    backgroundColor: "rgba(0,0,0,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  actionRowContent: { flex: 1 },
+  actionRowLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  actionRowSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
   },
   generateBtn: {
     flexDirection: "row",

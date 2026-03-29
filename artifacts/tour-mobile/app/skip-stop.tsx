@@ -3,7 +3,7 @@ import { useSkipTourStop, getGetTourQueryKey } from "@workspace/api-client-react
 import type { SkipStopRequestReason } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
+import { SymbolView, type SFSymbol } from "expo-symbols";
 import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Colors from "@/constants/colors";
 
-const REASONS: { key: SkipStopRequestReason; label: string; sfIcon: string; featherIcon: string }[] = [
+const REASONS: { key: SkipStopRequestReason; label: string; sfIcon: SFSymbol; featherIcon: string }[] = [
   { key: "not_approved", label: "Not approved", sfIcon: "xmark.circle", featherIcon: "x-circle" },
   { key: "client_changed_mind", label: "Client changed mind", sfIcon: "person.fill.questionmark", featherIcon: "user-x" },
   { key: "running_late", label: "Running late", sfIcon: "clock.badge.exclamationmark", featherIcon: "clock" },

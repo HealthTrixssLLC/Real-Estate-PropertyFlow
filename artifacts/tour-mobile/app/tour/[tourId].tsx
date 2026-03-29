@@ -3,6 +3,7 @@ import {
   useGetTour,
   useMarkStopArrived,
   useMarkStopCompleted,
+  getGetTourQueryKey,
 } from "@workspace/api-client-react";
 import type { TourStopWithAddress } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
@@ -144,7 +145,7 @@ export default function ActiveTourScreen() {
   const navigation = useNavigation();
 
   const { data, isLoading, refetch } = useGetTour(tourId ?? "", {
-    query: { enabled: !!tourId },
+    query: { queryKey: getGetTourQueryKey(tourId ?? ""), enabled: !!tourId },
   });
 
   const tour = data?.tour;

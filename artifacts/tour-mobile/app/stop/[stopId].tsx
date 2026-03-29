@@ -3,10 +3,11 @@ import {
   useGetTourStop,
   useAddStopNote,
   useUpdateTourStop,
+  getGetTourStopQueryKey,
 } from "@workspace/api-client-react";
 import type { UpdateTourStopRequest } from "@workspace/api-client-react";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { SymbolView } from "expo-symbols";
+import { SymbolView, type SFSymbol } from "expo-symbols";
 import React, { type ComponentProps, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -56,7 +57,7 @@ export default function StopDetailScreen() {
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
 
   const { data, isLoading, refetch } = useGetTourStop(stopId ?? "", {
-    query: { enabled: !!stopId },
+    query: { queryKey: getGetTourStopQueryKey(stopId ?? ""), enabled: !!stopId },
   });
 
   const { mutate: addNote, isPending: isAddingNote } = useAddStopNote({
@@ -89,16 +90,18 @@ export default function StopDetailScreen() {
     if (!stopId || Platform.OS === "web") return;
     setIsUploadingVoice(true);
     try {
-      const FileSystem = await import("expo-file-system");
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+      const { tryImmediateUpload } = await import("@/utils/voiceUploadQueue");
+      const result = await tryImmediateUpload(uri, stopId, durationSeconds, () => {
+        Alert.alert(
+          "Saved Offline",
+          "Voice note saved locally. It will upload automatically when you're back online."
+        );
       });
-      const blob = await fetch(`data:audio/m4a;base64,${base64}`).then((r) => r.blob());
-      const { uploadVoiceNote } = await import("@workspace/api-client-react");
-      await uploadVoiceNote({ tourStopId: stopId, audio: blob, durationSeconds });
-      refetch();
-    } catch (e) {
-      Alert.alert("Upload failed", "Could not upload voice note. Try again.");
+      if (result === "uploaded") {
+        refetch();
+      }
+    } catch {
+      Alert.alert("Upload failed", "Could not save voice note.");
     } finally {
       setIsUploadingVoice(false);
     }
@@ -522,7 +525,7 @@ function InfoRow({
 }: {
   label: string;
   value: string;
-  sfIcon?: string;
+  sfIcon?: SFSymbol;
   featherIcon?: string;
   onPress?: () => void;
   C: ColorScheme;

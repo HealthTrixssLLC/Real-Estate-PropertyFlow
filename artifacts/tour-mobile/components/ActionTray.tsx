@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { SymbolView } from "expo-symbols";
+import { SymbolView, type SFSymbol } from "expo-symbols";
 import React from "react";
 import {
   ActivityIndicator,
@@ -18,7 +18,7 @@ import Colors from "@/constants/colors";
 export interface ActionButton {
   id: string;
   label: string;
-  sfIcon?: string;
+  sfIcon?: SFSymbol;
   featherIcon?: string;
   primary?: boolean;
   danger?: boolean;

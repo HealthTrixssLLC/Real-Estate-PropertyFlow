@@ -10,6 +10,7 @@ import { setBaseUrl } from "@workspace/api-client-react";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import NetInfo from "@react-native-community/netinfo";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -73,6 +74,18 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    let wasOffline = false;
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (wasOffline && state.isConnected) {
+        import("@/utils/voiceUploadQueue").then(({ flushQueue }) => flushQueue());
+      }
+      wasOffline = !state.isConnected;
+    });
+    import("@/utils/voiceUploadQueue").then(({ flushQueue }) => flushQueue());
+    return () => unsubscribe();
+  }, []);
 
   if (!fontsLoaded && !fontError) return null;
 

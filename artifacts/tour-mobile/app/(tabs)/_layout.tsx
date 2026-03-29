@@ -13,7 +13,7 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "calendar", selected: "calendar.fill" }} />
+        <Icon sf={{ default: "calendar", selected: "calendar.badge.checkmark" }} />
         <Label>Today</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="tours">

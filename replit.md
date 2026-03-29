@@ -56,7 +56,8 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 2. **Express API backend** with PostgreSQL (Drizzle ORM) — all CRUD routes implemented
 3. **Object Storage** (Replit GCS-backed) — voice note file uploads via presigned URLs
 4. **AI Provider Abstraction** — Azure OpenAI (text/summarization), Azure Speech (transcription), OpenAI fallback
-5. **Expo Mobile App** — iOS-first field execution app at `/mobile` with Today/Tours/Notes/Settings tabs, Active Tour flow, Stop Detail with voice recording, Skip Stop (form sheet), Tour Summary with AI generation
+5. **Expo Mobile App** — iOS-first field execution app at `/mobile` with Today/Tours/Notes/Settings tabs, Active Tour flow, Stop Detail with voice recording, Skip Stop (form sheet), Tour Summary with AI generation + Action Items section (follow-ups / revisits)
+6. **Offline Voice Queue** — `utils/voiceUploadQueue.ts` enqueues recordings when offline (AsyncStorage) and flushes automatically on reconnect using `@react-native-community/netinfo`
 
 ### API Endpoints (all under `/api`)
 

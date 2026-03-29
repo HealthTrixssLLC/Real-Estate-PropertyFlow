@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useGetCurrentAuthUser } from "@workspace/api-client-react";
-import { SymbolView } from "expo-symbols";
+import { SymbolView, type SFSymbol } from "expo-symbols";
 import React from "react";
 import {
   Platform,
@@ -19,7 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 interface SettingsRowProps {
   label: string;
   value?: string;
-  sfIcon?: string;
+  sfIcon?: SFSymbol;
   featherIcon?: string;
   onPress?: () => void;
   danger?: boolean;
