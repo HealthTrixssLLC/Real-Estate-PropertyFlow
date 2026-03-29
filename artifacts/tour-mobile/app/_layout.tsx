@@ -17,7 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/context/AuthContext";
-import { TourProvider } from "@/context/TourContext";
+import { TourProvider, useTourContext } from "@/context/TourContext";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
@@ -31,6 +31,14 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function CacheLoader() {
+  const { loadCachedTours } = useTourContext();
+  useEffect(() => {
+    loadCachedTours();
+  }, [loadCachedTours]);
+  return null;
+}
 
 function RootLayoutNav() {
   return (
@@ -80,7 +88,7 @@ export default function RootLayout() {
     const flushAll = () => {
       import("@/utils/voiceUploadQueue").then(({ flushQueue }) => flushQueue());
       import("@/utils/noteQueue").then(({ flushNoteQueue }) =>
-        flushNoteQueue(apiBase, () => ({}))
+        flushNoteQueue(apiBase)
       );
     };
     let wasOffline = false;
@@ -100,6 +108,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <TourProvider>
+              <CacheLoader />
               <GestureHandlerRootView>
                 <KeyboardProvider>
                   <RootLayoutNav />

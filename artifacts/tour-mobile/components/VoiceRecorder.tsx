@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import type { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useRef, useState } from "react";
@@ -29,7 +30,7 @@ export function VoiceRecorder({ onRecordingComplete, isUploading }: VoiceRecorde
   const [elapsed, setElapsed] = useState(0);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
-  const recordingRef = useRef<any>(null);
+  const recordingRef = useRef<InstanceType<typeof Audio.Recording> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startTimer = () => {

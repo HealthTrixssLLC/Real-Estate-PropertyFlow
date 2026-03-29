@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const QUEUE_KEY = "tourflow_pending_notes";
+const AUTH_TOKEN_KEY = "tourflow_auth_token";
 
 interface PendingNote {
   id: string;
@@ -37,18 +38,19 @@ export async function getPendingNotes(): Promise<PendingNote[]> {
   return readQueue();
 }
 
-export async function flushNoteQueue(
-  baseUrl: string,
-  getHeaders: () => Record<string, string>
-): Promise<void> {
+export async function flushNoteQueue(baseUrl: string): Promise<void> {
   const queue = await readQueue();
   if (queue.length === 0) return;
+  const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+  const authHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
   const remaining: PendingNote[] = [];
   for (const item of queue) {
     try {
       const res = await fetch(`${baseUrl}/api/tour-stops/${item.stopId}/note`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...getHeaders() },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ note: item.note }),
       });
       if (!res.ok) remaining.push(item);

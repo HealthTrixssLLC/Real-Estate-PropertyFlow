@@ -31,17 +31,21 @@ import { StopProgressBar } from "@/components/StopProgressBar";
 import Colors from "@/constants/colors";
 import { useTourContext } from "@/context/TourContext";
 
+const RESTRICTED_STATUSES = new Set(["restricted", "declined", "needs_follow_up"]);
+
 function StopCard({
   stop,
   label,
   index,
   total,
+  nextStop,
   onPress,
 }: {
   stop: TourStopWithAddress;
   label: "current" | "next";
   index: number;
   total: number;
+  nextStop?: TourStopWithAddress | null;
   onPress: () => void;
 }) {
   const scheme = useColorScheme() ?? "light";
@@ -49,6 +53,7 @@ function StopCard({
   const isIOS = Platform.OS === "ios";
   const isCurrent = label === "current";
   const address = stop.formattedAddress || stop.propertyNickname || `Stop #${index + 1}`;
+  const hasRestriction = RESTRICTED_STATUSES.has(stop.approvedStatus);
 
   return (
     <Pressable
@@ -112,6 +117,22 @@ function StopCard({
           {address}
         </Text>
       </View>
+      {hasRestriction && isCurrent && (
+        <View style={styles.restrictionBanner}>
+          {isIOS ? (
+            <SymbolView name="exclamationmark.triangle.fill" tintColor="#F5A623" size={12} />
+          ) : (
+            <Feather name="alert-triangle" size={12} color="#F5A623" />
+          )}
+          <Text style={styles.restrictionText}>
+            {stop.approvedStatus === "restricted"
+              ? "Access restricted — confirm entry requirements"
+              : stop.approvedStatus === "declined"
+              ? "Showing declined"
+              : "Needs follow-up with listing agent"}
+          </Text>
+        </View>
+      )}
       {stop.quickTags && stop.quickTags.length > 0 && (
         <View style={styles.tagsRow}>
           {stop.quickTags.slice(0, 3).map((tag) => (
@@ -124,6 +145,18 @@ function StopCard({
               </Text>
             </View>
           ))}
+        </View>
+      )}
+      {isCurrent && nextStop && (
+        <View style={styles.etaRow}>
+          {isIOS ? (
+            <SymbolView name="arrow.turn.up.right" tintColor={C.accent} size={12} />
+          ) : (
+            <Feather name="corner-up-right" size={12} color={C.accent} />
+          )}
+          <Text style={styles.etaText} numberOfLines={1}>
+            Next: {nextStop.formattedAddress || nextStop.propertyNickname || `Stop #${index + 2}`}
+          </Text>
         </View>
       )}
       <View style={styles.stopCardFooter}>
@@ -377,6 +410,7 @@ export default function ActiveTourScreen() {
             label="current"
             index={currentIdx}
             total={activeStops.length}
+            nextStop={nextStop}
             onPress={() => router.push(`/stop/${currentStop.id}`)}
           />
         )}
@@ -559,6 +593,34 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: "#F5A623",
+  },
+  restrictionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: "rgba(245,166,35,0.12)",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  restrictionText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#F5A623",
+    flex: 1,
+  },
+  etaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 6,
+  },
+  etaText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.65)",
+    flex: 1,
   },
   completedBanner: {
     borderRadius: 18,
