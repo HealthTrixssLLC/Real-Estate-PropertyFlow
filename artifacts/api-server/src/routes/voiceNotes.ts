@@ -8,12 +8,17 @@ router.post("/voice-notes/upload", (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const { tourStopId, durationSeconds } = req.body as Record<string, unknown>;
+  if (!tourStopId || typeof tourStopId !== "string") {
+    res.status(400).json({ error: "tourStopId is required" });
+    return;
+  }
   const now = new Date().toISOString();
   const voiceNote = {
     id: randomUUID(),
-    tourStopId: req.body?.tourStopId ?? "",
+    tourStopId,
     fileUrl: "",
-    durationSeconds: req.body?.durationSeconds ?? null,
+    durationSeconds: typeof durationSeconds === "number" ? durationSeconds : null,
     transcriptionStatus: "pending" as const,
     typedNote: null,
     createdAt: now,

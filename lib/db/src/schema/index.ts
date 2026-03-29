@@ -5,6 +5,7 @@ export * from "./tours";
 export * from "./tourStops";
 export * from "./showingRequests";
 export * from "./restrictionNotes";
+export * from "./listingAgentContacts";
 export * from "./voiceNotes";
 export * from "./transcripts";
 export * from "./propertySummaries";

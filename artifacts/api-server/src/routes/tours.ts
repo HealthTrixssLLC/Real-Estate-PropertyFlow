@@ -103,7 +103,11 @@ router.post("/tours/:tourId/optimize", (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  OptimizeTourRouteBody.safeParse(req.body);
+  const parsed = OptimizeTourRouteBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
+    return;
+  }
   res.json({ orderedStopIds: [], estimatedDriveTimeMinutes: 0 });
 });
 

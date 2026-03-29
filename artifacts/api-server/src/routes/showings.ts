@@ -13,7 +13,7 @@ router.get("/tour-stops/:stopId/showing-request", (req: Request, res: Response) 
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  res.json({ showingRequest: null });
+  res.status(404).json({ error: "Showing request not found" });
 });
 
 router.post("/tour-stops/:stopId/showing-request", (req: Request, res: Response) => {
@@ -56,7 +56,7 @@ router.get("/tour-stops/:stopId/restrictions", (req: Request, res: Response) => 
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  res.json({ restrictionNote: null });
+  res.status(404).json({ error: "Restriction note not found" });
 });
 
 router.put("/tour-stops/:stopId/restrictions", (req: Request, res: Response) => {

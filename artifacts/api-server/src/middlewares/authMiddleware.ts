@@ -2,6 +2,7 @@ import * as oidc from "openid-client";
 import { type Request, type Response, type NextFunction } from "express";
 import {
   type AuthUser,
+  type UserRole,
   clearSession,
   getOidcConfig,
   getSessionId,
@@ -84,4 +85,27 @@ export async function authMiddleware(
 
   req.user = refreshed.user;
   next();
+}
+
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  next();
+}
+
+export function requireRole(...roles: UserRole[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const authedReq = req as Express.AuthedRequest;
+    if (!roles.includes(authedReq.user.role)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    next();
+  };
 }
