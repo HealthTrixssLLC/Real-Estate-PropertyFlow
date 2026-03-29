@@ -1483,6 +1483,18 @@ export const SaveAiConfigBody = zod.object({
   summarizationProvider: zod.enum(["azure_openai", "openai"]).optional(),
   draftingEnabled: zod.boolean().optional(),
   patternAnalysisEnabled: zod.boolean().optional(),
+  azureOpenAiBaseUrl: zod
+    .string()
+    .optional()
+    .describe("Azure OpenAI deployment endpoint base URL"),
+  azureOpenAiModel: zod
+    .string()
+    .optional()
+    .describe("Azure OpenAI deployment model name"),
+  azureSpeechRegion: zod
+    .string()
+    .optional()
+    .describe("Azure Speech Services region"),
 });
 
 export const SaveAiConfigResponse = zod.object({

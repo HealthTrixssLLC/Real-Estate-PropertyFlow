@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link, useLocation } from "wouter"
 import { useListTours, useCreateTour, useListBuyers } from "@workspace/api-client-react"
+import type { Tour } from "@workspace/api-client-react"
 import { Plus, Map, Building2, Clock, Calendar as CalendarIcon, ArrowRight, CheckCircle2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { cn, formatDate, getStatusColor } from "@/lib/utils"
+import type { LucideIcon } from "lucide-react"
 
 export default function Dashboard() {
   const { data: toursData, isLoading } = useListTours()
@@ -156,44 +158,18 @@ export default function Dashboard() {
                     <th className="px-6 py-4 font-semibold">Title & Date</th>
                     <th className="px-6 py-4 font-semibold">Client</th>
                     <th className="px-6 py-4 font-semibold">Status</th>
-                    <th className="px-6 py-4 font-semibold">Tags</th>
+                    <th className="px-6 py-4 font-semibold">Area / Tags</th>
+                    <th className="px-6 py-4 font-semibold">Readiness</th>
                     <th className="px-6 py-4 text-right font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
                   {toursData?.tours.map((tour) => (
-                    <tr key={tour.id} className="hover:bg-muted/30 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-foreground">{tour.title}</div>
-                        <div className="text-muted-foreground text-xs flex items-center gap-1 mt-1">
-                          <CalendarIcon className="h-3 w-3" />
-                          {formatDate(tour.date)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium">
-                        {buyersData?.buyers.find(b => b.id === tour.buyerId)?.name || "—"}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={cn("capitalize border", getStatusColor(tour.status))}>
-                          {tour.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-1 flex-wrap">
-                          {tour.tags?.map(t => (
-                            <Badge key={t} variant="secondary" className="text-xs bg-accent/50">{t}</Badge>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link href={`/tours/${tour.id}`}>
-                          <Button variant="ghost" size="sm" className="group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                            Manage
-                            <ArrowRight className="h-4 w-4 ml-2" />
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
+                    <TourRow
+                      key={tour.id}
+                      tour={tour}
+                      buyerName={buyersData?.buyers.find(b => b.id === tour.buyerId)?.name}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -205,7 +181,87 @@ export default function Dashboard() {
   )
 }
 
-function StatCard({ icon: Icon, title, value, loading }: any) {
+interface TourRowProps {
+  tour: Tour
+  buyerName: string | undefined
+}
+
+function TourRow({ tour, buyerName }: TourRowProps) {
+  const isPublished = tour.status === "published"
+  const isReadyToPublish = tour.status === "active"
+  const isDraft = tour.status === "draft"
+
+  return (
+    <tr className="hover:bg-muted/30 transition-colors group">
+      <td className="px-6 py-4">
+        <div className="font-semibold text-foreground">{tour.title}</div>
+        <div className="text-muted-foreground text-xs flex items-center gap-1 mt-1">
+          <CalendarIcon className="h-3 w-3" />
+          {formatDate(tour.date)}
+          {tour.startTime && <span className="ml-1">at {tour.startTime}</span>}
+        </div>
+      </td>
+      <td className="px-6 py-4 font-medium">{buyerName || "—"}</td>
+      <td className="px-6 py-4">
+        <Badge variant="outline" className={cn("capitalize border", getStatusColor(tour.status))}>
+          {tour.status}
+        </Badge>
+      </td>
+      <td className="px-6 py-4">
+        <div className="space-y-1">
+          {tour.geographicArea && (
+            <div className="text-xs text-muted-foreground">{tour.geographicArea}</div>
+          )}
+          <div className="flex gap-1 flex-wrap">
+            {tour.tags?.slice(0, 3).map(t => (
+              <Badge key={t} variant="secondary" className="text-xs bg-accent/50">{t}</Badge>
+            ))}
+            {(tour.tags?.length ?? 0) > 3 && (
+              <Badge variant="secondary" className="text-xs bg-accent/50">+{(tour.tags?.length ?? 0) - 3}</Badge>
+            )}
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        {isPublished ? (
+          <div className="flex items-center gap-1.5 text-green-600 text-xs font-medium">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Published to mobile
+          </div>
+        ) : isReadyToPublish ? (
+          <div className="flex items-center gap-1.5 text-amber-600 text-xs font-medium">
+            <Clock className="h-3.5 w-3.5" />
+            Ready to review
+          </div>
+        ) : isDraft ? (
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+            <Building2 className="h-3.5 w-3.5" />
+            In planning
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground capitalize">{tour.status}</div>
+        )}
+      </td>
+      <td className="px-6 py-4 text-right">
+        <Link href={`/tours/${tour.id}`}>
+          <Button variant="ghost" size="sm" className="group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+            Manage
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </Link>
+      </td>
+    </tr>
+  )
+}
+
+interface StatCardProps {
+  icon: LucideIcon
+  title: string
+  value: number
+  loading: boolean
+}
+
+function StatCard({ icon: Icon, title, value, loading }: StatCardProps) {
   return (
     <Card className="p-6 border border-border/50 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 group">
       <div className="p-3 bg-primary/10 text-primary rounded-xl group-hover:scale-110 transition-transform">

@@ -1,20 +1,22 @@
-import { useGetTourReadiness, usePublishTour } from "@workspace/api-client-react"
+import { useGetTourReadiness, usePublishTour, getGetTourQueryKey } from "@workspace/api-client-react"
 import { CheckCircle2, Clock, AlertTriangle, ShieldAlert, Smartphone, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useQueryClient } from "@tanstack/react-query"
 
 export default function ReadinessTab({ tourId }: { tourId: string }) {
   const { data, isLoading } = useGetTourReadiness(tourId)
   const publish = usePublishTour()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const handlePublish = async () => {
     try {
       await publish.mutateAsync({ tourId })
       toast({ title: "Tour Published successfully", description: "It is now available on the mobile app." })
-      window.location.reload()
+      await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) })
     } catch {
       toast({ title: "Failed to publish", variant: "destructive" })
     }

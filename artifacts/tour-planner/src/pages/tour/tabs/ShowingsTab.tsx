@@ -5,8 +5,9 @@ import {
   useCreateShowingRequest,
   useGetRestrictionNote,
   useUpsertRestrictionNote,
+  UpdateShowingRequestBodyStatus,
 } from "@workspace/api-client-react"
-import { UpdateShowingRequestBodyStatus } from "@workspace/api-client-react"
+import type { TourStop } from "@workspace/api-client-react"
 import { Phone, Mail, Building, Loader2, UserIcon, ChevronDown, ChevronUp, Save, ShieldAlert } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { cn, getStatusColor } from "@/lib/utils"
 
-export default function ShowingsTab({ stops }: { stops: any[] }) {
+export default function ShowingsTab({ stops }: { stops: TourStop[] }) {
   if (stops.length === 0) return (
     <div className="p-12 text-center text-muted-foreground">No stops in this tour yet.</div>
   )
@@ -34,7 +35,7 @@ export default function ShowingsTab({ stops }: { stops: any[] }) {
   )
 }
 
-function ShowingRow({ stop, index }: { stop: any; index: number }) {
+function ShowingRow({ stop, index }: { stop: TourStop; index: number }) {
   const { data, isLoading, refetch } = useGetShowingRequest(stop.id)
   const updateShowing = useUpdateShowingRequest()
   const createShowing = useCreateShowingRequest()

@@ -1898,6 +1898,15 @@ components:
           type: boolean
         patternAnalysisEnabled:
           type: boolean
+        azureOpenAiBaseUrl:
+          type: string
+          description: Azure OpenAI deployment endpoint base URL
+        azureOpenAiModel:
+          type: string
+          description: Azure OpenAI deployment model name
+        azureSpeechRegion:
+          type: string
+          description: Azure Speech Services region
 
     TestAiConfigRequest:
       type: object

@@ -15,4 +15,10 @@ export interface SaveAiConfigRequest {
   summarizationProvider?: SaveAiConfigRequestSummarizationProvider;
   draftingEnabled?: boolean;
   patternAnalysisEnabled?: boolean;
+  /** Azure OpenAI deployment endpoint base URL */
+  azureOpenAiBaseUrl?: string;
+  /** Azure OpenAI deployment model name */
+  azureOpenAiModel?: string;
+  /** Azure Speech Services region */
+  azureSpeechRegion?: string;
 }

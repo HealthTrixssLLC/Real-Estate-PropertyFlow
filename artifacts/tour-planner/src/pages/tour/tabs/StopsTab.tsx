@@ -1,32 +1,41 @@
 import { useState, useEffect } from "react"
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { useAddPropertyToTour, useReorderTourStops, useOptimizeTourRoute } from "@workspace/api-client-react"
-import { GripVertical, Plus, Route, Loader2, MapPin, Building2, ExternalLink } from "lucide-react"
+import type { TourStop } from "@workspace/api-client-react"
+import { GripVertical, Plus, Route, Loader2, MapPin, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { useQueryClient } from "@tanstack/react-query"
+import { getGetTourQueryKey } from "@workspace/api-client-react"
 import { cn, getStatusColor } from "@/lib/utils"
 
-export default function StopsTab({ tourId, stops: initialStops }: { tourId: string, stops: any[] }) {
-  const [stops, setStops] = useState(initialStops)
+interface StopsTabProps {
+  tourId: string
+  stops: TourStop[]
+}
+
+export default function StopsTab({ tourId, stops: initialStops }: StopsTabProps) {
+  const [stops, setStops] = useState<TourStop[]>(initialStops)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const addProp = useAddPropertyToTour()
   const reorder = useReorderTourStops()
   const optimize = useOptimizeTourRoute()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   useEffect(() => { setStops(initialStops) }, [initialStops])
 
-  const handleDragEnd = async (result: any) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return
     const items = Array.from(stops)
     const [reorderedItem] = items.splice(result.source.index, 1)
     items.splice(result.destination.index, 0, reorderedItem)
     setStops(items)
-    
+
     try {
       await reorder.mutateAsync({
         tourId,
@@ -35,7 +44,7 @@ export default function StopsTab({ tourId, stops: initialStops }: { tourId: stri
       toast({ title: "Route order saved" })
     } catch {
       toast({ title: "Failed to save order", variant: "destructive" })
-      setStops(initialStops) // revert
+      setStops(initialStops)
     }
   }
 
@@ -47,13 +56,12 @@ export default function StopsTab({ tourId, stops: initialStops }: { tourId: stri
         tourId,
         data: {
           formattedAddress: fd.get("address") as string,
-          mlsId: fd.get("mlsId") as string || undefined,
+          mlsId: (fd.get("mlsId") as string) || undefined,
         }
       })
       toast({ title: "Property added to tour" })
       setIsAddOpen(false)
-      // Query invalidate will happen automatically if configured, or just let user reload
-      window.location.reload() 
+      await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) })
     } catch {
       toast({ title: "Failed to add property", variant: "destructive" })
     }
@@ -63,7 +71,7 @@ export default function StopsTab({ tourId, stops: initialStops }: { tourId: stri
     try {
       await optimize.mutateAsync({ tourId, data: {} })
       toast({ title: "Route optimized!" })
-      window.location.reload()
+      await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) })
     } catch {
       toast({ title: "Failed to optimize route", variant: "destructive" })
     }
@@ -73,15 +81,15 @@ export default function StopsTab({ tourId, stops: initialStops }: { tourId: stri
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between gap-4">
         <div className="flex gap-2">
-          <Button onClick={handleOptimize} variant="secondary" className="gap-2 bg-secondary/50 text-secondary-foreground hover-elevate shadow-sm" disabled={optimize.isPending}>
+          <Button onClick={handleOptimize} variant="secondary" className="gap-2 bg-secondary/50 text-secondary-foreground shadow-sm" disabled={optimize.isPending}>
             {optimize.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Route className="h-4 w-4" />}
             Auto-Optimize Route
           </Button>
         </div>
-        
+
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 shadow-md shadow-primary/20 hover-elevate">
+            <Button className="gap-2 shadow-md shadow-primary/20">
               <Plus className="h-4 w-4" />
               Add Property Stop
             </Button>
@@ -90,8 +98,8 @@ export default function StopsTab({ tourId, stops: initialStops }: { tourId: stri
             <DialogHeader><DialogTitle>Add Property to Tour</DialogTitle></DialogHeader>
             <form onSubmit={handleAdd} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <Label>Address Search</Label>
-                <Input name="address" required placeholder="Type address or use Google Places..." />
+                <Label>Full Address <span className="text-destructive">*</span></Label>
+                <Input name="address" required placeholder="123 Oak St, City, State" />
               </div>
               <div className="space-y-2">
                 <Label>MLS ID (Optional)</Label>
@@ -130,27 +138,22 @@ export default function StopsTab({ tourId, stops: initialStops }: { tourId: stri
                         <div {...provided.dragHandleProps} className="text-muted-foreground/50 hover:text-foreground cursor-grab active:cursor-grabbing p-1">
                           <GripVertical className="h-5 w-5" />
                         </div>
-                        
+
                         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-muted-foreground font-semibold text-sm shrink-0">
                           {index + 1}
                         </div>
-                        
+
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-foreground truncate flex items-center gap-2">
-                            Property #{stop.propertyId?.slice(0, 8) || "—"}
+                            Property #{stop.propertyId.slice(0, 8)}
                             <Badge variant="outline" className={cn("text-[10px] uppercase font-bold tracking-wider", getStatusColor(stop.approvedStatus))}>
-                              {stop.approvedStatus.replace('_', ' ')}
+                              {stop.approvedStatus.replace(/_/g, " ")}
                             </Badge>
                           </h4>
                           <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1 truncate">
-                            <MapPin className="h-3.5 w-3.5" /> Stop ID: {stop.id}
+                            <MapPin className="h-3.5 w-3.5" />
+                            Stop {stop.sequence} · {stop.visited ? "Visited" : "Pending"}
                           </div>
-                        </div>
-
-                        <div className="shrink-0 flex gap-2">
-                          <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-primary">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
                     )}
