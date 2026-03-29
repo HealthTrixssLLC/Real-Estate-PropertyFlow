@@ -8,11 +8,13 @@ import tourStopsRouter from "./tourStops";
 import showingsRouter from "./showings";
 import voiceNotesRouter from "./voiceNotes";
 import adminRouter from "./admin";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(storageRouter);
 router.use(buyersRouter);
 router.use(propertiesRouter);
 router.use(toursRouter);

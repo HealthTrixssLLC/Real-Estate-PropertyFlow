@@ -1,39 +1,15 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { SaveAiConfigBody, TestAiConfigBody } from "@workspace/api-zod";
 import { requireRole } from "../middlewares/authMiddleware";
+import { aiConfig, updateAiConfig, getAiConfigResponse } from "../lib/aiConfig";
+import { generateText, pingTextProvider, pingSpeechProvider } from "../lib/ai";
+
+export { aiConfig };
 
 const router: IRouter = Router();
 
-router.get("/admin/ai/config", requireRole("agent"), (req: Request, res: Response) => {
-  const config = {
-    transcription: {
-      enabled: !!process.env.AZURE_SPEECH_KEY || !!process.env.OPENAI_API_KEY,
-      provider: process.env.AZURE_SPEECH_KEY ? "azure_speech" : "openai",
-    },
-    summarization: {
-      enabled: !!(process.env.AZURE_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
-      provider: process.env.AZURE_OPENAI_API_KEY ? "azure_openai" : "openai",
-    },
-    drafting: {
-      enabled: !!(process.env.AZURE_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
-      provider: process.env.AZURE_OPENAI_API_KEY ? "azure_openai" : "openai",
-    },
-    patternAnalysis: {
-      enabled: !!(process.env.AZURE_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
-      provider: process.env.AZURE_OPENAI_API_KEY ? "azure_openai" : "openai",
-    },
-    azureOpenAiConfigured: !!(
-      process.env.AZURE_OPENAI_API_KEY &&
-      process.env.AZURE_OPENAI_BASE_URL &&
-      process.env.AZURE_OPENAI_MODEL
-    ),
-    azureSpeechConfigured: !!(
-      process.env.AZURE_SPEECH_KEY &&
-      process.env.AZURE_SPEECH_REGION
-    ),
-    openAiConfigured: !!process.env.OPENAI_API_KEY,
-  };
-  res.json({ config });
+router.get("/admin/ai/config", requireRole("agent"), (_req: Request, res: Response) => {
+  res.json({ config: getAiConfigResponse() });
 });
 
 router.post("/admin/ai/config", requireRole("agent"), (req: Request, res: Response) => {
@@ -42,49 +18,75 @@ router.post("/admin/ai/config", requireRole("agent"), (req: Request, res: Respon
     res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
     return;
   }
-  res.json({
-    config: {
-      transcription: { enabled: false, provider: "azure_speech" },
-      summarization: { enabled: false, provider: "azure_openai" },
-      drafting: { enabled: false, provider: "azure_openai" },
-      patternAnalysis: { enabled: false, provider: "azure_openai" },
-      azureOpenAiConfigured: false,
-      azureSpeechConfigured: false,
-      openAiConfigured: false,
-    },
+  const body = parsed.data as {
+    transcriptionEnabled?: boolean;
+    transcriptionProvider?: string;
+    summarizationEnabled?: boolean;
+    summarizationProvider?: string;
+    draftingEnabled?: boolean;
+    patternAnalysisEnabled?: boolean;
+    azureOpenAiBaseUrl?: string;
+    azureOpenAiModel?: string;
+    azureSpeechRegion?: string;
+  };
+
+  updateAiConfig({
+    transcriptionEnabled: body.transcriptionEnabled ?? aiConfig.transcriptionEnabled,
+    transcriptionProvider: body.transcriptionProvider ?? aiConfig.transcriptionProvider,
+    summarizationEnabled: body.summarizationEnabled ?? aiConfig.summarizationEnabled,
+    summarizationProvider: body.summarizationProvider ?? aiConfig.summarizationProvider,
+    draftingEnabled: body.draftingEnabled ?? aiConfig.draftingEnabled,
+    patternAnalysisEnabled: body.patternAnalysisEnabled ?? aiConfig.patternAnalysisEnabled,
   });
+
+  if (body.azureOpenAiBaseUrl) process.env.AZURE_OPENAI_BASE_URL = body.azureOpenAiBaseUrl;
+  if (body.azureOpenAiModel) process.env.AZURE_OPENAI_MODEL = body.azureOpenAiModel;
+  if (body.azureSpeechRegion) process.env.AZURE_SPEECH_REGION = body.azureSpeechRegion;
+
+  res.json({ config: getAiConfigResponse() });
 });
 
-router.post("/admin/ai/config/test", requireRole("agent"), (req: Request, res: Response) => {
+router.post("/admin/ai/config/test", requireRole("agent"), async (req: Request, res: Response) => {
   const parsed = TestAiConfigBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
     return;
   }
-  res.json({ success: false, error: "AI provider not configured" });
+  const { feature, prompt } = parsed.data;
+
+  try {
+    if (feature === "transcription") {
+      const provider = aiConfig.transcriptionProvider as "azure_speech" | "openai";
+      const result = await pingSpeechProvider(provider);
+      res.json({
+        success: result.healthy,
+        result: result.healthy ? "Speech provider is reachable" : undefined,
+        error: result.error ?? undefined,
+      });
+      return;
+    }
+
+    const provider = aiConfig.summarizationProvider as "azure_openai" | "openai";
+    const testPrompt = prompt ?? "Reply with the single word: OK";
+    const result = await generateText(testPrompt, provider);
+    res.json({ success: true, result: result.text });
+  } catch (err) {
+    res.json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
-router.get("/admin/ai/health", requireRole("agent"), (req: Request, res: Response) => {
+router.get("/admin/ai/health", requireRole("agent"), async (_req: Request, res: Response) => {
+  const [azureOpenAi, azureSpeech, openaiResult] = await Promise.all([
+    pingTextProvider("azure_openai").catch(e => ({ healthy: false, error: String(e) })),
+    pingSpeechProvider("azure_speech").catch(e => ({ healthy: false, error: String(e) })),
+    pingTextProvider("openai").catch(e => ({ healthy: false, error: String(e) })),
+  ]);
+
   res.json({
     providers: {
-      azure_openai: {
-        healthy: !!(
-          process.env.AZURE_OPENAI_API_KEY &&
-          process.env.AZURE_OPENAI_BASE_URL
-        ),
-        error: null,
-      },
-      azure_speech: {
-        healthy: !!(
-          process.env.AZURE_SPEECH_KEY &&
-          process.env.AZURE_SPEECH_REGION
-        ),
-        error: null,
-      },
-      openai: {
-        healthy: !!process.env.OPENAI_API_KEY,
-        error: null,
-      },
+      azure_openai: azureOpenAi,
+      azure_speech: azureSpeech,
+      openai: openaiResult,
     },
   });
 });

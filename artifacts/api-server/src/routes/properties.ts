@@ -1,59 +1,69 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
+import { eq } from "drizzle-orm";
+import { db, propertiesTable } from "@workspace/db";
 import { CreatePropertyBody, UpdatePropertyBody } from "@workspace/api-zod";
 import { idParams, parseParams, parseBody } from "../lib/validate";
 
 const router: IRouter = Router();
 
-router.get("/properties", (req: Request, res: Response) => {
+router.get("/properties", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  res.json({ properties: [] });
+  try {
+    const properties = await db.select().from(propertiesTable).orderBy(propertiesTable.createdAt);
+    res.json({ properties });
+  } catch (err) {
+    req.log.error({ err }, "Failed to list properties");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-router.post("/properties", (req: Request, res: Response) => {
+router.post("/properties", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
   const body = parseBody(CreatePropertyBody, req, res);
   if (!body) return;
-  const now = new Date().toISOString();
-  const property = {
-    id: randomUUID(),
-    ...body,
-    placeId: body.placeId ?? null,
-    lat: body.lat ?? null,
-    lng: body.lng ?? null,
-    city: body.city ?? null,
-    state: body.state ?? null,
-    zip: body.zip ?? null,
-    mlsId: body.mlsId ?? null,
-    listPrice: body.listPrice ?? null,
-    beds: body.beds ?? null,
-    baths: body.baths ?? null,
-    squareFeet: body.squareFeet ?? null,
-    nickname: body.nickname ?? null,
-    notes: body.notes ?? null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  res.status(201).json({ property });
+  try {
+    const [property] = await db
+      .insert(propertiesTable)
+      .values({ id: randomUUID(), ...body })
+      .returning();
+    res.status(201).json({ property });
+  } catch (err) {
+    req.log.error({ err }, "Failed to create property");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-router.get("/properties/:propertyId", (req: Request, res: Response) => {
+router.get("/properties/:propertyId", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
   const params = parseParams(idParams.propertyId, req, res);
   if (!params) return;
-  res.status(404).json({ error: "Property not found" });
+  try {
+    const [property] = await db
+      .select()
+      .from(propertiesTable)
+      .where(eq(propertiesTable.id, params.propertyId));
+    if (!property) {
+      res.status(404).json({ error: "Property not found" });
+      return;
+    }
+    res.json({ property });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get property");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-router.put("/properties/:propertyId", (req: Request, res: Response) => {
+router.put("/properties/:propertyId", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
@@ -62,17 +72,37 @@ router.put("/properties/:propertyId", (req: Request, res: Response) => {
   if (!params) return;
   const body = parseBody(UpdatePropertyBody, req, res);
   if (!body) return;
-  res.status(404).json({ error: "Property not found" });
+  try {
+    const [property] = await db
+      .update(propertiesTable)
+      .set({ ...body, updatedAt: new Date() })
+      .where(eq(propertiesTable.id, params.propertyId))
+      .returning();
+    if (!property) {
+      res.status(404).json({ error: "Property not found" });
+      return;
+    }
+    res.json({ property });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update property");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-router.delete("/properties/:propertyId", (req: Request, res: Response) => {
+router.delete("/properties/:propertyId", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
   const params = parseParams(idParams.propertyId, req, res);
   if (!params) return;
-  res.status(204).send();
+  try {
+    await db.delete(propertiesTable).where(eq(propertiesTable.id, params.propertyId));
+    res.status(204).send();
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete property");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 export default router;

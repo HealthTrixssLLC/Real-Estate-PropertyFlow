@@ -48,6 +48,38 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 - `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
 
+## Application: TourFlow — Real Estate Tour Manager
+
+### Features Implemented
+
+1. **Full-stack web app** — React+Vite at `/` with Google Maps integration, tour planning, dashboard
+2. **Express API backend** with PostgreSQL (Drizzle ORM) — all CRUD routes implemented
+3. **Object Storage** (Replit GCS-backed) — voice note file uploads via presigned URLs
+4. **AI Provider Abstraction** — Azure OpenAI (text/summarization), Azure Speech (transcription), OpenAI fallback
+
+### API Endpoints (all under `/api`)
+
+- **Buyers**: GET/POST/GET/:id/PUT/DELETE
+- **Properties**: GET/POST/GET/:id/PUT/DELETE
+- **Tours**: GET/POST/GET/:id/PUT/DELETE + `/optimize` (Google Maps Distance Matrix) + `/skip-stop` + `/publish` + `/readiness` + `/generate-summary`
+- **Tour Stops**: GET/:stopId/PUT/DELETE + `/arrive` + `/complete` + `/note` + `/summarize`
+- **Showing Requests**: GET/POST/PUT per stop
+- **Restriction Notes**: GET/PUT per stop
+- **Voice Notes**: POST upload (multipart → GCS) + POST transcribe + GET
+- **Storage**: POST presigned-url + GET public-objects/* + GET objects/*
+- **Admin AI**: GET/POST config + POST config/test + GET health
+
+### AI Provider Config
+
+Stored in-memory singleton (`src/lib/aiConfig.ts`) — initialized from env vars, updated via `POST /api/admin/ai/config`. Supports:
+- `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_BASE_URL` + `AZURE_OPENAI_MODEL`
+- `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`
+- `OPENAI_API_KEY` (fallback for both text and transcription)
+
+### Route Optimization
+
+`POST /api/tours/:tourId/optimize` uses Google Maps Distance Matrix API (`GOOGLE_MAPS_API_KEY`) + nearest-neighbor greedy algorithm to reorder stops.
+
 ## Packages
 
 ### `artifacts/api-server` (`@workspace/api-server`)
