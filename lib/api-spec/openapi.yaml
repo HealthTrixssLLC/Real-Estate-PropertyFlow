@@ -3,13 +3,30 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: TourFlow Real Estate Tour Manager API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: buyers
+    description: Buyer management
+  - name: tours
+    description: Tour management
+  - name: properties
+    description: Property management
+  - name: tourStops
+    description: Tour stop management
+  - name: showings
+    description: Showing request management
+  - name: voiceNotes
+    description: Voice note recording and transcription
+  - name: admin
+    description: Admin AI configuration
+
 paths:
   /healthz:
     get:
@@ -24,7 +41,784 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          description: Relative path to redirect to after login (must start with `/`). Defaults to `/`.
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the OIDC authorization endpoint.
+
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iss
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect to the `returnTo` path on success (defaults to `/`) or `/api/login` on failure.
+
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '302':
+          description: Redirect to the OIDC provider logout URL.
+
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+      responses:
+        '200':
+          description: Session created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Token did not contain usable claims.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Token exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+
+  # ── Buyers ──────────────────────────────────────────────────────────────────
+  /buyers:
+    get:
+      tags: [buyers]
+      operationId: listBuyers
+      summary: List all buyers
+      responses:
+        '200':
+          description: List of buyers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuyerListResponse'
+    post:
+      tags: [buyers]
+      operationId: createBuyer
+      summary: Create a new buyer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBuyerRequest'
+      responses:
+        '201':
+          description: Buyer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuyerResponse'
+
+  /buyers/{buyerId}:
+    get:
+      tags: [buyers]
+      operationId: getBuyer
+      summary: Get a buyer by ID
+      parameters:
+        - $ref: '#/components/parameters/BuyerIdParam'
+      responses:
+        '200':
+          description: Buyer found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuyerResponse'
+        '404':
+          description: Buyer not found
+    put:
+      tags: [buyers]
+      operationId: updateBuyer
+      summary: Update a buyer
+      parameters:
+        - $ref: '#/components/parameters/BuyerIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBuyerRequest'
+      responses:
+        '200':
+          description: Buyer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuyerResponse'
+    delete:
+      tags: [buyers]
+      operationId: deleteBuyer
+      summary: Delete a buyer
+      parameters:
+        - $ref: '#/components/parameters/BuyerIdParam'
+      responses:
+        '204':
+          description: Buyer deleted
+
+  # ── Tours ───────────────────────────────────────────────────────────────────
+  /tours:
+    get:
+      tags: [tours]
+      operationId: listTours
+      summary: List all tours for the current agent
+      responses:
+        '200':
+          description: List of tours
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourListResponse'
+    post:
+      tags: [tours]
+      operationId: createTour
+      summary: Create a new tour
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTourRequest'
+      responses:
+        '201':
+          description: Tour created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourResponse'
+
+  /tours/{tourId}:
+    get:
+      tags: [tours]
+      operationId: getTour
+      summary: Get a tour with all its stops
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      responses:
+        '200':
+          description: Tour found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourDetailResponse'
+        '404':
+          description: Tour not found
+    put:
+      tags: [tours]
+      operationId: updateTour
+      summary: Update a tour
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTourRequest'
+      responses:
+        '200':
+          description: Tour updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourResponse'
+    delete:
+      tags: [tours]
+      operationId: deleteTour
+      summary: Delete a tour
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      responses:
+        '204':
+          description: Tour deleted
+
+  /tours/{tourId}/properties:
+    post:
+      tags: [tours]
+      operationId: addPropertyToTour
+      summary: Add a property to a tour (creates tour stop)
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPropertyToTourRequest'
+      responses:
+        '201':
+          description: Property added to tour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourStopResponse'
+
+  /tours/{tourId}/optimize:
+    post:
+      tags: [tours]
+      operationId: optimizeTourRoute
+      summary: Optimize the route order for a tour
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptimizeRouteRequest'
+      responses:
+        '200':
+          description: Route optimized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizeRouteResponse'
+
+  /tours/{tourId}/stops/order:
+    put:
+      tags: [tours]
+      operationId: reorderTourStops
+      summary: Save a manually reordered stop sequence
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderStopsRequest'
+      responses:
+        '200':
+          description: Order saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /tours/{tourId}/skip-stop:
+    post:
+      tags: [tours]
+      operationId: skipTourStop
+      summary: Skip a stop and reroute to the next best stop
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkipStopRequest'
+      responses:
+        '200':
+          description: Stop skipped, next stop returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkipStopResponse'
+
+  /tours/{tourId}/publish:
+    post:
+      tags: [tours]
+      operationId: publishTour
+      summary: Publish a tour to mobile
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      responses:
+        '200':
+          description: Tour published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourResponse'
+
+  /tours/{tourId}/readiness:
+    get:
+      tags: [tours]
+      operationId: getTourReadiness
+      summary: Get the readiness summary for a tour
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      responses:
+        '200':
+          description: Tour readiness summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourReadinessResponse'
+
+  /tours/{tourId}/generate-summary:
+    post:
+      tags: [tours]
+      operationId: generateTourSummary
+      summary: Generate an AI end-of-tour summary
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      responses:
+        '200':
+          description: Summary generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourSummaryResponse'
+
+  /mobile/tours/active:
+    get:
+      tags: [tours]
+      operationId: getActiveMobileTours
+      summary: Get all published tours for mobile execution
+      responses:
+        '200':
+          description: Active published tours
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourListResponse'
+
+  # ── Tour Stops ──────────────────────────────────────────────────────────────
+  /tour-stops/{stopId}:
+    get:
+      tags: [tourStops]
+      operationId: getTourStop
+      summary: Get a single tour stop with details
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      responses:
+        '200':
+          description: Tour stop details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourStopDetailResponse'
+    put:
+      tags: [tourStops]
+      operationId: updateTourStop
+      summary: Update a tour stop (ratings, flags, etc.)
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTourStopRequest'
+      responses:
+        '200':
+          description: Tour stop updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourStopResponse'
+    delete:
+      tags: [tourStops]
+      operationId: deleteTourStop
+      summary: Remove a stop from the tour
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      responses:
+        '204':
+          description: Stop removed
+
+  /tour-stops/{stopId}/arrive:
+    post:
+      tags: [tourStops]
+      operationId: markStopArrived
+      summary: Mark arrival at a stop
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      responses:
+        '200':
+          description: Arrival recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourStopResponse'
+
+  /tour-stops/{stopId}/complete:
+    post:
+      tags: [tourStops]
+      operationId: markStopCompleted
+      summary: Mark a stop as completed
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      responses:
+        '200':
+          description: Stop completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourStopResponse'
+
+  /tour-stops/{stopId}/note:
+    post:
+      tags: [tourStops]
+      operationId: addStopNote
+      summary: Add a typed note to a stop
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddStopNoteRequest'
+      responses:
+        '200':
+          description: Note added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourStopResponse'
+
+  /tour-stops/{stopId}/summarize:
+    post:
+      tags: [tourStops]
+      operationId: summarizeProperty
+      summary: Generate an AI property summary for a stop
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      responses:
+        '200':
+          description: Summary generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertySummaryResponse'
+
+  # ── Showing Requests ────────────────────────────────────────────────────────
+  /tour-stops/{stopId}/showing-request:
+    get:
+      tags: [showings]
+      operationId: getShowingRequest
+      summary: Get the showing request for a stop
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      responses:
+        '200':
+          description: Showing request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowingRequestResponse'
+    post:
+      tags: [showings]
+      operationId: createShowingRequest
+      summary: Create a showing request for a stop
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShowingRequestBody'
+      responses:
+        '201':
+          description: Showing request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowingRequestResponse'
+    put:
+      tags: [showings]
+      operationId: updateShowingRequest
+      summary: Update a showing request (status, notes, agent info)
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShowingRequestBody'
+      responses:
+        '200':
+          description: Showing request updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowingRequestResponse'
+
+  /tour-stops/{stopId}/restrictions:
+    get:
+      tags: [showings]
+      operationId: getRestrictionNote
+      summary: Get restriction notes for a stop
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      responses:
+        '200':
+          description: Restriction notes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestrictionNoteResponse'
+    put:
+      tags: [showings]
+      operationId: upsertRestrictionNote
+      summary: Create or update restriction notes for a stop
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertRestrictionNoteBody'
+      responses:
+        '200':
+          description: Restriction notes saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestrictionNoteResponse'
+
+  # ── Voice Notes ─────────────────────────────────────────────────────────────
+  /voice-notes/upload:
+    post:
+      tags: [voiceNotes]
+      operationId: uploadVoiceNote
+      summary: Upload a voice recording (multipart/form-data)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [tourStopId, audio]
+              properties:
+                tourStopId:
+                  type: string
+                audio:
+                  type: string
+                  format: binary
+                durationSeconds:
+                  type: integer
+      responses:
+        '201':
+          description: Voice note uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceNoteResponse'
+
+  /voice-notes/{voiceNoteId}/transcribe:
+    post:
+      tags: [voiceNotes]
+      operationId: transcribeVoiceNote
+      summary: Trigger transcription for a voice note
+      parameters:
+        - $ref: '#/components/parameters/VoiceNoteIdParam'
+      responses:
+        '200':
+          description: Transcription job started or completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceNoteResponse'
+
+  /voice-notes/{voiceNoteId}:
+    get:
+      tags: [voiceNotes]
+      operationId: getVoiceNote
+      summary: Get a voice note and its transcript
+      parameters:
+        - $ref: '#/components/parameters/VoiceNoteIdParam'
+      responses:
+        '200':
+          description: Voice note details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceNoteDetailResponse'
+
+  # ── Admin AI Config ─────────────────────────────────────────────────────────
+  /admin/ai/config:
+    get:
+      tags: [admin]
+      operationId: getAiConfig
+      summary: Get AI provider configuration
+      responses:
+        '200':
+          description: AI config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiConfigResponse'
+    post:
+      tags: [admin]
+      operationId: saveAiConfig
+      summary: Save AI provider configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveAiConfigRequest'
+      responses:
+        '200':
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiConfigResponse'
+
+  /admin/ai/config/test:
+    post:
+      tags: [admin]
+      operationId: testAiConfig
+      summary: Test AI provider connection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestAiConfigRequest'
+      responses:
+        '200':
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiTestResponse'
+
+  /admin/ai/health:
+    get:
+      tags: [admin]
+      operationId: getAiHealth
+      summary: Get AI provider health status
+      responses:
+        '200':
+          description: AI health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiHealthResponse'
+
 components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token — `Bearer <sid>`.
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie.
+      schema:
+        type: string
+    BuyerIdParam:
+      name: buyerId
+      in: path
+      required: true
+      schema:
+        type: string
+    TourIdParam:
+      name: tourId
+      in: path
+      required: true
+      schema:
+        type: string
+    StopIdParam:
+      name: stopId
+      in: path
+      required: true
+      schema:
+        type: string
+    VoiceNoteIdParam:
+      name: voiceNoteId
+      in: path
+      required: true
+      schema:
+        type: string
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +828,955 @@ components:
       required:
         - status
 
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    # ── Auth schemas ──────────────────────────────────────────────────────────
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, 'null']
+          format: email
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        profileImageUrl:
+          type: [string, 'null']
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          const: true
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    # ── Buyer schemas ─────────────────────────────────────────────────────────
+    Buyer:
+      type: object
+      required: [id, name, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: [string, 'null']
+        phone:
+          type: [string, 'null']
+        notes:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    BuyerResponse:
+      type: object
+      required: [buyer]
+      properties:
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+    BuyerListResponse:
+      type: object
+      required: [buyers]
+      properties:
+        buyers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Buyer'
+    CreateBuyerRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        notes:
+          type: string
+    UpdateBuyerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        notes:
+          type: string
+
+    # ── Tour schemas ──────────────────────────────────────────────────────────
+    Tour:
+      type: object
+      required: [id, agentId, title, date, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        agentId:
+          type: string
+        buyerId:
+          type: [string, 'null']
+        title:
+          type: string
+        date:
+          type: string
+        startTime:
+          type: [string, 'null']
+        startAddress:
+          type: [string, 'null']
+        startLat:
+          type: [number, 'null']
+        startLng:
+          type: [number, 'null']
+        endAddress:
+          type: [string, 'null']
+        endLat:
+          type: [number, 'null']
+        endLng:
+          type: [number, 'null']
+        buyerNotes:
+          type: [string, 'null']
+        geographicArea:
+          type: [string, 'null']
+        tags:
+          type: [array, 'null']
+          items:
+            type: string
+        status:
+          type: string
+          enum: [draft, active, published, completed, cancelled]
+        publishedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TourResponse:
+      type: object
+      required: [tour]
+      properties:
+        tour:
+          $ref: '#/components/schemas/Tour'
+    TourListResponse:
+      type: object
+      required: [tours]
+      properties:
+        tours:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tour'
+    CreateTourRequest:
+      type: object
+      required: [title, date]
+      properties:
+        buyerId:
+          type: string
+        title:
+          type: string
+        date:
+          type: string
+        startTime:
+          type: string
+        startAddress:
+          type: string
+        startLat:
+          type: number
+        startLng:
+          type: number
+        endAddress:
+          type: string
+        endLat:
+          type: number
+        endLng:
+          type: number
+        buyerNotes:
+          type: string
+        geographicArea:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    UpdateTourRequest:
+      type: object
+      properties:
+        buyerId:
+          type: string
+        title:
+          type: string
+        date:
+          type: string
+        startTime:
+          type: string
+        startAddress:
+          type: string
+        startLat:
+          type: number
+        startLng:
+          type: number
+        endAddress:
+          type: string
+        endLat:
+          type: number
+        endLng:
+          type: number
+        buyerNotes:
+          type: string
+        geographicArea:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [draft, active, published, completed, cancelled]
+
+    # ── TourStop schemas ──────────────────────────────────────────────────────
+    Property:
+      type: object
+      required: [id, formattedAddress, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        formattedAddress:
+          type: string
+        placeId:
+          type: [string, 'null']
+        lat:
+          type: [number, 'null']
+        lng:
+          type: [number, 'null']
+        city:
+          type: [string, 'null']
+        state:
+          type: [string, 'null']
+        zip:
+          type: [string, 'null']
+        mlsId:
+          type: [string, 'null']
+        listPrice:
+          type: [integer, 'null']
+        beds:
+          type: [integer, 'null']
+        baths:
+          type: [number, 'null']
+        squareFeet:
+          type: [integer, 'null']
+        nickname:
+          type: [string, 'null']
+        notes:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TourStop:
+      type: object
+      required: [id, tourId, propertyId, sequence, approvedStatus, skipped, visited, followUpFlag, revisitFlag, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        tourId:
+          type: string
+        propertyId:
+          type: string
+        sequence:
+          type: integer
+        approvedStatus:
+          type: string
+          enum: [not_requested, requested, pending, approved, declined, needs_follow_up, restricted, cancelled]
+        skipped:
+          type: boolean
+        skipReason:
+          type: [string, 'null']
+        skipNotes:
+          type: [string, 'null']
+        visited:
+          type: boolean
+        arrivalTime:
+          type: [string, 'null']
+          format: date-time
+        departureTime:
+          type: [string, 'null']
+          format: date-time
+        buyerInterest:
+          type: [integer, 'null']
+        kitchenRating:
+          type: [integer, 'null']
+        primarySuiteRating:
+          type: [integer, 'null']
+        backyardRating:
+          type: [integer, 'null']
+        roadNoiseRating:
+          type: [integer, 'null']
+        overallFitRating:
+          type: [integer, 'null']
+        followUpFlag:
+          type: boolean
+        revisitFlag:
+          type: boolean
+        quickTags:
+          type: [array, 'null']
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TourStopResponse:
+      type: object
+      required: [stop]
+      properties:
+        stop:
+          $ref: '#/components/schemas/TourStop'
+
+    TourStopDetailResponse:
+      type: object
+      required: [stop]
+      properties:
+        stop:
+          $ref: '#/components/schemas/TourStop'
+        property:
+          $ref: '#/components/schemas/Property'
+        showingRequest:
+          oneOf:
+            - $ref: '#/components/schemas/ShowingRequest'
+            - type: 'null'
+        restrictionNote:
+          oneOf:
+            - $ref: '#/components/schemas/RestrictionNote'
+            - type: 'null'
+        voiceNotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/VoiceNote'
+        propertySummary:
+          oneOf:
+            - $ref: '#/components/schemas/PropertySummary'
+            - type: 'null'
+
+    TourDetailResponse:
+      type: object
+      required: [tour, stops]
+      properties:
+        tour:
+          $ref: '#/components/schemas/Tour'
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/TourStop'
+        buyer:
+          oneOf:
+            - $ref: '#/components/schemas/Buyer'
+            - type: 'null'
+
+    AddPropertyToTourRequest:
+      type: object
+      required: [formattedAddress]
+      properties:
+        formattedAddress:
+          type: string
+        placeId:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        city:
+          type: string
+        state:
+          type: string
+        zip:
+          type: string
+        mlsId:
+          type: string
+        listPrice:
+          type: integer
+        beds:
+          type: integer
+        baths:
+          type: number
+        squareFeet:
+          type: integer
+        nickname:
+          type: string
+        notes:
+          type: string
+        propertyId:
+          type: string
+          description: Reuse an existing property by ID (skips property creation)
+
+    UpdateTourStopRequest:
+      type: object
+      properties:
+        approvedStatus:
+          type: string
+          enum: [not_requested, requested, pending, approved, declined, needs_follow_up, restricted, cancelled]
+        buyerInterest:
+          type: integer
+        kitchenRating:
+          type: integer
+        primarySuiteRating:
+          type: integer
+        backyardRating:
+          type: integer
+        roadNoiseRating:
+          type: integer
+        overallFitRating:
+          type: integer
+        followUpFlag:
+          type: boolean
+        revisitFlag:
+          type: boolean
+        quickTags:
+          type: array
+          items:
+            type: string
+
+    AddStopNoteRequest:
+      type: object
+      required: [note]
+      properties:
+        note:
+          type: string
+
+    OptimizeRouteRequest:
+      type: object
+      properties:
+        includeApprovedOnly:
+          type: boolean
+          default: true
+
+    OptimizeRouteResponse:
+      type: object
+      required: [orderedStopIds, estimatedDriveTimeMinutes]
+      properties:
+        orderedStopIds:
+          type: array
+          items:
+            type: string
+        estimatedDriveTimeMinutes:
+          type: integer
+
+    ReorderStopsRequest:
+      type: object
+      required: [orderedStopIds]
+      properties:
+        orderedStopIds:
+          type: array
+          items:
+            type: string
+
+    SkipStopRequest:
+      type: object
+      required: [stopId, reason]
+      properties:
+        stopId:
+          type: string
+        reason:
+          type: string
+          enum: [not_approved, client_changed_mind, running_late, access_issue, traffic, duplicate_choice, other]
+        notes:
+          type: string
+
+    SkipStopResponse:
+      type: object
+      required: [skippedStop]
+      properties:
+        skippedStop:
+          $ref: '#/components/schemas/TourStop'
+        nextStop:
+          oneOf:
+            - $ref: '#/components/schemas/TourStop'
+            - type: 'null'
+
+    TourReadinessResponse:
+      type: object
+      required: [approvedCount, pendingCount, declinedCount, missingAgentInfoCount, estimatedDriveTimeMinutes, estimatedTotalMinutes]
+      properties:
+        approvedCount:
+          type: integer
+        pendingCount:
+          type: integer
+        declinedCount:
+          type: integer
+        missingAgentInfoCount:
+          type: integer
+        unresolved_restrictions:
+          type: integer
+        estimatedDriveTimeMinutes:
+          type: integer
+        estimatedTotalMinutes:
+          type: integer
+
+    # ── Showing Request schemas ───────────────────────────────────────────────
+    ShowingRequest:
+      type: object
+      required: [id, tourStopId, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        tourStopId:
+          type: string
+        listingAgentName:
+          type: [string, 'null']
+        brokerageName:
+          type: [string, 'null']
+        email:
+          type: [string, 'null']
+        phone:
+          type: [string, 'null']
+        requestMethod:
+          type: [string, 'null']
+        requestedAt:
+          type: [string, 'null']
+          format: date-time
+        requestedWindowStart:
+          type: [string, 'null']
+        requestedWindowEnd:
+          type: [string, 'null']
+        status:
+          type: string
+          enum: [not_requested, requested, pending, approved, declined, needs_follow_up, restricted, cancelled]
+        notes:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ShowingRequestResponse:
+      type: object
+      required: [showingRequest]
+      properties:
+        showingRequest:
+          $ref: '#/components/schemas/ShowingRequest'
+
+    CreateShowingRequestBody:
+      type: object
+      properties:
+        listingAgentName:
+          type: string
+        brokerageName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        requestMethod:
+          type: string
+        requestedWindowStart:
+          type: string
+        requestedWindowEnd:
+          type: string
+        status:
+          type: string
+          enum: [not_requested, requested, pending, approved, declined, needs_follow_up, restricted, cancelled]
+        notes:
+          type: string
+
+    UpdateShowingRequestBody:
+      type: object
+      properties:
+        listingAgentName:
+          type: string
+        brokerageName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        requestMethod:
+          type: string
+        requestedWindowStart:
+          type: string
+        requestedWindowEnd:
+          type: string
+        status:
+          type: string
+          enum: [not_requested, requested, pending, approved, declined, needs_follow_up, restricted, cancelled]
+        notes:
+          type: string
+
+    # ── Restriction Note schemas ──────────────────────────────────────────────
+    RestrictionNote:
+      type: object
+      required: [id, tourStopId, occupied, tenantNoticeRequired, doNotUseBathroom, removeShoes, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        tourStopId:
+          type: string
+        occupied:
+          type: boolean
+        tenantNoticeRequired:
+          type: boolean
+        gateCode:
+          type: [string, 'null']
+        alarmInstructions:
+          type: [string, 'null']
+        petInstructions:
+          type: [string, 'null']
+        doNotUseBathroom:
+          type: boolean
+        removeShoes:
+          type: boolean
+        parkingInstructions:
+          type: [string, 'null']
+        timeRestriction:
+          type: [string, 'null']
+        offerDeadlineNote:
+          type: [string, 'null']
+        freeTextNotes:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RestrictionNoteResponse:
+      type: object
+      required: [restrictionNote]
+      properties:
+        restrictionNote:
+          oneOf:
+            - $ref: '#/components/schemas/RestrictionNote'
+            - type: 'null'
+
+    UpsertRestrictionNoteBody:
+      type: object
+      properties:
+        occupied:
+          type: boolean
+        tenantNoticeRequired:
+          type: boolean
+        gateCode:
+          type: string
+        alarmInstructions:
+          type: string
+        petInstructions:
+          type: string
+        doNotUseBathroom:
+          type: boolean
+        removeShoes:
+          type: boolean
+        parkingInstructions:
+          type: string
+        timeRestriction:
+          type: string
+        offerDeadlineNote:
+          type: string
+        freeTextNotes:
+          type: string
+
+    # ── Voice Note schemas ────────────────────────────────────────────────────
+    VoiceNote:
+      type: object
+      required: [id, tourStopId, fileUrl, transcriptionStatus, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        tourStopId:
+          type: string
+        fileUrl:
+          type: string
+        durationSeconds:
+          type: [integer, 'null']
+        transcriptionStatus:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        typedNote:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VoiceNoteResponse:
+      type: object
+      required: [voiceNote]
+      properties:
+        voiceNote:
+          $ref: '#/components/schemas/VoiceNote'
+
+    VoiceNoteDetailResponse:
+      type: object
+      required: [voiceNote]
+      properties:
+        voiceNote:
+          $ref: '#/components/schemas/VoiceNote'
+        transcript:
+          oneOf:
+            - $ref: '#/components/schemas/Transcript'
+            - type: 'null'
+
+    Transcript:
+      type: object
+      required: [id, voiceNoteId, text, createdAt]
+      properties:
+        id:
+          type: string
+        voiceNoteId:
+          type: string
+        text:
+          type: string
+        provider:
+          type: [string, 'null']
+        confidence:
+          type: [number, 'null']
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── Summary schemas ───────────────────────────────────────────────────────
+    PropertySummary:
+      type: object
+      required: [id, tourStopId, summaryText, generatedAt, createdAt]
+      properties:
+        id:
+          type: string
+        tourStopId:
+          type: string
+        summaryText:
+          type: string
+        positives:
+          type: [array, 'null']
+          items:
+            type: string
+        negatives:
+          type: [array, 'null']
+          items:
+            type: string
+        questions:
+          type: [array, 'null']
+          items:
+            type: string
+        provider:
+          type: [string, 'null']
+        generatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    PropertySummaryResponse:
+      type: object
+      required: [summary]
+      properties:
+        summary:
+          $ref: '#/components/schemas/PropertySummary'
+
+    TourSummary:
+      type: object
+      required: [id, tourId, summaryText, generatedAt, createdAt]
+      properties:
+        id:
+          type: string
+        tourId:
+          type: string
+        summaryText:
+          type: string
+        topHomes:
+          type: [array, 'null']
+          items:
+            type: string
+        homesToEliminate:
+          type: [array, 'null']
+          items:
+            type: string
+        buyerPreferences:
+          type: [array, 'null']
+          items:
+            type: string
+        nextActions:
+          type: [array, 'null']
+          items:
+            type: string
+        provider:
+          type: [string, 'null']
+        generatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    TourSummaryResponse:
+      type: object
+      required: [summary]
+      properties:
+        summary:
+          $ref: '#/components/schemas/TourSummary'
+
+    # ── AI Config schemas ─────────────────────────────────────────────────────
+    AiFeatureConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        provider:
+          type: string
+          enum: [azure_openai, openai, azure_speech]
+
+    AiConfig:
+      type: object
+      properties:
+        transcription:
+          $ref: '#/components/schemas/AiFeatureConfig'
+        summarization:
+          $ref: '#/components/schemas/AiFeatureConfig'
+        drafting:
+          $ref: '#/components/schemas/AiFeatureConfig'
+        patternAnalysis:
+          $ref: '#/components/schemas/AiFeatureConfig'
+        azureOpenAiConfigured:
+          type: boolean
+        azureSpeechConfigured:
+          type: boolean
+        openAiConfigured:
+          type: boolean
+
+    AiConfigResponse:
+      type: object
+      required: [config]
+      properties:
+        config:
+          $ref: '#/components/schemas/AiConfig'
+
+    SaveAiConfigRequest:
+      type: object
+      properties:
+        transcriptionEnabled:
+          type: boolean
+        transcriptionProvider:
+          type: string
+          enum: [azure_openai, openai, azure_speech]
+        summarizationEnabled:
+          type: boolean
+        summarizationProvider:
+          type: string
+          enum: [azure_openai, openai]
+        draftingEnabled:
+          type: boolean
+        patternAnalysisEnabled:
+          type: boolean
+
+    TestAiConfigRequest:
+      type: object
+      required: [feature]
+      properties:
+        feature:
+          type: string
+          enum: [transcription, summarization, drafting]
+        prompt:
+          type: string
+
+    AiTestResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        result:
+          type: string
+        error:
+          type: string
+
+    AiHealthResponse:
+      type: object
+      required: [providers]
+      properties:
+        providers:
+          type: object
+          properties:
+            azure_openai:
+              type: object
+              properties:
+                healthy:
+                  type: boolean
+                error:
+                  type: [string, 'null']
+            azure_speech:
+              type: object
+              properties:
+                healthy:
+                  type: boolean
+                error:
+                  type: [string, 'null']
+            openai:
+              type: object
+              properties:
+                healthy:
+                  type: boolean
+                error:
+                  type: [string, 'null']
