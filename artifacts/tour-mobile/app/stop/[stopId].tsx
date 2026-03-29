@@ -6,9 +6,10 @@ import {
   getGetTourStopQueryKey,
 } from "@workspace/api-client-react";
 import type { UpdateTourStopRequest } from "@workspace/api-client-react";
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { SymbolView, type SFSymbol } from "expo-symbols";
-import React, { type ComponentProps, useEffect, useState } from "react";
+import React, { type ComponentProps, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -55,6 +56,9 @@ export default function StopDetailScreen() {
 
   const [noteText, setNoteText] = useState("");
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
+  const [restrictionsExpanded, setRestrictionsExpanded] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const voiceY = useRef(0);
 
   const { data, isLoading, refetch } = useGetTourStop(stopId ?? "", {
     query: { queryKey: getGetTourStopQueryKey(stopId ?? ""), enabled: !!stopId },
@@ -149,15 +153,17 @@ export default function StopDetailScreen() {
   const currentTags = stop.quickTags ?? [];
 
   return (
+    <View style={[styles.container, { backgroundColor: C.background }]}>
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: C.background }]}
+      style={styles.flex}
       behavior={isIOS ? "padding" : "height"}
       keyboardVerticalOffset={isIOS ? 0 : 20}
     >
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: topPad + 16, paddingBottom: isWeb ? 34 : insets.bottom + 20 },
+          { paddingTop: topPad + 16, paddingBottom: isWeb ? 34 : insets.bottom + 80 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -258,40 +264,66 @@ export default function StopDetailScreen() {
 
         {restrictionNote && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: C.text }]}>Restrictions</Text>
-            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
-              {restrictionNote.gateCode && (
-                <InfoRow label="Gate Code" value={restrictionNote.gateCode} sfIcon="lock" featherIcon="lock" C={C} isIOS={isIOS} />
-              )}
-              {restrictionNote.alarmInstructions && (
-                <InfoRow label="Alarm" value={restrictionNote.alarmInstructions} sfIcon="bell.slash" featherIcon="bell-off" C={C} isIOS={isIOS} />
-              )}
-              {restrictionNote.petInstructions && (
-                <InfoRow label="Pets" value={restrictionNote.petInstructions} sfIcon="pawprint" featherIcon="heart" C={C} isIOS={isIOS} />
-              )}
-              {restrictionNote.parkingInstructions && (
-                <InfoRow label="Parking" value={restrictionNote.parkingInstructions} sfIcon="car" featherIcon="truck" C={C} isIOS={isIOS} />
-              )}
-              {restrictionNote.timeRestriction && (
-                <InfoRow label="Time Window" value={restrictionNote.timeRestriction} sfIcon="clock" featherIcon="clock" C={C} isIOS={isIOS} />
-              )}
-              {restrictionNote.removeShoes && (
-                <FlagRow label="Remove shoes before entering" C={C} isIOS={isIOS} />
-              )}
-              {restrictionNote.doNotUseBathroom && (
-                <FlagRow label="Do not use bathroom" C={C} isIOS={isIOS} />
-              )}
-              {restrictionNote.occupied && (
-                <FlagRow label="Property is occupied" C={C} isIOS={isIOS} />
-              )}
-              {restrictionNote.freeTextNotes && (
-                <View style={styles.freeText}>
-                  <Text style={[styles.freeTextContent, { color: C.textSecondary }]}>
-                    {restrictionNote.freeTextNotes}
-                  </Text>
-                </View>
-              )}
-            </View>
+            <Pressable
+              onPress={() => setRestrictionsExpanded((v) => !v)}
+              style={styles.sectionHeader}
+              testID="restrictions-toggle"
+            >
+              <Text style={[styles.sectionTitle, { color: C.text }]}>Restrictions</Text>
+              <View style={styles.sectionHeaderRight}>
+                {!restrictionsExpanded && (
+                  <Text style={[styles.sectionHint, { color: C.textTertiary }]}>Tap to expand</Text>
+                )}
+                {isIOS ? (
+                  <SymbolView
+                    name={restrictionsExpanded ? "chevron.up" : "chevron.down"}
+                    tintColor={C.textTertiary}
+                    size={14}
+                  />
+                ) : (
+                  <Feather
+                    name={restrictionsExpanded ? "chevron-up" : "chevron-down"}
+                    size={14}
+                    color={C.textTertiary}
+                  />
+                )}
+              </View>
+            </Pressable>
+            {restrictionsExpanded && (
+              <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+                {restrictionNote.gateCode && (
+                  <InfoRow label="Gate Code" value={restrictionNote.gateCode} sfIcon="lock" featherIcon="lock" C={C} isIOS={isIOS} />
+                )}
+                {restrictionNote.alarmInstructions && (
+                  <InfoRow label="Alarm" value={restrictionNote.alarmInstructions} sfIcon="bell.slash" featherIcon="bell-off" C={C} isIOS={isIOS} />
+                )}
+                {restrictionNote.petInstructions && (
+                  <InfoRow label="Pets" value={restrictionNote.petInstructions} sfIcon="pawprint" featherIcon="heart" C={C} isIOS={isIOS} />
+                )}
+                {restrictionNote.parkingInstructions && (
+                  <InfoRow label="Parking" value={restrictionNote.parkingInstructions} sfIcon="car" featherIcon="truck" C={C} isIOS={isIOS} />
+                )}
+                {restrictionNote.timeRestriction && (
+                  <InfoRow label="Time Window" value={restrictionNote.timeRestriction} sfIcon="clock" featherIcon="clock" C={C} isIOS={isIOS} />
+                )}
+                {restrictionNote.removeShoes && (
+                  <FlagRow label="Remove shoes before entering" C={C} isIOS={isIOS} />
+                )}
+                {restrictionNote.doNotUseBathroom && (
+                  <FlagRow label="Do not use bathroom" C={C} isIOS={isIOS} />
+                )}
+                {restrictionNote.occupied && (
+                  <FlagRow label="Property is occupied" C={C} isIOS={isIOS} />
+                )}
+                {restrictionNote.freeTextNotes && (
+                  <View style={styles.freeText}>
+                    <Text style={[styles.freeTextContent, { color: C.textSecondary }]}>
+                      {restrictionNote.freeTextNotes}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -397,7 +429,10 @@ export default function StopDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View
+          style={styles.section}
+          onLayout={(e) => { voiceY.current = e.nativeEvent.layout.y; }}
+        >
           <Text style={[styles.sectionTitle, { color: C.text }]}>Voice Notes</Text>
           <VoiceRecorder
             onRecordingComplete={handleVoiceComplete}
@@ -509,6 +544,29 @@ export default function StopDetailScreen() {
         )}
       </ScrollView>
     </KeyboardAvoidingView>
+
+    {!isWeb && (
+      <Pressable
+        testID="floating-mic-btn"
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          scrollRef.current?.scrollTo({ y: voiceY.current, animated: true });
+        }}
+        style={[
+          styles.fab,
+          { backgroundColor: isUploadingVoice ? C.textTertiary : C.accent, bottom: insets.bottom + 20 },
+        ]}
+      >
+        {isUploadingVoice ? (
+          <ActivityIndicator color="#FFF" size="small" />
+        ) : isIOS ? (
+          <SymbolView name="mic.fill" tintColor="#FFF" size={22} />
+        ) : (
+          <Feather name="mic" size={22} color="#FFF" />
+        )}
+      </Pressable>
+    )}
+    </View>
   );
 }
 
@@ -526,7 +584,7 @@ function InfoRow({
   label: string;
   value: string;
   sfIcon?: SFSymbol;
-  featherIcon?: string;
+  featherIcon?: ComponentProps<typeof Feather>["name"];
   onPress?: () => void;
   C: ColorScheme;
   isIOS: boolean;
@@ -571,7 +629,22 @@ function FlagRow({ label, C, isIOS }: { label: string; C: ColorScheme; isIOS: bo
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  flex: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  fab: {
+    position: "absolute",
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   content: { paddingHorizontal: 20 },
   propertyCard: {
     borderRadius: 18,
@@ -605,10 +678,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   section: { marginBottom: 20 },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  sectionHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  sectionHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
   sectionTitle: {
     fontSize: 16,
     fontFamily: "Inter_700Bold",
-    marginBottom: 10,
   },
   card: {
     borderRadius: 14,

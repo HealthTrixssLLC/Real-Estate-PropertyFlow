@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useGetCurrentAuthUser } from "@workspace/api-client-react";
 import { SymbolView, type SFSymbol } from "expo-symbols";
-import React from "react";
+import React, { type ComponentProps } from "react";
 import {
   Platform,
   Pressable,
@@ -20,7 +20,7 @@ interface SettingsRowProps {
   label: string;
   value?: string;
   sfIcon?: SFSymbol;
-  featherIcon?: string;
+  featherIcon?: ComponentProps<typeof Feather>["name"];
   onPress?: () => void;
   danger?: boolean;
 }
@@ -44,7 +44,7 @@ function SettingsRow({ label, value, sfIcon, featherIcon, onPress, danger }: Set
         {sfIcon && isIOS ? (
           <SymbolView name={sfIcon} tintColor={danger ? C.coral : C.accent} size={18} />
         ) : featherIcon ? (
-          <Feather name={featherIcon as any} size={18} color={danger ? C.coral : C.accent} />
+          <Feather name={featherIcon} size={18} color={danger ? C.coral : C.accent} />
         ) : null}
         <Text style={[styles.rowLabel, { color: danger ? C.coral : C.text }]}>{label}</Text>
       </View>

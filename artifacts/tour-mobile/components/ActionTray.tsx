@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { SymbolView, type SFSymbol } from "expo-symbols";
-import React from "react";
+import React, { type ComponentProps } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -19,7 +19,7 @@ export interface ActionButton {
   id: string;
   label: string;
   sfIcon?: SFSymbol;
-  featherIcon?: string;
+  featherIcon?: ComponentProps<typeof Feather>["name"];
   primary?: boolean;
   danger?: boolean;
   disabled?: boolean;
@@ -85,7 +85,7 @@ export function ActionTray({ buttons }: ActionTrayProps) {
               ) : btn.sfIcon && isIOS ? (
                 <SymbolView name={btn.sfIcon} tintColor={iconColor} size={18} />
               ) : btn.featherIcon ? (
-                <Feather name={btn.featherIcon as any} size={18} color={iconColor} />
+                <Feather name={btn.featherIcon} size={18} color={iconColor} />
               ) : null}
               <Text style={[styles.btnLabel, { color: textColor }]}>{btn.label}</Text>
             </Pressable>

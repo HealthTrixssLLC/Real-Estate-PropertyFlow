@@ -111,11 +111,37 @@ function StopCard({
           {address}
         </Text>
       </View>
-      {stop.visited && (
-        <View style={styles.visitedBadge}>
-          <Text style={styles.visitedText}>Visited</Text>
+      {stop.quickTags && stop.quickTags.length > 0 && (
+        <View style={styles.tagsRow}>
+          {stop.quickTags.slice(0, 3).map((tag) => (
+            <View
+              key={tag}
+              style={[styles.tagPill, { backgroundColor: isCurrent ? "rgba(255,255,255,0.15)" : C.surfaceAlt }]}
+            >
+              <Text style={[styles.tagText, { color: isCurrent ? "rgba(255,255,255,0.85)" : C.textSecondary }]}>
+                {tag}
+              </Text>
+            </View>
+          ))}
         </View>
       )}
+      <View style={styles.stopCardFooter}>
+        {stop.visited && (
+          <View style={styles.visitedBadge}>
+            <Text style={styles.visitedText}>Visited</Text>
+          </View>
+        )}
+        {stop.followUpFlag && (
+          <View style={[styles.flagBadge, { backgroundColor: isCurrent ? "rgba(245,166,35,0.2)" : C.surfaceAlt }]}>
+            {isIOS ? (
+              <SymbolView name="bookmark.fill" tintColor="#F5A623" size={12} />
+            ) : (
+              <Feather name="bookmark" size={12} color="#F5A623" />
+            )}
+            <Text style={styles.flagText}>Follow Up</Text>
+          </View>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -149,7 +175,7 @@ export default function ActiveTourScreen() {
   });
 
   const tour = data?.tour;
-  const stops: TourStopWithAddress[] = (data?.stops ?? []) as TourStopWithAddress[];
+  const stops: TourStopWithAddress[] = data?.stops ?? [];
   const buyer = data?.buyer;
 
   const activeStops = useMemo(
@@ -471,8 +497,28 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 22,
   },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    marginTop: 8,
+  },
+  tagPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  tagText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  stopCardFooter: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 8,
+    flexWrap: "wrap",
+  },
   visitedBadge: {
-    marginTop: 10,
     alignSelf: "flex-start",
     backgroundColor: "rgba(39,192,107,0.15)",
     paddingHorizontal: 8,
@@ -483,6 +529,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: "#27C06B",
+  },
+  flagBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  flagText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#F5A623",
   },
   completedBanner: {
     borderRadius: 18,
