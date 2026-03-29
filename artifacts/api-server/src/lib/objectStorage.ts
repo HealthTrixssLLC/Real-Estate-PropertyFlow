@@ -163,15 +163,16 @@ export class ObjectStorageService {
     const rawObjectPath = url.pathname;
 
     let objectEntityDir = this.getPrivateObjectDir();
-    if (!objectEntityDir.endsWith("/")) {
-      objectEntityDir = `${objectEntityDir}/`;
+    objectEntityDir = objectEntityDir.replace(/\/+$/, "") + "/";
+    if (!objectEntityDir.startsWith("/")) {
+      objectEntityDir = `/${objectEntityDir}`;
     }
 
     if (!rawObjectPath.startsWith(objectEntityDir)) {
       return rawObjectPath;
     }
 
-    const entityId = rawObjectPath.slice(objectEntityDir.length);
+    const entityId = rawObjectPath.slice(objectEntityDir.length).replace(/^\/+/, "");
     return `/objects/${entityId}`;
   }
 

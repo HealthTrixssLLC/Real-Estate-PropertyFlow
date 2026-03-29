@@ -86,38 +86,43 @@ router.post("/tour-stops/:stopId/showing-request", async (req: Request, res: Res
       .where(eq(showingRequestsTable.tourStopId, params.stopId));
 
     if (existing) {
-      const [showingRequest] = await db
-        .update(showingRequestsTable)
-        .set({ ...body, requestedAt: new Date(), updatedAt: new Date() })
-        .where(eq(showingRequestsTable.id, existing.id))
-        .returning();
-      if (body.status && body.status !== existing.status) {
-        await db
-          .update(tourStopsTable)
-          .set({ approvedStatus: body.status, updatedAt: new Date() })
-          .where(eq(tourStopsTable.id, params.stopId));
-      }
+      const showingRequest = await db.transaction(async (tx) => {
+        const [sr] = await tx
+          .update(showingRequestsTable)
+          .set({ ...body, requestedAt: new Date(), updatedAt: new Date() })
+          .where(eq(showingRequestsTable.id, existing.id))
+          .returning();
+        if (body.status && body.status !== existing.status) {
+          await tx
+            .update(tourStopsTable)
+            .set({ approvedStatus: body.status, updatedAt: new Date() })
+            .where(eq(tourStopsTable.id, params.stopId));
+        }
+        return sr;
+      });
       sendValidated(res, ShowingRequestResponseSchema, { showingRequest }, 201);
       return;
     }
 
-    const [showingRequest] = await db
-      .insert(showingRequestsTable)
-      .values({
-        id: randomUUID(),
-        tourStopId: params.stopId,
-        ...body,
-        status: body.status ?? "not_requested",
-        requestedAt: new Date(),
-      })
-      .returning();
-
-    if (body.status) {
-      await db
-        .update(tourStopsTable)
-        .set({ approvedStatus: body.status, updatedAt: new Date() })
-        .where(eq(tourStopsTable.id, params.stopId));
-    }
+    const showingRequest = await db.transaction(async (tx) => {
+      const [sr] = await tx
+        .insert(showingRequestsTable)
+        .values({
+          id: randomUUID(),
+          tourStopId: params.stopId,
+          ...body,
+          status: body.status ?? "not_requested",
+          requestedAt: new Date(),
+        })
+        .returning();
+      if (body.status) {
+        await tx
+          .update(tourStopsTable)
+          .set({ approvedStatus: body.status, updatedAt: new Date() })
+          .where(eq(tourStopsTable.id, params.stopId));
+      }
+      return sr;
+    });
 
     sendValidated(res, ShowingRequestResponseSchema, { showingRequest }, 201);
   } catch (err) {
@@ -148,18 +153,20 @@ router.put("/tour-stops/:stopId/showing-request", async (req: Request, res: Resp
       res.status(404).json({ error: "Showing request not found" });
       return;
     }
-    const [showingRequest] = await db
-      .update(showingRequestsTable)
-      .set({ ...body, updatedAt: new Date() })
-      .where(eq(showingRequestsTable.id, existing.id))
-      .returning();
-
-    if (body.status && body.status !== existing.status) {
-      await db
-        .update(tourStopsTable)
-        .set({ approvedStatus: body.status, updatedAt: new Date() })
-        .where(eq(tourStopsTable.id, params.stopId));
-    }
+    const showingRequest = await db.transaction(async (tx) => {
+      const [sr] = await tx
+        .update(showingRequestsTable)
+        .set({ ...body, updatedAt: new Date() })
+        .where(eq(showingRequestsTable.id, existing.id))
+        .returning();
+      if (body.status && body.status !== existing.status) {
+        await tx
+          .update(tourStopsTable)
+          .set({ approvedStatus: body.status, updatedAt: new Date() })
+          .where(eq(tourStopsTable.id, params.stopId));
+      }
+      return sr;
+    });
 
     sendValidated(res, ShowingRequestResponseSchema, { showingRequest });
   } catch (err) {
