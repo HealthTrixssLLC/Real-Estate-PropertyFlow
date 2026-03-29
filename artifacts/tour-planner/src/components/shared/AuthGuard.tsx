@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect } from "react"
 import { useGetCurrentAuthUser } from "@workspace/api-client-react"
 import { Loader2 } from "lucide-react"
 import { useLocation } from "wouter"
@@ -6,6 +6,12 @@ import { useLocation } from "wouter"
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { data, isLoading, error } = useGetCurrentAuthUser()
   const [, setLocation] = useLocation()
+
+  useEffect(() => {
+    if (!isLoading && (error || !data?.user)) {
+      setLocation("/login")
+    }
+  }, [isLoading, error, data, setLocation])
 
   if (isLoading) {
     return (
@@ -19,7 +25,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (error || !data?.user) {
-    setLocation("/login")
     return null
   }
 
