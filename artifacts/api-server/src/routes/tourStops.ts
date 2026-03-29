@@ -27,11 +27,13 @@ const stopIdSchema = z.object({ stopId: z.string().min(1) });
 
 const router: IRouter = Router();
 
+type StopWithTour = { stop: typeof tourStopsTable.$inferSelect; tour: typeof toursTable.$inferSelect };
+
 async function assertStopOwner(
   stopId: string,
   agentId: string,
   res: Response,
-): Promise<typeof tourStopsTable.$inferSelect | null> {
+): Promise<StopWithTour | null> {
   const [stop] = await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, stopId));
   if (!stop) {
     res.status(404).json({ error: "Stop not found" });
@@ -42,7 +44,15 @@ async function assertStopOwner(
     res.status(403).json({ error: "Forbidden" });
     return null;
   }
-  return stop;
+  return { stop, tour };
+}
+
+function assertStopParentNotPublished(tour: typeof toursTable.$inferSelect, res: Response): boolean {
+  if (tour.status === "published") {
+    res.status(409).json({ error: "Tour is published. Itinerary is locked and cannot be modified." });
+    return false;
+  }
+  return true;
 }
 
 router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
@@ -54,8 +64,9 @@ router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
   if (!params) return;
   const user = (req as Express.AuthedRequest).user;
   try {
-    const stop = await assertStopOwner(params.stopId, user.id, res);
-    if (!stop) return;
+    const result = await assertStopOwner(params.stopId, user.id, res);
+    if (!result) return;
+    const { stop } = result;
 
     const [property] = await db.select().from(propertiesTable).where(and(eq(propertiesTable.id, stop.propertyId), eq(propertiesTable.agentId, user.id)));
     const [showingRequest] = await db
@@ -93,8 +104,10 @@ router.put("/tour-stops/:stopId", async (req: Request, res: Response) => {
   if (!body) return;
   const user = (req as Express.AuthedRequest).user;
   try {
-    const existing = await assertStopOwner(params.stopId, user.id, res);
-    if (!existing) return;
+    const result = await assertStopOwner(params.stopId, user.id, res);
+    if (!result) return;
+    const { stop: existing, tour } = result;
+    if (!assertStopParentNotPublished(tour, res)) return;
 
     const [stop] = await db
       .update(tourStopsTable)
@@ -117,8 +130,10 @@ router.delete("/tour-stops/:stopId", async (req: Request, res: Response) => {
   if (!params) return;
   const user = (req as Express.AuthedRequest).user;
   try {
-    const stop = await assertStopOwner(params.stopId, user.id, res);
-    if (!stop) return;
+    const result = await assertStopOwner(params.stopId, user.id, res);
+    if (!result) return;
+    const { tour } = result;
+    if (!assertStopParentNotPublished(tour, res)) return;
     await db.delete(tourStopsTable).where(eq(tourStopsTable.id, params.stopId));
     res.status(204).send();
   } catch (err) {
@@ -136,8 +151,8 @@ router.post("/tour-stops/:stopId/arrive", async (req: Request, res: Response) =>
   if (!params) return;
   const user = (req as Express.AuthedRequest).user;
   try {
-    const existing = await assertStopOwner(params.stopId, user.id, res);
-    if (!existing) return;
+    const result = await assertStopOwner(params.stopId, user.id, res);
+    if (!result) return;
 
     const [stop] = await db
       .update(tourStopsTable)
@@ -160,8 +175,8 @@ router.post("/tour-stops/:stopId/complete", async (req: Request, res: Response) 
   if (!params) return;
   const user = (req as Express.AuthedRequest).user;
   try {
-    const existing = await assertStopOwner(params.stopId, user.id, res);
-    if (!existing) return;
+    const result = await assertStopOwner(params.stopId, user.id, res);
+    if (!result) return;
 
     const [stop] = await db
       .update(tourStopsTable)
@@ -186,8 +201,8 @@ router.post("/tour-stops/:stopId/note", async (req: Request, res: Response) => {
   if (!body) return;
   const user = (req as Express.AuthedRequest).user;
   try {
-    const existing = await assertStopOwner(params.stopId, user.id, res);
-    if (!existing) return;
+    const result = await assertStopOwner(params.stopId, user.id, res);
+    if (!result) return;
 
     const typedNote = body.note;
     const existingNotes = await db
@@ -227,8 +242,9 @@ router.post("/tour-stops/:stopId/summarize", async (req: Request, res: Response)
   if (!params) return;
   const user = (req as Express.AuthedRequest).user;
   try {
-    const stop = await assertStopOwner(params.stopId, user.id, res);
-    if (!stop) return;
+    const ownerResult = await assertStopOwner(params.stopId, user.id, res);
+    if (!ownerResult) return;
+    const { stop } = ownerResult;
 
     const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, stop.propertyId));
     const voiceNotes = await db.select().from(voiceNotesTable).where(eq(voiceNotesTable.tourStopId, params.stopId));
