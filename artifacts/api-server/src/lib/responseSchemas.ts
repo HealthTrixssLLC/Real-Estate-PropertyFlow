@@ -80,6 +80,7 @@ export const OptimizeResponseSchema = z.object({
 
 export const BuyerSchema = z.object({
   id: z.string(),
+  agentId: z.string(),
   name: z.string(),
   email: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
@@ -90,6 +91,7 @@ export const BuyerSchema = z.object({
 
 export const PropertySchema = z.object({
   id: z.string(),
+  agentId: z.string(),
   formattedAddress: z.string(),
   placeId: z.string().nullable().optional(),
   lat: z.number().nullable().optional(),

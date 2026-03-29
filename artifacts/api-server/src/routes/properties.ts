@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, propertiesTable } from "@workspace/db";
 import { CreatePropertyBody, UpdatePropertyBody } from "@workspace/api-zod";
 import { idParams, parseParams, parseBody } from "../lib/validate";
@@ -13,8 +13,13 @@ router.get("/properties", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const user = (req as Express.AuthedRequest).user;
   try {
-    const properties = await db.select().from(propertiesTable).orderBy(propertiesTable.createdAt);
+    const properties = await db
+      .select()
+      .from(propertiesTable)
+      .where(eq(propertiesTable.agentId, user.id))
+      .orderBy(propertiesTable.createdAt);
     sendValidated(res, PropertyListResponseSchema, { properties });
   } catch (err) {
     req.log.error({ err }, "Failed to list properties");
@@ -27,12 +32,13 @@ router.post("/properties", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const user = (req as Express.AuthedRequest).user;
   const body = parseBody(CreatePropertyBody, req, res);
   if (!body) return;
   try {
     const [property] = await db
       .insert(propertiesTable)
-      .values({ id: randomUUID(), ...body })
+      .values({ id: randomUUID(), agentId: user.id, ...body })
       .returning();
     sendValidated(res, PropertyResponseSchema, { property }, 201);
   } catch (err) {
@@ -46,13 +52,14 @@ router.get("/properties/:propertyId", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const user = (req as Express.AuthedRequest).user;
   const params = parseParams(idParams.propertyId, req, res);
   if (!params) return;
   try {
     const [property] = await db
       .select()
       .from(propertiesTable)
-      .where(eq(propertiesTable.id, params.propertyId));
+      .where(and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id)));
     if (!property) {
       res.status(404).json({ error: "Property not found" });
       return;
@@ -69,20 +76,25 @@ router.put("/properties/:propertyId", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const user = (req as Express.AuthedRequest).user;
   const params = parseParams(idParams.propertyId, req, res);
   if (!params) return;
   const body = parseBody(UpdatePropertyBody, req, res);
   if (!body) return;
   try {
+    const [existing] = await db
+      .select({ id: propertiesTable.id })
+      .from(propertiesTable)
+      .where(and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id)));
+    if (!existing) {
+      res.status(404).json({ error: "Property not found" });
+      return;
+    }
     const [property] = await db
       .update(propertiesTable)
       .set({ ...body, updatedAt: new Date() })
       .where(eq(propertiesTable.id, params.propertyId))
       .returning();
-    if (!property) {
-      res.status(404).json({ error: "Property not found" });
-      return;
-    }
     sendValidated(res, PropertyResponseSchema, { property });
   } catch (err) {
     req.log.error({ err }, "Failed to update property");
@@ -95,9 +107,18 @@ router.delete("/properties/:propertyId", async (req: Request, res: Response) => 
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const user = (req as Express.AuthedRequest).user;
   const params = parseParams(idParams.propertyId, req, res);
   if (!params) return;
   try {
+    const [existing] = await db
+      .select({ id: propertiesTable.id })
+      .from(propertiesTable)
+      .where(and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id)));
+    if (!existing) {
+      res.status(404).json({ error: "Property not found" });
+      return;
+    }
     await db.delete(propertiesTable).where(eq(propertiesTable.id, params.propertyId));
     res.status(204).send();
   } catch (err) {

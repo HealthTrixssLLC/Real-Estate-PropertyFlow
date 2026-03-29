@@ -232,7 +232,7 @@ router.post("/tours/:tourId/properties", async (req: Request, res: Response) => 
       const { propertyId: _ignored, ...propertyData } = body;
       const [property] = await db
         .insert(propertiesTable)
-        .values({ id: randomUUID(), ...propertyData })
+        .values({ id: randomUUID(), agentId: user.id, ...propertyData })
         .returning();
       propertyId = property.id;
     }
