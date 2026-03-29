@@ -10,6 +10,7 @@ import Login from "@/pages/Login"
 import Dashboard from "@/pages/Dashboard"
 import Properties from "@/pages/Properties"
 import AdminAI from "@/pages/AdminAI"
+import AdminUsers from "@/pages/AdminUsers"
 import TourDetail from "@/pages/tour/TourDetail"
 import TourCreate from "@/pages/tour/TourCreate"
 import Help from "@/pages/Help"
@@ -34,6 +35,11 @@ function ProtectedRoutes() {
           <Route path="/admin/ai">
             <RoleGuard roles={["admin"]}>
               <AdminAI />
+            </RoleGuard>
+          </Route>
+          <Route path="/admin/users">
+            <RoleGuard roles={["admin"]}>
+              <AdminUsers />
             </RoleGuard>
           </Route>
           <Route path="/tours/new" component={TourCreate} />

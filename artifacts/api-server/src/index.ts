@@ -1,6 +1,9 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { loadAiConfigFromDb } from "./lib/aiConfig";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { hashPassword } from "./lib/auth";
 
 const rawPort = process.env["PORT"];
 
@@ -16,7 +19,39 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-loadAiConfigFromDb().then(() => {
+async function seedAdminUser() {
+  const adminUsername = "admin";
+  const adminPassword = "Admin123!";
+  const passwordHash = await hashPassword(adminPassword);
+
+  await db
+    .insert(usersTable)
+    .values({
+      username: adminUsername,
+      passwordHash,
+      role: "admin",
+      firstName: "Admin",
+      lastName: null,
+      email: null,
+      isSystemAccount: true,
+      isActive: true,
+    })
+    .onConflictDoUpdate({
+      target: usersTable.username,
+      set: {
+        passwordHash,
+        role: "admin",
+        isSystemAccount: true,
+        isActive: true,
+      },
+    });
+
+  logger.info("Admin user seeded");
+}
+
+loadAiConfigFromDb().then(async () => {
+  await seedAdminUser();
+
   app.listen(port, (err) => {
     if (err) {
       logger.error({ err }, "Error listening on port");

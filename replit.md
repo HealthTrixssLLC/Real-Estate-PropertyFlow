@@ -59,6 +59,16 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 5. **Expo Mobile App** — iOS-first field execution app at `/mobile` with Today/Tours/Notes/Settings tabs, Active Tour flow, Stop Detail with voice recording, Skip Stop (form sheet), Tour Summary with AI generation + Action Items section (follow-ups / revisits)
 6. **Offline Voice Queue** — `utils/voiceUploadQueue.ts` enqueues recordings when offline (AsyncStorage) and flushes automatically on reconnect using `@react-native-community/netinfo`
 7. **In-App Documentation** — Web `/help` page with sticky left TOC, Getting Started 8-step guide, full feature reference (Dashboard, Tours, Route Optimization, Showings, Readiness, Voice Notes, AI Summary). Contextual `?` HelpPopovers on Route Optimization map and Readiness Checklist. Mobile Help & Guide screen in Settings with expandable sections. First-launch 4-card onboarding overlay (stored in AsyncStorage). Contextual HelpTip buttons in ActionTray and VoiceRecorder components.
+8. **Local Auth (username/password)** — Replaced Replit OIDC with bcrypt-based local credentials. Admin seeded at startup (`admin`/`Admin123!`). Admin-only user management UI at `/admin/users`. Agent/assistant roles cannot access admin routes (403). Admin account is excluded from user listings (`is_system_account=true`). Mobile app has dedicated login screen (`/login` route in Expo).
+
+### Authentication
+
+- **Auth system**: Local username/password (bcrypt). No OIDC/Replit SSO.
+- **Endpoints**: `POST /api/login` (web), `POST /api/logout`, `POST /api/mobile-auth/login` (mobile), `POST /api/mobile-auth/logout`
+- **Admin seed**: On startup, upserts `admin` user with role `admin` and `is_system_account=true`
+- **Roles**: `agent` | `assistant` | `admin`. Only `admin` can access `/api/admin/**`
+- **User management**: `GET/POST /api/admin/users`, `PATCH /api/admin/users/:id`
+- **Users table**: Added `username VARCHAR UNIQUE`, `password_hash VARCHAR`, `is_system_account BOOLEAN`, `is_active BOOLEAN` columns
 
 ### API Endpoints (all under `/api`)
 

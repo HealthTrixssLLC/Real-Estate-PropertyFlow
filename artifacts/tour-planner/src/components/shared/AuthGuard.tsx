@@ -1,9 +1,11 @@
 import React from "react"
 import { useGetCurrentAuthUser } from "@workspace/api-client-react"
 import { Loader2 } from "lucide-react"
+import { useLocation } from "wouter"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { data, isLoading, error } = useGetCurrentAuthUser()
+  const [, setLocation] = useLocation()
 
   if (isLoading) {
     return (
@@ -17,7 +19,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (error || !data?.user) {
-    window.location.href = "/api/login"
+    setLocation("/login")
     return null
   }
 

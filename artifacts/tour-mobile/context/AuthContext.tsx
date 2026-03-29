@@ -8,6 +8,7 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   setToken: (token: string | null) => Promise<void>;
+  signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextValue>({
   token: null,
   isLoading: true,
   setToken: async () => {},
+  signIn: async () => {},
   signOut: async () => {},
 });
 
@@ -42,12 +44,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signIn = useCallback(async (username: string, password: string) => {
+    const apiBase = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+    const res = await fetch(`${apiBase}/api/mobile-auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? "Login failed");
+    }
+
+    const data = await res.json();
+    await setToken(data.token);
+  }, [setToken]);
+
   const signOut = useCallback(async () => {
     await setToken(null);
   }, [setToken]);
 
   return (
-    <AuthContext.Provider value={{ token, isLoading, setToken, signOut }}>
+    <AuthContext.Provider value={{ token, isLoading, setToken, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

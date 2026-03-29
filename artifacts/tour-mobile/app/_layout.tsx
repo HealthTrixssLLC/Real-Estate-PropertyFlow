@@ -7,7 +7,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { setBaseUrl } from "@workspace/api-client-react";
-import { Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import NetInfo from "@react-native-community/netinfo";
@@ -16,7 +16,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { TourProvider, useTourContext } from "@/context/TourContext";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
@@ -41,31 +41,47 @@ function CacheLoader() {
 }
 
 function RootLayoutNav() {
+  const { token, isLoading } = useAuth();
+
+  if (isLoading) return null;
+
+  if (!token) {
+    return (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+        <Redirect href="/login" />
+      </Stack>
+    );
+  }
+
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="tour/[tourId]"
-        options={{ title: "Tour", headerBackTitle: "Back" }}
-      />
-      <Stack.Screen
-        name="tour/[tourId]/summary"
-        options={{ title: "Tour Summary", presentation: "modal" }}
-      />
-      <Stack.Screen
-        name="stop/[stopId]"
-        options={{ title: "Stop Details", headerBackTitle: "Back" }}
-      />
-      <Stack.Screen
-        name="skip-stop"
-        options={{
-          title: "Skip Stop",
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.75, 1],
-          sheetGrabberVisible: true,
-        }}
-      />
-    </Stack>
+    <TourProvider>
+      <CacheLoader />
+      <Stack screenOptions={{ headerBackTitle: "Back" }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="tour/[tourId]"
+          options={{ title: "Tour", headerBackTitle: "Back" }}
+        />
+        <Stack.Screen
+          name="tour/[tourId]/summary"
+          options={{ title: "Tour Summary", presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="stop/[stopId]"
+          options={{ title: "Stop Details", headerBackTitle: "Back" }}
+        />
+        <Stack.Screen
+          name="skip-stop"
+          options={{
+            title: "Skip Stop",
+            presentation: "formSheet",
+            sheetAllowedDetents: [0.75, 1],
+            sheetGrabberVisible: true,
+          }}
+        />
+      </Stack>
+    </TourProvider>
   );
 }
 
@@ -107,14 +123,11 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <TourProvider>
-              <CacheLoader />
-              <GestureHandlerRootView>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </TourProvider>
+            <GestureHandlerRootView>
+              <KeyboardProvider>
+                <RootLayoutNav />
+              </KeyboardProvider>
+            </GestureHandlerRootView>
           </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>

@@ -1,6 +1,6 @@
 import React from "react"
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Building2, Settings, LogOut, HelpCircle } from "lucide-react"
+import { LayoutDashboard, Building2, Settings, LogOut, Users, HelpCircle } from "lucide-react"
 import { useGetCurrentAuthUser, UserRole } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/properties", label: "Properties", icon: Building2 },
-  { href: "/admin/ai", label: "AI Config", icon: Settings, adminOnly: true },
+  { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
+  { href: "/admin/ai", label: "Config", icon: Settings, adminOnly: true },
   { href: "/help", label: "Help", icon: HelpCircle },
 ]
 
@@ -67,10 +68,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <span className="text-sm font-semibold truncate">{user?.firstName} {user?.lastName}</span>
               <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" asChild>
-              <a href="/api/logout">
-                <LogOut className="h-4 w-4" />
-              </a>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={async () => {
+                await fetch(`${import.meta.env.BASE_URL}api/logout`, { method: "POST", credentials: "include" })
+                window.location.href = "/login"
+              }}
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>

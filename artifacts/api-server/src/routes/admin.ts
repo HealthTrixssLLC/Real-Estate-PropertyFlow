@@ -20,11 +20,11 @@ export { aiConfig };
 
 const router: IRouter = Router();
 
-router.get("/admin/ai/config", requireRole("agent"), (_req: Request, res: Response) => {
+router.get("/admin/ai/config", requireRole("admin"), (_req: Request, res: Response) => {
   sendValidated(res, AiConfigResponseSchema, { config: getAiConfigResponse() });
 });
 
-router.post("/admin/ai/config", requireRole("agent"), (req: Request, res: Response) => {
+router.post("/admin/ai/config", requireRole("admin"), (req: Request, res: Response) => {
   const parsed = SaveAiConfigBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
@@ -58,7 +58,7 @@ router.post("/admin/ai/config", requireRole("agent"), (req: Request, res: Respon
   sendValidated(res, AiConfigResponseSchema, { config: getAiConfigResponse() });
 });
 
-router.post("/admin/ai/config/test", requireRole("agent"), async (req: Request, res: Response) => {
+router.post("/admin/ai/config/test", requireRole("admin"), async (req: Request, res: Response) => {
   const parsed = TestAiConfigBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
@@ -89,7 +89,7 @@ router.post("/admin/ai/config/test", requireRole("agent"), async (req: Request, 
   }
 });
 
-router.get("/admin/ai/health", requireRole("agent"), async (_req: Request, res: Response) => {
+router.get("/admin/ai/health", requireRole("admin"), async (_req: Request, res: Response) => {
   const [azureOpenAi, azureSpeech, openaiResult] = await Promise.all([
     azureOpenAiProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
     azureSpeechProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
