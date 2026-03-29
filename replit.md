@@ -58,6 +58,7 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 4. **AI Provider Abstraction** — Azure OpenAI (text/summarization), Azure Speech (transcription), OpenAI fallback
 5. **Expo Mobile App** — iOS-first field execution app at `/mobile` with Today/Tours/Notes/Settings tabs, Active Tour flow, Stop Detail with voice recording, Skip Stop (form sheet), Tour Summary with AI generation + Action Items section (follow-ups / revisits)
 6. **Offline Voice Queue** — `utils/voiceUploadQueue.ts` enqueues recordings when offline (AsyncStorage) and flushes automatically on reconnect using `@react-native-community/netinfo`
+7. **In-App Documentation** — Web `/help` page with sticky left TOC, Getting Started 8-step guide, full feature reference (Dashboard, Tours, Route Optimization, Showings, Readiness, Voice Notes, AI Summary). Contextual `?` HelpPopovers on Route Optimization map and Readiness Checklist. Mobile Help & Guide screen in Settings with expandable sections. First-launch 4-card onboarding overlay (stored in AsyncStorage). Contextual HelpTip buttons in ActionTray and VoiceRecorder components.
 
 ### API Endpoints (all under `/api`)
 

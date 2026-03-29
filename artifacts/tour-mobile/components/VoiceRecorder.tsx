@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import Colors from "@/constants/colors";
+import { HelpTip } from "@/components/HelpTip";
 
 interface VoiceRecorderProps {
   onRecordingComplete: (uri: string, durationSeconds: number) => Promise<void>;
@@ -131,6 +132,13 @@ export function VoiceRecorder({ onRecordingComplete, isUploading }: VoiceRecorde
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={[styles.headerLabel, { color: C.textSecondary }]}>Voice Recording</Text>
+        <HelpTip
+          title="Voice Notes"
+          description="Tap Record Note to capture your observations at this property. Your recording is transcribed automatically and included in the AI summary at the end of the tour. Works offline — recordings upload when you regain signal."
+        />
+      </View>
       <Pressable
         testID="voice-record-btn"
         onPress={isRecording ? stopRecording : startRecording}
@@ -165,6 +173,18 @@ export function VoiceRecorder({ onRecordingComplete, isUploading }: VoiceRecorde
 const styles = StyleSheet.create({
   container: {
     alignItems: "flex-start",
+    gap: 8,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   btn: {
     flexDirection: "row",

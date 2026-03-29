@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import type { TourStop, Property } from "@workspace/api-client-react"
 import { useGoogleMaps } from "@/hooks/useGoogleMaps"
 import { Loader2, MapPin, AlertCircle, Navigation } from "lucide-react"
+import { HelpPopover } from "@/components/shared/HelpPopover"
 
 interface MapTabProps {
   stops: TourStop[]
@@ -187,6 +188,11 @@ export default function MapTab({ stops, properties }: MapTabProps) {
         <p className="font-semibold text-foreground flex items-center gap-1.5 mb-2">
           <Navigation className="h-3.5 w-3.5 text-primary" />
           Route Summary
+          <HelpPopover
+            title="Route Optimization"
+            description="Pins are color-coded by showing approval status. Click any pin for property details. Reorder stops in the Route Stops tab to optimize your driving path."
+            helpSection="route-optimization"
+          />
         </p>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Total stops</span>

@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Colors from "@/constants/colors";
+import { HelpTip } from "@/components/HelpTip";
 
 export interface ActionButton {
   id: string;
@@ -49,6 +50,13 @@ export function ActionTray({ buttons }: ActionTrayProps) {
         },
       ]}
     >
+      <View style={styles.trayHeader}>
+        <Text style={[styles.trayLabel, { color: C.textTertiary }]}>Actions</Text>
+        <HelpTip
+          title="Action Tray"
+          description="Use Navigate to open directions to the current stop. Tap Mark Arrived when you pull up to the property. After the showing, tap Complete Showing to move to the next stop. Use Skip if you need to bypass a stop."
+        />
+      </View>
       <View style={styles.grid}>
         {buttons.map((btn) => {
           const bgColor = btn.primary
@@ -98,9 +106,21 @@ export function ActionTray({ buttons }: ActionTrayProps) {
 
 const styles = StyleSheet.create({
   tray: {
-    paddingTop: 12,
+    paddingTop: 8,
     paddingHorizontal: 16,
     borderTopWidth: 1,
+  },
+  trayHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  trayLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   grid: {
     flexDirection: "row",

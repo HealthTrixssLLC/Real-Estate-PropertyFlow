@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQueryClient } from "@tanstack/react-query"
+import { HelpPopover } from "@/components/shared/HelpPopover"
 
 export default function ReadinessTab({ tourId }: { tourId: string }) {
   const { data, isLoading } = useGetTourReadiness(tourId)
@@ -32,7 +33,14 @@ export default function ReadinessTab({ tourId }: { tourId: string }) {
     <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-8">
       
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold">Pre-Tour Checklist</h2>
+        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+          Pre-Tour Checklist
+          <HelpPopover
+            title="Readiness Checklist"
+            description="Review approval counts for each stop before publishing. All stops should ideally be Approved. You can still publish with pending stops, but expect issues in the field."
+            helpSection="readiness"
+          />
+        </h2>
         <p className="text-muted-foreground">Review showing approvals and warnings before publishing to the mobile app.</p>
       </div>
 

@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TourCard } from "@/components/TourCard";
+import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import Colors from "@/constants/colors";
 
 export default function TodayScreen() {
@@ -56,6 +57,8 @@ export default function TodayScreen() {
   const topPad = isWeb ? 67 : insets.top;
 
   return (
+    <>
+    <OnboardingOverlay />
     <FlatList
       style={{ backgroundColor: C.background }}
       contentContainerStyle={[
@@ -166,6 +169,7 @@ export default function TodayScreen() {
         ) : null
       }
     />
+    </>
   );
 }
 

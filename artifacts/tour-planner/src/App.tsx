@@ -12,6 +12,7 @@ import Properties from "@/pages/Properties"
 import AdminAI from "@/pages/AdminAI"
 import TourDetail from "@/pages/tour/TourDetail"
 import TourCreate from "@/pages/tour/TourCreate"
+import Help from "@/pages/Help"
 import NotFound from "@/pages/not-found"
 
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ function ProtectedRoutes() {
           </Route>
           <Route path="/tours/new" component={TourCreate} />
           <Route path="/tours/:id" component={TourDetail} />
+          <Route path="/help" component={Help} />
           <Route component={NotFound} />
         </Switch>
       </Shell>

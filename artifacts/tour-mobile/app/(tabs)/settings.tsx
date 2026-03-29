@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useGetCurrentAuthUser } from "@workspace/api-client-react";
+import { router } from "expo-router";
 import { SymbolView, type SFSymbol } from "expo-symbols";
 import React, { type ComponentProps } from "react";
 import {
@@ -107,6 +108,16 @@ export default function SettingsScreen() {
             {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Agent"}
           </Text>
         </View>
+      </View>
+
+      <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Support</Text>
+      <View style={[styles.section, { backgroundColor: C.card, borderColor: C.border }]}>
+        <SettingsRow
+          label="Help & Guide"
+          sfIcon="questionmark.circle.fill"
+          featherIcon="help-circle"
+          onPress={() => router.push("/help")}
+        />
       </View>
 
       <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>App</Text>
