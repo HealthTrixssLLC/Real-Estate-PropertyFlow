@@ -97,6 +97,18 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
             </Text>
           </View>
         )}
+        {(tour.pendingShowingsCount ?? 0) > 0 && (
+          <View style={styles.metaItem}>
+            {isIOS ? (
+              <SymbolView name="clock.badge.exclamationmark" tintColor="#F5A623" size={13} />
+            ) : (
+              <Feather name="alert-circle" size={13} color="#F5A623" />
+            )}
+            <Text style={[styles.metaText, { color: "#F5A623" }]}>
+              {tour.pendingShowingsCount} pending
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.footer}>

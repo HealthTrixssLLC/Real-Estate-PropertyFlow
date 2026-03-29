@@ -41,6 +41,7 @@ export default function TourSummaryScreen() {
   const tour = data?.tour;
   const stops = data?.stops ?? [];
   const buyer = data?.buyer;
+  const pendingTranscriptions = data?.pendingTranscriptions ?? 0;
 
   const visited = stops.filter((s) => s.visited && !s.skipped);
   const skipped = stops.filter((s) => s.skipped);
@@ -109,6 +110,18 @@ export default function TourSummaryScreen() {
                 {revisits.length} second look{revisits.length !== 1 ? "s" : ""}
               </Text>
             )}
+          </View>
+        )}
+        {pendingTranscriptions > 0 && (
+          <View style={[styles.transcriptionBadge]}>
+            {isIOS ? (
+              <SymbolView name="waveform.badge.magnifyingglass" tintColor="rgba(255,255,255,0.9)" size={14} />
+            ) : (
+              <Feather name="loader" size={14} color="rgba(255,255,255,0.9)" />
+            )}
+            <Text style={styles.transcriptionText}>
+              {pendingTranscriptions} voice note{pendingTranscriptions !== 1 ? "s" : ""} pending transcription
+            </Text>
           </View>
         )}
       </View>
@@ -433,5 +446,21 @@ const styles = StyleSheet.create({
   doneBtnLabel: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
+  },
+  transcriptionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignSelf: "center",
+  },
+  transcriptionText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.85)",
   },
 });

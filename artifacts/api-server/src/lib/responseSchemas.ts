@@ -67,6 +67,7 @@ export const TourDetailResponseSchema = z.object({
   tour: TourSchema,
   stops: z.array(TourStopWithAddressSchema),
   buyer: z.record(z.unknown()).nullable(),
+  pendingTranscriptions: z.number().optional(),
 });
 
 export const TourStopResponseSchema = z.object({

@@ -178,10 +178,23 @@ router.get("/tours/:tourId", async (req: Request, res: Response) => {
       buyer = b ?? null;
     }
 
+    const stopIds = stops.map(s => s.id);
+    let pendingTranscriptions = 0;
+    if (stopIds.length > 0) {
+      const vnRows = await db
+        .select({ id: voiceNotesTable.id, transcriptionStatus: voiceNotesTable.transcriptionStatus, fileUrl: voiceNotesTable.fileUrl })
+        .from(voiceNotesTable)
+        .where(inArray(voiceNotesTable.tourStopId, stopIds));
+      pendingTranscriptions = vnRows.filter(
+        vn => vn.fileUrl !== "" && vn.transcriptionStatus !== "completed" && vn.transcriptionStatus !== "failed"
+      ).length;
+    }
+
     sendValidated(res, TourDetailResponseSchema, {
       tour: { ...tour, stopCount, approvedCount, pendingShowingsCount },
       stops: stopsWithAddress,
       buyer,
+      pendingTranscriptions,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get tour");

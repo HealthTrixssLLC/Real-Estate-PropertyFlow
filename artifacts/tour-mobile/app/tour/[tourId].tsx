@@ -29,6 +29,7 @@ import type { ActionButton } from "@/components/ActionTray";
 import { StatusChip } from "@/components/StatusChip";
 import { StopProgressBar } from "@/components/StopProgressBar";
 import Colors from "@/constants/colors";
+import { useTourContext } from "@/context/TourContext";
 
 function StopCard({
   stop,
@@ -170,9 +171,18 @@ export default function ActiveTourScreen() {
   const isWeb = Platform.OS === "web";
   const navigation = useNavigation();
 
-  const { data, isLoading, refetch } = useGetTour(tourId ?? "", {
+  const { cachedTours, cacheTourDetail } = useTourContext();
+  const cachedData = tourId ? cachedTours[tourId] : undefined;
+
+  const { data: liveData, isLoading, refetch } = useGetTour(tourId ?? "", {
     query: { queryKey: getGetTourQueryKey(tourId ?? ""), enabled: !!tourId },
   });
+
+  const data = liveData ?? cachedData;
+
+  useEffect(() => {
+    if (liveData) cacheTourDetail(liveData);
+  }, [liveData, cacheTourDetail]);
 
   const tour = data?.tour;
   const stops: TourStopWithAddress[] = data?.stops ?? [];
@@ -291,6 +301,13 @@ export default function ActiveTourScreen() {
         loading: isCompleting,
         onPress: handleComplete,
       });
+      actionButtons.push({
+        id: "record",
+        label: "Record Note",
+        sfIcon: "mic.fill",
+        featherIcon: "mic",
+        onPress: () => router.push(`/stop/${currentStop.id}`),
+      });
     }
   }
 
@@ -304,7 +321,7 @@ export default function ActiveTourScreen() {
     });
   }
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <View style={[styles.center, { backgroundColor: C.background }]}>
         <ActivityIndicator color={C.accent} />

@@ -457,6 +457,7 @@ export interface TourDetailResponse {
   tour: Tour;
   stops: TourStopWithAddress[];
   buyer?: Buyer | null;
+  pendingTranscriptions?: number;
 }
 
 export interface AddPropertyToTourRequest {

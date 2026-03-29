@@ -6,6 +6,7 @@ import {
   getGetTourStopQueryKey,
 } from "@workspace/api-client-react";
 import type { UpdateTourStopRequest } from "@workspace/api-client-react";
+import NetInfo from "@react-native-community/netinfo";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { SymbolView, type SFSymbol } from "expo-symbols";
@@ -85,9 +86,21 @@ export default function StopDetailScreen() {
     }
   }, [property, navigation]);
 
-  const handleAddNote = () => {
-    if (!noteText.trim() || !stopId) return;
-    addNote({ stopId, data: { note: noteText.trim() } });
+  const handleAddNote = async () => {
+    const text = noteText.trim();
+    if (!text || !stopId) return;
+    const net = await NetInfo.fetch();
+    if (!net.isConnected) {
+      const { enqueueNote } = await import("@/utils/noteQueue");
+      await enqueueNote(stopId, text);
+      setNoteText("");
+      Alert.alert(
+        "Saved Offline",
+        "Note saved locally. It will upload automatically when you're back online."
+      );
+      return;
+    }
+    addNote({ stopId, data: { note: text } });
   };
 
   const handleVoiceComplete = async (uri: string, durationSeconds: number) => {
@@ -433,41 +446,69 @@ export default function StopDetailScreen() {
           style={styles.section}
           onLayout={(e) => { voiceY.current = e.nativeEvent.layout.y; }}
         >
-          <Text style={[styles.sectionTitle, { color: C.text }]}>Voice Notes</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Notes</Text>
+          {voiceNotes.length > 0 && (
+            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginBottom: 12 }]}>
+              {voiceNotes.map((vn, i) => {
+                const isTypedOnly = !vn.fileUrl || vn.fileUrl === "";
+                const isPendingTranscription = !isTypedOnly && vn.transcriptionStatus !== "completed" && vn.transcriptionStatus !== "failed";
+                return (
+                  <View key={vn.id} style={[styles.voiceRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}>
+                    {isTypedOnly ? (
+                      isIOS ? (
+                        <SymbolView name="text.bubble" tintColor={C.textSecondary} size={16} />
+                      ) : (
+                        <Feather name="message-square" size={16} color={C.textSecondary} />
+                      )
+                    ) : (
+                      isIOS ? (
+                        <SymbolView name="waveform" tintColor={C.accent} size={16} />
+                      ) : (
+                        <Feather name="mic" size={16} color={C.accent} />
+                      )
+                    )}
+                    <View style={styles.voiceContent}>
+                      {isTypedOnly ? (
+                        <Text style={[styles.voiceTranscript, { color: C.text }]}>
+                          {vn.typedNote ?? ""}
+                        </Text>
+                      ) : (
+                        <>
+                          <Text style={[styles.voiceTime, { color: C.text }]}>
+                            {vn.durationSeconds ? `${Math.round(vn.durationSeconds)}s voice recording` : "Voice note"}
+                          </Text>
+                          {vn.typedNote ? (
+                            <Text style={[styles.voiceTranscript, { color: C.textSecondary }]}>
+                              {vn.typedNote}
+                            </Text>
+                          ) : isPendingTranscription ? (
+                            <Text style={[styles.voiceStatus, { color: C.accent }]}>
+                              Transcribing…
+                            </Text>
+                          ) : vn.transcriptionStatus === "failed" ? (
+                            <Text style={[styles.voiceStatus, { color: C.coral }]}>
+                              Transcription unavailable
+                            </Text>
+                          ) : null}
+                        </>
+                      )}
+                      <Text style={[styles.voiceStatus, { color: C.textTertiary }]}>
+                        {new Date(vn.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
           <VoiceRecorder
             onRecordingComplete={handleVoiceComplete}
             isUploading={isUploadingVoice}
           />
-          {voiceNotes.length > 0 && (
-            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginTop: 12 }]}>
-              {voiceNotes.map((vn, i) => (
-                <View key={vn.id} style={[styles.voiceRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}>
-                  {isIOS ? (
-                    <SymbolView name="waveform" tintColor={C.accent} size={16} />
-                  ) : (
-                    <Feather name="mic" size={16} color={C.accent} />
-                  )}
-                  <View style={styles.voiceContent}>
-                    <Text style={[styles.voiceTime, { color: C.text }]}>
-                      {vn.durationSeconds ? `${vn.durationSeconds}s recording` : "Voice note"}
-                    </Text>
-                    {vn.typedNote && (
-                      <Text style={[styles.voiceTranscript, { color: C.textSecondary }]}>
-                        {vn.typedNote}
-                      </Text>
-                    )}
-                    <Text style={[styles.voiceStatus, { color: C.textTertiary }]}>
-                      Transcription: {vn.transcriptionStatus}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: C.text }]}>Add Note</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Add Text Note</Text>
           <View style={[styles.noteInput, { backgroundColor: C.card, borderColor: C.border }]}>
             <TextInput
               testID="note-input"

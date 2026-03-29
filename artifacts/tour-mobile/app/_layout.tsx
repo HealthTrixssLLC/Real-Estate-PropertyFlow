@@ -76,14 +76,19 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
+    const apiBase = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+    const flushAll = () => {
+      import("@/utils/voiceUploadQueue").then(({ flushQueue }) => flushQueue());
+      import("@/utils/noteQueue").then(({ flushNoteQueue }) =>
+        flushNoteQueue(apiBase, () => ({}))
+      );
+    };
     let wasOffline = false;
     const unsubscribe = NetInfo.addEventListener((state) => {
-      if (wasOffline && state.isConnected) {
-        import("@/utils/voiceUploadQueue").then(({ flushQueue }) => flushQueue());
-      }
+      if (wasOffline && state.isConnected) flushAll();
       wasOffline = !state.isConnected;
     });
-    import("@/utils/voiceUploadQueue").then(({ flushQueue }) => flushQueue());
+    flushAll();
     return () => unsubscribe();
   }, []);
 
