@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
 import { CreatePropertyBody, UpdatePropertyBody } from "@workspace/api-zod";
+import { idParams, parseParams, parseBody } from "../lib/validate";
 
 const router: IRouter = Router();
 
@@ -17,28 +18,25 @@ router.post("/properties", (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const parsed = CreatePropertyBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
-    return;
-  }
+  const body = parseBody(CreatePropertyBody, req, res);
+  if (!body) return;
   const now = new Date().toISOString();
   const property = {
     id: randomUUID(),
-    ...parsed.data,
-    placeId: parsed.data.placeId ?? null,
-    lat: parsed.data.lat ?? null,
-    lng: parsed.data.lng ?? null,
-    city: parsed.data.city ?? null,
-    state: parsed.data.state ?? null,
-    zip: parsed.data.zip ?? null,
-    mlsId: parsed.data.mlsId ?? null,
-    listPrice: parsed.data.listPrice ?? null,
-    beds: parsed.data.beds ?? null,
-    baths: parsed.data.baths ?? null,
-    squareFeet: parsed.data.squareFeet ?? null,
-    nickname: parsed.data.nickname ?? null,
-    notes: parsed.data.notes ?? null,
+    ...body,
+    placeId: body.placeId ?? null,
+    lat: body.lat ?? null,
+    lng: body.lng ?? null,
+    city: body.city ?? null,
+    state: body.state ?? null,
+    zip: body.zip ?? null,
+    mlsId: body.mlsId ?? null,
+    listPrice: body.listPrice ?? null,
+    beds: body.beds ?? null,
+    baths: body.baths ?? null,
+    squareFeet: body.squareFeet ?? null,
+    nickname: body.nickname ?? null,
+    notes: body.notes ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -50,6 +48,8 @@ router.get("/properties/:propertyId", (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const params = parseParams(idParams.propertyId, req, res);
+  if (!params) return;
   res.status(404).json({ error: "Property not found" });
 });
 
@@ -58,11 +58,10 @@ router.put("/properties/:propertyId", (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const parsed = UpdatePropertyBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
-    return;
-  }
+  const params = parseParams(idParams.propertyId, req, res);
+  if (!params) return;
+  const body = parseBody(UpdatePropertyBody, req, res);
+  if (!body) return;
   res.status(404).json({ error: "Property not found" });
 });
 
@@ -71,6 +70,8 @@ router.delete("/properties/:propertyId", (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const params = parseParams(idParams.propertyId, req, res);
+  if (!params) return;
   res.status(204).send();
 });
 

@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
 import multer from "multer";
+import { idParams, parseParams } from "../lib/validate";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -23,15 +24,14 @@ router.post(
       res.status(400).json({ error: "audio file is required" });
       return;
     }
-    const durationSeconds = req.body?.durationSeconds
-      ? Number(req.body.durationSeconds)
-      : null;
+    const rawDuration = req.body?.durationSeconds;
+    const durationSeconds = rawDuration !== undefined ? Number(rawDuration) : null;
     const now = new Date().toISOString();
     const voiceNote = {
       id: randomUUID(),
       tourStopId,
       fileUrl: "",
-      durationSeconds: isNaN(durationSeconds as number) ? null : durationSeconds,
+      durationSeconds: durationSeconds !== null && !isNaN(durationSeconds) ? durationSeconds : null,
       transcriptionStatus: "pending" as const,
       typedNote: null,
       createdAt: now,
@@ -46,6 +46,8 @@ router.post("/voice-notes/:voiceNoteId/transcribe", (req: Request, res: Response
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const params = parseParams(idParams.voiceNoteId, req, res);
+  if (!params) return;
   res.status(404).json({ error: "Voice note not found" });
 });
 
@@ -54,6 +56,8 @@ router.get("/voice-notes/:voiceNoteId", (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const params = parseParams(idParams.voiceNoteId, req, res);
+  if (!params) return;
   res.status(404).json({ error: "Voice note not found" });
 });
 
