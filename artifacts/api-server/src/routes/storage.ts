@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { z } from "zod";
 import { sendValidated, UploadUrlResponseSchema } from "../lib/responseSchemas";
-import { eq, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, voiceNotesTable, tourStopsTable, toursTable } from "@workspace/db";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
@@ -75,7 +75,7 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
 
-    const voiceNotes = await db
+    const [voiceNote] = await db
       .select({
         id: voiceNotesTable.id,
         fileUrl: voiceNotesTable.fileUrl,
@@ -84,14 +84,13 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       .from(voiceNotesTable)
       .innerJoin(tourStopsTable, eq(tourStopsTable.id, voiceNotesTable.tourStopId))
       .innerJoin(toursTable, eq(toursTable.id, tourStopsTable.tourId))
-      .where(like(voiceNotesTable.fileUrl, `%${wildcardPath}%`));
+      .where(eq(voiceNotesTable.fileUrl, objectPath));
 
-    if (voiceNotes.length === 0) {
+    if (!voiceNote) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
-    const ownsObject = voiceNotes.some(vn => vn.agentId === user.id);
-    if (!ownsObject) {
+    if (voiceNote.agentId !== user.id) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }

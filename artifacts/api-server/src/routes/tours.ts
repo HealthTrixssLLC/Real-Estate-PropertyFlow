@@ -10,6 +10,7 @@ import {
   showingRequestsTable,
   tourSummariesTable,
   propertySummariesTable,
+  voiceNotesTable,
 } from "@workspace/db";
 import {
   CreateTourBody,
@@ -506,9 +507,8 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
   const body = parseBody(SkipTourStopBody, req, res);
   if (!body) return;
   const user = (req as Express.AuthedRequest).user;
-  const rawBody = req.body as { currentLat?: number; currentLng?: number };
-  const currentLat = typeof rawBody.currentLat === "number" ? rawBody.currentLat : null;
-  const currentLng = typeof rawBody.currentLng === "number" ? rawBody.currentLng : null;
+  const currentLat = body.currentLat ?? null;
+  const currentLng = body.currentLng ?? null;
 
   try {
     const tour = await assertTourOwner(params.tourId, user.id, res);
@@ -735,6 +735,18 @@ router.post("/tours/:tourId/generate-summary", async (req: Request, res: Respons
       : [];
     const summaryMap = new Map(propSummaries.map(ps => [ps.tourStopId, ps]));
 
+    const allVoiceNotes = stops.length > 0
+      ? await db.select().from(voiceNotesTable).where(inArray(voiceNotesTable.tourStopId, stops.map(s => s.id)))
+      : [];
+    const notesMap = new Map<string, string[]>();
+    for (const vn of allVoiceNotes) {
+      if (vn.typedNote) {
+        const arr = notesMap.get(vn.tourStopId) ?? [];
+        arr.push(vn.typedNote);
+        notesMap.set(vn.tourStopId, arr);
+      }
+    }
+
     const stopDescriptions = stops.map(s => {
       const p = propMap.get(s.propertyId);
       const ps = summaryMap.get(s.id);
@@ -743,7 +755,8 @@ router.post("/tours/:tourId/generate-summary", async (req: Request, res: Respons
         s.buyerInterest != null ? `Interest: ${s.buyerInterest}/5` : null,
       ].filter(Boolean).join(", ");
       const flags = [s.followUpFlag ? "Follow-up" : null, s.revisitFlag ? "Revisit" : null].filter(Boolean).join(", ");
-      return `- ${p?.formattedAddress ?? "Unknown"} | Status: ${s.approvedStatus} | ${ratings} | ${flags} | ${ps?.summaryText ?? "No AI summary"}`;
+      const notes = (notesMap.get(s.id) ?? []).join("; ") || "None";
+      return `- ${p?.formattedAddress ?? "Unknown"} | Status: ${s.approvedStatus} | ${ratings} | ${flags} | Notes: ${notes} | ${ps?.summaryText ?? "No AI summary"}`;
     }).join("\n");
 
     const prompt = `You are a real estate agent assistant. Here is the summary of today's property tour titled "${tour.title}":

@@ -629,6 +629,8 @@ export const SkipTourStopBody = zod.object({
     "other",
   ]),
   notes: zod.string().optional(),
+  currentLat: zod.number().optional(),
+  currentLng: zod.number().optional(),
 });
 
 export const SkipTourStopResponse = zod.object({
