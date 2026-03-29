@@ -38,9 +38,6 @@ export default function AdminAI() {
           summarizationProvider: sumProvider,
           draftingEnabled: fd.get("draft_enabled") === "on",
           patternAnalysisEnabled: fd.get("pattern_enabled") === "on",
-          azureOpenAiBaseUrl: c?.azureOpenAiConfigured ? undefined : undefined,
-          azureOpenAiModel: undefined,
-          azureSpeechRegion: undefined,
         },
       })
       toast({ title: "Feature settings saved" })
@@ -179,33 +176,45 @@ export default function AdminAI() {
             <CardContent className="p-6">
               <form onSubmit={handleSaveEndpoints} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="azure_openai_base_url" className="text-sm font-semibold">Azure OpenAI Base URL</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="azure_openai_base_url" className="text-sm font-semibold">Azure OpenAI Base URL</Label>
+                    {c?.azureOpenAiConfigured && (
+                      <span className="text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">Configured</span>
+                    )}
+                  </div>
                   <Input
                     id="azure_openai_base_url"
                     name="azure_openai_base_url"
                     type="url"
-                    placeholder="https://<resource>.openai.azure.com/"
-                    defaultValue=""
+                    placeholder={c?.azureOpenAiConfigured ? "Leave blank to keep current value" : "https://<resource>.openai.azure.com/"}
                   />
-                  <p className="text-xs text-muted-foreground">Your Azure OpenAI resource endpoint. Set AZURE_OPENAI_BASE_URL in environment secrets to configure.</p>
+                  <p className="text-xs text-muted-foreground">Your Azure OpenAI resource endpoint. Set AZURE_OPENAI_BASE_URL in environment secrets.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="azure_openai_model" className="text-sm font-semibold">Azure OpenAI Deployment Name</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="azure_openai_model" className="text-sm font-semibold">Azure OpenAI Deployment Name</Label>
+                    {c?.azureOpenAiConfigured && (
+                      <span className="text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">Configured</span>
+                    )}
+                  </div>
                   <Input
                     id="azure_openai_model"
                     name="azure_openai_model"
-                    placeholder="gpt-4o"
-                    defaultValue=""
+                    placeholder={c?.azureOpenAiConfigured ? "Leave blank to keep current value" : "gpt-4o"}
                   />
                   <p className="text-xs text-muted-foreground">The deployment model name (e.g. gpt-4o, gpt-35-turbo). Set AZURE_OPENAI_MODEL in environment secrets.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="azure_speech_region" className="text-sm font-semibold">Azure Speech Region</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="azure_speech_region" className="text-sm font-semibold">Azure Speech Region</Label>
+                    {c?.azureSpeechConfigured && (
+                      <span className="text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">Configured</span>
+                    )}
+                  </div>
                   <Input
                     id="azure_speech_region"
                     name="azure_speech_region"
-                    placeholder="eastus"
-                    defaultValue=""
+                    placeholder={c?.azureSpeechConfigured ? "Leave blank to keep current value" : "eastus"}
                   />
                   <p className="text-xs text-muted-foreground">Azure Speech Services region (e.g. eastus, westus2). Set AZURE_SPEECH_REGION in environment secrets.</p>
                 </div>
