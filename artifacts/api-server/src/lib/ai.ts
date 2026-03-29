@@ -40,7 +40,7 @@ class AzureOpenAiTextProvider implements AiTextProvider {
   async generateText(prompt: string): Promise<string> {
     const { apiKey, baseUrl, model } = this.getConfig();
     if (!apiKey || !baseUrl) throw new Error("Azure OpenAI not configured: missing AZURE_OPENAI_API_KEY or AZURE_OPENAI_BASE_URL");
-    const url = `${baseUrl.replace(/\/$/, "")}/openai/deployments/${model}/chat/completions?api-version=2024-02-15-preview`;
+    const url = `${baseUrl.replace(/\/$/, "")}/openai/deployments/${model}/chat/completions?api-version=2024-12-01-preview`;
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "api-key": apiKey },
