@@ -187,6 +187,10 @@ export const ListPropertiesQueryParams = zod.object({
     .boolean()
     .optional()
     .describe("When true, include archived properties in the response"),
+  q: zod.coerce
+    .string()
+    .optional()
+    .describe("Search term to filter by address, nickname, or MLS ID"),
 });
 
 export const ListPropertiesResponse = zod.object({

@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or, ilike } from "drizzle-orm";
 import { db, propertiesTable } from "@workspace/db";
 import { CreatePropertyBody, UpdatePropertyBody } from "@workspace/api-zod";
 import { idParams, parseParams, parseBody } from "../lib/validate";
@@ -15,14 +15,22 @@ router.get("/properties", async (req: Request, res: Response) => {
   }
   const user = (req as Express.AuthedRequest).user;
   const includeArchived = req.query.includeArchived === "true";
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : undefined;
   try {
-    const conditions = includeArchived
+    const baseFilter = includeArchived
       ? eq(propertiesTable.agentId, user.id)
       : and(eq(propertiesTable.agentId, user.id), eq(propertiesTable.archived, false));
+    const searchFilter = q
+      ? or(
+          ilike(propertiesTable.formattedAddress, `%${q}%`),
+          ilike(propertiesTable.nickname, `%${q}%`),
+          ilike(propertiesTable.mlsId, `%${q}%`),
+        )
+      : undefined;
     const properties = await db
       .select()
       .from(propertiesTable)
-      .where(conditions)
+      .where(searchFilter ? and(baseFilter, searchFilter) : baseFilter)
       .orderBy(propertiesTable.createdAt);
     sendValidated(res, PropertyListResponseSchema, { properties });
   } catch (err) {

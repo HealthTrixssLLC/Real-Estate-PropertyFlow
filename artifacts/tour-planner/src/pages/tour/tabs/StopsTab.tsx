@@ -1,12 +1,17 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
-import { useAddPropertyToTour, useReorderTourStops, useOptimizeTourRoute, useDeleteTourStop } from "@workspace/api-client-react"
+import {
+  useAddPropertyToTour,
+  useReorderTourStops,
+  useOptimizeTourRoute,
+  useDeleteTourStop,
+  useListProperties,
+} from "@workspace/api-client-react"
 import type { TourStop } from "@workspace/api-client-react"
-import { GripVertical, Plus, Route, Loader2, MapPin, Building2, Trash2 } from "lucide-react"
+import { GripVertical, Plus, Route, Loader2, MapPin, Building2, Trash2, Search, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useQueryClient } from "@tanstack/react-query"
@@ -29,10 +34,17 @@ interface StopsTabProps {
   tourStatus?: string
 }
 
+const DEBOUNCE_MS = 300
+
 export default function StopsTab({ tourId, stops: initialStops, tourStatus }: StopsTabProps) {
   const [stops, setStops] = useState<TourStop[]>(initialStops)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [stopToDelete, setStopToDelete] = useState<TourStop | null>(null)
+  const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const addProp = useAddPropertyToTour()
   const reorder = useReorderTourStops()
   const optimize = useOptimizeTourRoute()
@@ -40,7 +52,37 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
+  const searchParams = debouncedSearch ? { q: debouncedSearch } : undefined
+  const { data: propertiesData, isFetching: propertiesFetching } = useListProperties(searchParams)
+  const catalogProperties = propertiesData?.properties ?? []
+
   useEffect(() => { setStops(initialStops) }, [initialStops])
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, DEBOUNCE_MS)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [search])
+
+  const alreadyOnTourIds = useMemo(
+    () => new Set(stops.map(s => s.propertyId)),
+    [stops]
+  )
+
+  const selectedProperty = catalogProperties.find(p => p.id === selectedPropertyId) ?? null
+
+  const handleDialogClose = (open: boolean) => {
+    setIsAddOpen(open)
+    if (!open) {
+      setSearch("")
+      setDebouncedSearch("")
+      setSelectedPropertyId(null)
+    }
+  }
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return
@@ -61,19 +103,18 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
     }
   }
 
-  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const fd = new FormData(e.currentTarget)
+  const handleAdd = async () => {
+    if (!selectedPropertyId || !selectedProperty) return
     try {
       await addProp.mutateAsync({
         tourId,
         data: {
-          formattedAddress: fd.get("address") as string,
-          mlsId: (fd.get("mlsId") as string) || undefined,
+          propertyId: selectedPropertyId,
+          formattedAddress: selectedProperty.formattedAddress,
         }
       })
       toast({ title: "Property added to tour" })
-      setIsAddOpen(false)
+      handleDialogClose(false)
       await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) })
     } catch {
       toast({ title: "Failed to add property", variant: "destructive" })
@@ -115,28 +156,106 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
           </Button>
         </div>
 
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <Dialog open={isAddOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
             <Button className="gap-2 shadow-md shadow-primary/20">
               <Plus className="h-4 w-4" />
               Add Property Stop
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Property to Tour</DialogTitle></DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label>Full Address <span className="text-destructive">*</span></Label>
-                <Input name="address" required placeholder="123 Oak St, City, State" />
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add Property to Tour</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                {propertiesFetching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                )}
+                <Input
+                  className="pl-9 pr-8"
+                  placeholder="Search by address, nickname, or MLS ID..."
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setSelectedPropertyId(null) }}
+                  autoFocus
+                />
               </div>
-              <div className="space-y-2">
-                <Label>MLS ID (Optional)</Label>
-                <Input name="mlsId" placeholder="#12345" />
-              </div>
-              <Button type="submit" className="w-full mt-4" disabled={addProp.isPending}>
-                {addProp.isPending ? "Adding..." : "Add to Route"}
+
+              {!propertiesFetching && catalogProperties.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  <Building2 className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  {debouncedSearch
+                    ? "No properties match your search."
+                    : "No properties in your catalog yet. Add properties on the Properties page first."
+                  }
+                </div>
+              ) : (
+                <div className="max-h-72 overflow-y-auto space-y-1 -mx-1 px-1">
+                  {catalogProperties.map(prop => {
+                    const alreadyAdded = alreadyOnTourIds.has(prop.id)
+                    const isSelected = selectedPropertyId === prop.id
+                    return (
+                      <button
+                        key={prop.id}
+                        type="button"
+                        disabled={alreadyAdded}
+                        onClick={() => setSelectedPropertyId(isSelected ? null : prop.id)}
+                        className={cn(
+                          "w-full text-left rounded-lg px-3 py-2.5 flex items-center gap-3 transition-colors border",
+                          alreadyAdded
+                            ? "opacity-50 cursor-not-allowed bg-muted/40 border-transparent"
+                            : isSelected
+                              ? "bg-primary/10 border-primary/40 hover:bg-primary/15"
+                              : "bg-background border-transparent hover:bg-muted/50 hover:border-border/60"
+                        )}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate flex items-center gap-2">
+                            {prop.nickname || prop.formattedAddress}
+                            {alreadyAdded && (
+                              <Badge variant="secondary" className="text-[10px] shrink-0">Already added</Badge>
+                            )}
+                          </div>
+                          {prop.nickname && (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">{prop.formattedAddress}</div>
+                          )}
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            {prop.mlsId && <span>MLS: {prop.mlsId}</span>}
+                            {prop.listPrice != null && <span>${prop.listPrice.toLocaleString()}</span>}
+                            {prop.beds != null && <span>{prop.beds} bd</span>}
+                            {prop.baths != null && <span>{prop.baths} ba</span>}
+                          </div>
+                        </div>
+                        {isSelected && !alreadyAdded && (
+                          <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {selectedProperty && (
+                <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-sm text-foreground flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="font-medium truncate">{selectedProperty.nickname || selectedProperty.formattedAddress}</span>
+                </div>
+              )}
+
+              <Button
+                className="w-full"
+                disabled={!selectedPropertyId || addProp.isPending}
+                onClick={handleAdd}
+              >
+                {addProp.isPending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" />Adding...</>
+                ) : (
+                  "Add to Route"
+                )}
               </Button>
-            </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

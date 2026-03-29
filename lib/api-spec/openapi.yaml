@@ -253,6 +253,12 @@ paths:
           description: When true, include archived properties in the response
           schema:
             type: boolean
+        - name: q
+          in: query
+          required: false
+          description: Search term to filter by address, nickname, or MLS ID
+          schema:
+            type: string
       responses:
         '200':
           description: List of properties

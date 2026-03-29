@@ -11,4 +11,8 @@ export type ListPropertiesParams = {
    * When true, include archived properties in the response
    */
   includeArchived?: boolean;
+  /**
+   * Search term to filter by address, nickname, or MLS ID
+   */
+  q?: string;
 };
