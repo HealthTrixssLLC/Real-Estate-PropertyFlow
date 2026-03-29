@@ -77,7 +77,7 @@ router.post(
       const stop = await assertStopOwner(tourStopId, user.id, res);
       if (!stop) return;
 
-      let fileUrl = "";
+      let fileUrl: string;
       try {
         const signedUrl = await storageService.getObjectEntityUploadURL();
         const uploadResponse = await fetch(signedUrl, {
@@ -85,11 +85,16 @@ router.post(
           headers: { "Content-Type": req.file.mimetype },
           body: req.file.buffer,
         });
-        if (uploadResponse.ok) {
-          fileUrl = storageService.normalizeObjectEntityPath(signedUrl);
+        if (!uploadResponse.ok) {
+          req.log.error({ status: uploadResponse.status }, "Object storage upload failed");
+          res.status(502).json({ error: "Failed to upload audio to object storage" });
+          return;
         }
+        fileUrl = storageService.normalizeObjectEntityPath(signedUrl);
       } catch (storageErr) {
-        req.log.warn({ storageErr }, "Object storage upload failed, continuing with empty fileUrl");
+        req.log.error({ storageErr }, "Object storage upload error");
+        res.status(502).json({ error: "Failed to upload audio to object storage" });
+        return;
       }
 
       const [voiceNote] = await db

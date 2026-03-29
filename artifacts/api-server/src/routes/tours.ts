@@ -22,6 +22,15 @@ import {
 import { idParams, parseParams, parseBody } from "../lib/validate";
 import { generateText } from "../lib/ai";
 import { aiConfig } from "../lib/aiConfig";
+import {
+  sendValidated,
+  TourListResponseSchema,
+  TourResponseSchema,
+  TourDetailResponseSchema,
+  TourStopResponseSchema,
+  SkipStopResponseSchema,
+  OptimizeResponseSchema,
+} from "../lib/responseSchemas";
 
 const router: IRouter = Router();
 
@@ -36,6 +45,14 @@ async function assertTourOwner(tourId: string, agentId: string, res: Response): 
     return null;
   }
   return tour;
+}
+
+function assertTourNotPublished(tour: typeof toursTable.$inferSelect, res: Response): boolean {
+  if (tour.status === "published") {
+    res.status(409).json({ error: "Tour is published. Itinerary is locked and cannot be modified." });
+    return false;
+  }
+  return true;
 }
 
 async function getStopCounts(tourId: string) {
@@ -74,7 +91,7 @@ router.get("/tours", async (req: Request, res: Response) => {
       approvedCount: aggMap.get(t.id)?.approvedCount ?? 0,
       pendingShowingsCount: aggMap.get(t.id)?.pendingCount ?? 0,
     }));
-    res.json({ tours });
+    sendValidated(res, TourListResponseSchema, { tours });
   } catch (err) {
     req.log.error({ err }, "Failed to list tours");
     res.status(500).json({ error: "Internal server error" });
@@ -94,7 +111,7 @@ router.post("/tours", async (req: Request, res: Response) => {
       .insert(toursTable)
       .values({ id: randomUUID(), agentId: user.id, ...body, status: "draft" })
       .returning();
-    res.status(201).json({ tour: { ...tour, stopCount: 0, approvedCount: 0, pendingShowingsCount: 0 } });
+    sendValidated(res, TourResponseSchema, { tour: { ...tour, stopCount: 0, approvedCount: 0, pendingShowingsCount: 0 } }, 201);
   } catch (err) {
     req.log.error({ err }, "Failed to create tour");
     res.status(500).json({ error: "Internal server error" });
@@ -130,7 +147,7 @@ router.get("/tours/:tourId", async (req: Request, res: Response) => {
       buyer = b ?? null;
     }
 
-    res.json({
+    sendValidated(res, TourDetailResponseSchema, {
       tour: { ...tour, stopCount, approvedCount, pendingShowingsCount },
       stops,
       buyer,
@@ -155,13 +172,17 @@ router.put("/tours/:tourId", async (req: Request, res: Response) => {
     const existing = await assertTourOwner(params.tourId, user.id, res);
     if (!existing) return;
 
+    const itineraryFields = ["date", "startTime", "startAddress", "startLat", "startLng", "endAddress", "endLat", "endLng"] as const;
+    const isItineraryChange = itineraryFields.some(f => f in body);
+    if (isItineraryChange && !assertTourNotPublished(existing, res)) return;
+
     const [tour] = await db
       .update(toursTable)
       .set({ ...body, updatedAt: new Date() })
       .where(eq(toursTable.id, params.tourId))
       .returning();
     const counts = await getStopCounts(params.tourId);
-    res.json({ tour: { ...tour, ...counts } });
+    sendValidated(res, TourResponseSchema, { tour: { ...tour, ...counts } });
   } catch (err) {
     req.log.error({ err }, "Failed to update tour");
     res.status(500).json({ error: "Internal server error" });
@@ -200,6 +221,7 @@ router.post("/tours/:tourId/properties", async (req: Request, res: Response) => 
   try {
     const tour = await assertTourOwner(params.tourId, user.id, res);
     if (!tour) return;
+    if (!assertTourNotPublished(tour, res)) return;
 
     let propertyId = body.propertyId;
 
@@ -237,7 +259,7 @@ router.post("/tours/:tourId/properties", async (req: Request, res: Response) => 
       await db.update(toursTable).set({ status: "active", updatedAt: new Date() }).where(eq(toursTable.id, params.tourId));
     }
 
-    res.status(201).json({ stop });
+    sendValidated(res, TourStopResponseSchema, { stop }, 201);
   } catch (err) {
     req.log.error({ err }, "Failed to add property to tour");
     res.status(500).json({ error: "Internal server error" });
@@ -304,6 +326,7 @@ router.post("/tours/:tourId/optimize", async (req: Request, res: Response) => {
   try {
     const tour = await assertTourOwner(params.tourId, user.id, res);
     if (!tour) return;
+    if (!assertTourNotPublished(tour, res)) return;
 
     let stops = await db
       .select()
@@ -317,11 +340,11 @@ router.post("/tours/:tourId/optimize", async (req: Request, res: Response) => {
     const activeStops = stops.filter(s => !s.skipped);
 
     if (activeStops.length === 0) {
-      res.json({ orderedStopIds: [], estimatedDriveTimeMinutes: 0 });
+      sendValidated(res, OptimizeResponseSchema, { orderedStopIds: [], estimatedDriveTimeMinutes: 0 });
       return;
     }
     if (activeStops.length === 1) {
-      res.json({ orderedStopIds: [activeStops[0].id], estimatedDriveTimeMinutes: 0 });
+      sendValidated(res, OptimizeResponseSchema, { orderedStopIds: [activeStops[0].id], estimatedDriveTimeMinutes: 0 });
       return;
     }
 
@@ -395,7 +418,7 @@ router.post("/tours/:tourId/optimize", async (req: Request, res: Response) => {
       }
     });
 
-    res.json({
+    sendValidated(res, OptimizeResponseSchema, {
       orderedStopIds: orderedIds,
       estimatedDriveTimeMinutes: Math.round(totalDriveSeconds / 60),
     });
@@ -418,6 +441,7 @@ router.put("/tours/:tourId/stops/order", async (req: Request, res: Response) => 
   try {
     const tour = await assertTourOwner(params.tourId, user.id, res);
     if (!tour) return;
+    if (!assertTourNotPublished(tour, res)) return;
 
     await db.transaction(async (tx) => {
       for (let i = 0; i < body.orderedStopIds.length; i++) {
@@ -439,6 +463,11 @@ router.put("/tours/:tourId/stops/order", async (req: Request, res: Response) => 
   }
 });
 
+const SkipWithLocationBody = SkipTourStopBody.extend({
+  currentLat: require("zod").z.number().optional(),
+  currentLng: require("zod").z.number().optional(),
+});
+
 router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -449,6 +478,10 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
   const body = parseBody(SkipTourStopBody, req, res);
   if (!body) return;
   const user = (req as Express.AuthedRequest).user;
+  const rawBody = req.body as { currentLat?: number; currentLng?: number };
+  const currentLat = typeof rawBody.currentLat === "number" ? rawBody.currentLat : null;
+  const currentLng = typeof rawBody.currentLng === "number" ? rawBody.currentLng : null;
+
   try {
     const tour = await assertTourOwner(params.tourId, user.id, res);
     if (!tour) return;
@@ -490,9 +523,7 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
       )
       .orderBy(tourStopsTable.sequence);
 
-    const nextStop = remaining[0] ?? null;
-
-    if (remaining.length >= 2) {
+    if (remaining.length >= 2 && process.env.GOOGLE_MAPS_API_KEY) {
       const properties = await db
         .select()
         .from(propertiesTable)
@@ -509,13 +540,32 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
         }
       });
 
-      if (coords.length >= 2 && process.env.GOOGLE_MAPS_API_KEY) {
+      if (coords.length >= 2) {
         try {
-          const matrix = await googleDistanceMatrix(coords, coords);
-          const orderedLocalIdx = nearestNeighborOrder(coords.length, matrix, 0);
-          const orderedStopIds = orderedLocalIdx.map(li => remaining[geoIdx[li]].id);
-          const ungeo = remaining.filter((_, i) => !geoIdx.includes(i)).map(s => s.id);
-          const allOrdered = [...orderedStopIds, ...ungeo];
+          let matrixPoints: Array<{ lat: number; lng: number }> = coords;
+          let startOffset = 0;
+          const origin = currentLat != null && currentLng != null
+            ? { lat: currentLat, lng: currentLng }
+            : (tour.startLat != null && tour.startLng != null ? { lat: tour.startLat, lng: tour.startLng } : null);
+
+          if (origin) {
+            matrixPoints = [origin, ...coords];
+            startOffset = 1;
+          }
+
+          const fullMatrix = await googleDistanceMatrix(matrixPoints, matrixPoints);
+          const coordsMatrix = fullMatrix.slice(startOffset).map(row => row.slice(startOffset));
+
+          let firstGeoIdx = 0;
+          if (startOffset === 1) {
+            const startRow = fullMatrix[0].slice(startOffset);
+            firstGeoIdx = startRow.indexOf(Math.min(...startRow));
+          }
+
+          const orderedLocalIdx = nearestNeighborOrder(coords.length, coordsMatrix, firstGeoIdx);
+          const orderedGeoIds = orderedLocalIdx.map(li => remaining[geoIdx[li]].id);
+          const ungeoIds = remaining.filter((_, i) => !geoIdx.includes(i)).map(s => s.id);
+          const allOrdered = [...orderedGeoIds, ...ungeoIds];
 
           await db.transaction(async (tx) => {
             for (let i = 0; i < allOrdered.length; i++) {
@@ -531,11 +581,21 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
       }
     }
 
-    const [refreshedNext] = nextStop
-      ? await db.select().from(tourStopsTable).where(eq(tourStopsTable.id, nextStop.id))
-      : [null];
+    const resequenced = await db
+      .select()
+      .from(tourStopsTable)
+      .where(
+        and(
+          eq(tourStopsTable.tourId, params.tourId),
+          eq(tourStopsTable.skipped, false),
+          eq(tourStopsTable.visited, false),
+        ),
+      )
+      .orderBy(tourStopsTable.sequence);
 
-    res.json({ skippedStop, nextStop: refreshedNext ?? null });
+    const nextStop = resequenced[0] ?? null;
+
+    sendValidated(res, SkipStopResponseSchema, { skippedStop, nextStop });
   } catch (err) {
     req.log.error({ err }, "Failed to skip stop");
     res.status(500).json({ error: "Internal server error" });
@@ -560,7 +620,7 @@ router.post("/tours/:tourId/publish", async (req: Request, res: Response) => {
       .where(eq(toursTable.id, params.tourId))
       .returning();
     const counts = await getStopCounts(params.tourId);
-    res.json({ tour: { ...tour, ...counts } });
+    sendValidated(res, TourResponseSchema, { tour: { ...tour, ...counts } });
   } catch (err) {
     req.log.error({ err }, "Failed to publish tour");
     res.status(500).json({ error: "Internal server error" });
@@ -734,7 +794,7 @@ router.get("/mobile/tours/active", async (req: Request, res: Response) => {
       approvedCount: aggMap.get(t.id)?.approvedCount ?? 0,
       pendingShowingsCount: aggMap.get(t.id)?.pendingCount ?? 0,
     }));
-    res.json({ tours });
+    sendValidated(res, TourListResponseSchema, { tours });
   } catch (err) {
     req.log.error({ err }, "Failed to list mobile tours");
     res.status(500).json({ error: "Internal server error" });
