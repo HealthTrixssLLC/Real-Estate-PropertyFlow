@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "TourFlow"
+version = "1.0.0"
+id = "artifacts/tour-planner"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26125
+
+[services.development]
+run = "pnpm --filter @workspace/tour-planner run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tour-planner", "run", "build" ]
+publicDir = "artifacts/tour-planner/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26125"
+BASE_PATH = "/"
