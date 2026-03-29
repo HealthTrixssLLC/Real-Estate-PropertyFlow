@@ -21,6 +21,7 @@ export const TourSchema = z.object({
   stopCount: z.number().optional(),
   approvedCount: z.number().optional(),
   pendingShowingsCount: z.number().optional(),
+  buyerName: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -61,6 +62,8 @@ export const TourResponseSchema = z.object({
 export const TourStopWithAddressSchema = TourStopSchema.extend({
   formattedAddress: z.string(),
   propertyNickname: z.string().nullable().optional(),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
 });
 
 export const TourDetailResponseSchema = z.object({

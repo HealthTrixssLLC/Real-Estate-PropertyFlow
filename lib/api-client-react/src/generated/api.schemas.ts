@@ -220,6 +220,8 @@ export interface Tour {
   approvedCount?: number;
   /** Number of stops with pending or requested showing status */
   pendingShowingsCount?: number;
+  /** @nullable */
+  buyerName?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -451,6 +453,10 @@ export type TourStopWithAddress = TourStop & {
    * @nullable
    */
   propertyNickname?: string | null;
+  /** @nullable */
+  lat?: number | null;
+  /** @nullable */
+  lng?: number | null;
 };
 
 export interface TourDetailResponse {

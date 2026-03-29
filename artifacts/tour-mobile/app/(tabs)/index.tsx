@@ -45,7 +45,7 @@ export default function TodayScreen() {
   });
 
   const activeTour = todayTours.find((t) => t.status === "active");
-  const upcomingTours = todayTours.filter((t) => t.status !== "active" && t.status !== "completed" && t.status !== "cancelled");
+  const nonCompletedTours = todayTours.filter((t) => t.status !== "completed" && t.status !== "cancelled");
   const completedToday = todayTours.filter((t) => t.status === "completed");
 
   const firstName = authData?.user?.firstName ?? "Agent";
@@ -62,9 +62,9 @@ export default function TodayScreen() {
         styles.content,
         { paddingTop: topPad + 16, paddingBottom: isWeb ? 34 : insets.bottom + 16 },
       ]}
-      data={todayTours}
+      data={nonCompletedTours}
       keyExtractor={(item) => item.id}
-      scrollEnabled={todayTours.length > 0}
+      scrollEnabled={nonCompletedTours.length > 0}
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
@@ -137,7 +137,7 @@ export default function TodayScreen() {
             </View>
           )}
 
-          {!isLoading && todayTours.length === 0 && (
+          {!isLoading && nonCompletedTours.length === 0 && completedToday.length === 0 && (
             <View style={styles.empty}>
               {isIOS ? (
                 <SymbolView name="calendar.badge.checkmark" tintColor={C.textTertiary} size={48} />
@@ -152,7 +152,7 @@ export default function TodayScreen() {
           )}
         </View>
       }
-      renderItem={({ item }) => <TourCard tour={item} isActive={item.status === "active"} />}
+      renderItem={({ item }) => <TourCard tour={item} buyerName={item.buyerName ?? undefined} isActive={item.status === "active"} />}
       ListFooterComponent={
         completedToday.length > 0 ? (
           <View style={styles.completedSection}>

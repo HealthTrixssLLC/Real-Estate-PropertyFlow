@@ -111,7 +111,7 @@ export default function ToursScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <TourCard tour={item} isActive={item.status === "active"} />
+            <TourCard tour={item} buyerName={item.buyerName ?? undefined} isActive={item.status === "active"} />
           )}
         />
       )}

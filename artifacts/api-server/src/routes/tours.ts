@@ -89,11 +89,17 @@ router.get("/tours", async (req: Request, res: Response) => {
           .groupBy(tourStopsTable.tourId)
       : [];
     const aggMap = new Map(stopsAgg.map(a => [a.tourId, a]));
+    const buyerIds = rows.map(t => t.buyerId).filter((id): id is string => !!id);
+    const buyerRows = buyerIds.length > 0
+      ? await db.select({ id: buyersTable.id, name: buyersTable.name }).from(buyersTable).where(inArray(buyersTable.id, buyerIds))
+      : [];
+    const buyerMap = new Map(buyerRows.map(b => [b.id, b.name]));
     const tours = rows.map(t => ({
       ...t,
       stopCount: aggMap.get(t.id)?.stopCount ?? 0,
       approvedCount: aggMap.get(t.id)?.approvedCount ?? 0,
       pendingShowingsCount: aggMap.get(t.id)?.pendingCount ?? 0,
+      buyerName: t.buyerId ? (buyerMap.get(t.buyerId) ?? null) : null,
     }));
     sendValidated(res, TourListResponseSchema, { tours });
   } catch (err) {
@@ -157,7 +163,7 @@ router.get("/tours/:tourId", async (req: Request, res: Response) => {
 
     const propertyIds = stops.map(s => s.propertyId);
     const properties = propertyIds.length > 0
-      ? await db.select({ id: propertiesTable.id, formattedAddress: propertiesTable.formattedAddress, nickname: propertiesTable.nickname })
+      ? await db.select({ id: propertiesTable.id, formattedAddress: propertiesTable.formattedAddress, nickname: propertiesTable.nickname, lat: propertiesTable.lat, lng: propertiesTable.lng })
           .from(propertiesTable)
           .where(inArray(propertiesTable.id, propertyIds))
       : [];
@@ -169,6 +175,8 @@ router.get("/tours/:tourId", async (req: Request, res: Response) => {
         ...s,
         formattedAddress: prop?.formattedAddress ?? "",
         propertyNickname: prop?.nickname ?? null,
+        lat: prop?.lat ?? null,
+        lng: prop?.lng ?? null,
       };
     });
 
@@ -859,11 +867,17 @@ router.get("/mobile/tours/active", async (req: Request, res: Response) => {
           .groupBy(tourStopsTable.tourId)
       : [];
     const aggMap = new Map(stopsAgg.map(a => [a.tourId, a]));
+    const buyerIds2 = rows.map(t => t.buyerId).filter((id): id is string => !!id);
+    const buyerRows2 = buyerIds2.length > 0
+      ? await db.select({ id: buyersTable.id, name: buyersTable.name }).from(buyersTable).where(inArray(buyersTable.id, buyerIds2))
+      : [];
+    const buyerMap2 = new Map(buyerRows2.map(b => [b.id, b.name]));
     const tours = rows.map(t => ({
       ...t,
       stopCount: aggMap.get(t.id)?.stopCount ?? 0,
       approvedCount: aggMap.get(t.id)?.approvedCount ?? 0,
       pendingShowingsCount: aggMap.get(t.id)?.pendingCount ?? 0,
+      buyerName: t.buyerId ? (buyerMap2.get(t.buyerId) ?? null) : null,
     }));
     sendValidated(res, TourListResponseSchema, { tours });
   } catch (err) {

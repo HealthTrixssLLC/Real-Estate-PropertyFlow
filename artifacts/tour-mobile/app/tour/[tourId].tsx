@@ -33,6 +33,22 @@ import { useTourContext } from "@/context/TourContext";
 
 const RESTRICTED_STATUSES = new Set(["restricted", "declined", "needs_follow_up"]);
 
+function haversineMinutes(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number
+): number {
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
+  const distMiles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.max(1, Math.round(distMiles / 30 * 60));
+}
+
 function StopCard({
   stop,
   label,
@@ -54,6 +70,13 @@ function StopCard({
   const isCurrent = label === "current";
   const address = stop.formattedAddress || stop.propertyNickname || `Stop #${index + 1}`;
   const hasRestriction = RESTRICTED_STATUSES.has(stop.approvedStatus);
+
+  const etaMinutes: number | null =
+    isCurrent && nextStop &&
+    stop.lat != null && stop.lng != null &&
+    nextStop.lat != null && nextStop.lng != null
+      ? haversineMinutes(stop.lat, stop.lng, nextStop.lat, nextStop.lng)
+      : null;
 
   return (
     <Pressable
@@ -155,7 +178,9 @@ function StopCard({
             <Feather name="corner-up-right" size={12} color={C.accent} />
           )}
           <Text style={styles.etaText} numberOfLines={1}>
-            Next: {nextStop.formattedAddress || nextStop.propertyNickname || `Stop #${index + 2}`}
+            {etaMinutes != null
+              ? `~${etaMinutes} min to next stop`
+              : `Next: ${nextStop.formattedAddress || nextStop.propertyNickname || `Stop #${index + 2}`}`}
           </Text>
         </View>
       )}
@@ -299,6 +324,21 @@ export default function ActiveTourScreen() {
           const addr = currentStop.formattedAddress || currentStop.propertyNickname || "";
           if (addr) openNavigation(addr);
         },
+      });
+      actionButtons.push({
+        id: "details",
+        label: "View Details",
+        sfIcon: "doc.text",
+        featherIcon: "file-text",
+        onPress: () => router.push(`/stop/${currentStop.id}`),
+      });
+      actionButtons.push({
+        id: "skip",
+        label: "Skip",
+        sfIcon: "forward.fill",
+        featherIcon: "skip-forward",
+        danger: true,
+        onPress: handleSkip,
       });
       actionButtons.push({
         id: "arrive",
