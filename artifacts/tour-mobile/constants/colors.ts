@@ -1,0 +1,86 @@
+const navy = "#0F1B2D";
+const navyMid = "#1A2E45";
+const teal = "#2DB8A0";
+const tealLight = "#3DD9BF";
+const amber = "#F5A623";
+const coral = "#E85D4A";
+const green = "#27C06B";
+
+export default {
+  light: {
+    background: "#F4F6F9",
+    surface: "#FFFFFF",
+    surfaceAlt: "#EEF1F6",
+    primary: navy,
+    primaryMid: navyMid,
+    accent: teal,
+    accentLight: tealLight,
+    amber,
+    coral,
+    green,
+    text: "#0F1B2D",
+    textSecondary: "#6B7A90",
+    textTertiary: "#A0ADB8",
+    border: "#E0E5EC",
+    tint: teal,
+    tabIconDefault: "#A0ADB8",
+    tabIconSelected: teal,
+    card: "#FFFFFF",
+    shadow: "rgba(15,27,45,0.10)",
+    chip: {
+      active: { bg: "#E8F8F5", text: "#2DB8A0" },
+      draft: { bg: "#F0F2F5", text: "#6B7A90" },
+      published: { bg: "#EBF4FF", text: "#2A73C8" },
+      completed: { bg: "#E8F8EC", text: "#27C06B" },
+      cancelled: { bg: "#FDECEC", text: "#E85D4A" },
+    },
+    approvedStatus: {
+      approved: { bg: "#E8F8EC", text: "#27C06B" },
+      pending: { bg: "#FEF3E2", text: "#F5A623" },
+      requested: { bg: "#EBF4FF", text: "#2A73C8" },
+      not_requested: { bg: "#F0F2F5", text: "#6B7A90" },
+      declined: { bg: "#FDECEC", text: "#E85D4A" },
+      needs_follow_up: { bg: "#FFF3E8", text: "#E87A2A" },
+      restricted: { bg: "#FDECEC", text: "#E85D4A" },
+      cancelled: { bg: "#F0F2F5", text: "#A0ADB8" },
+    },
+  },
+  dark: {
+    background: "#0A1220",
+    surface: "#111B2C",
+    surfaceAlt: "#1A2640",
+    primary: "#FFFFFF",
+    primaryMid: "#D0D9E8",
+    accent: teal,
+    accentLight: tealLight,
+    amber,
+    coral,
+    green,
+    text: "#E8EDF5",
+    textSecondary: "#8A97AB",
+    textTertiary: "#5A6778",
+    border: "#1E2D42",
+    tint: teal,
+    tabIconDefault: "#5A6778",
+    tabIconSelected: teal,
+    card: "#111B2C",
+    shadow: "rgba(0,0,0,0.35)",
+    chip: {
+      active: { bg: "#0E2922", text: "#2DB8A0" },
+      draft: { bg: "#1A2436", text: "#8A97AB" },
+      published: { bg: "#0F1E38", text: "#5A9EE0" },
+      completed: { bg: "#0E271A", text: "#27C06B" },
+      cancelled: { bg: "#2A1515", text: "#E85D4A" },
+    },
+    approvedStatus: {
+      approved: { bg: "#0E271A", text: "#27C06B" },
+      pending: { bg: "#2A1E0A", text: "#F5A623" },
+      requested: { bg: "#0F1E38", text: "#5A9EE0" },
+      not_requested: { bg: "#1A2436", text: "#8A97AB" },
+      declined: { bg: "#2A1515", text: "#E85D4A" },
+      needs_follow_up: { bg: "#2A1A0A", text: "#E87A2A" },
+      restricted: { bg: "#2A1515", text: "#E85D4A" },
+      cancelled: { bg: "#1A2436", text: "#5A6778" },
+    },
+  },
+};

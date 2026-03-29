@@ -1,0 +1,129 @@
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { SymbolView } from "expo-symbols";
+import React from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import Colors from "@/constants/colors";
+
+export interface ActionButton {
+  id: string;
+  label: string;
+  sfIcon?: string;
+  featherIcon?: string;
+  primary?: boolean;
+  danger?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+  onPress: () => void;
+}
+
+interface ActionTrayProps {
+  buttons: ActionButton[];
+}
+
+export function ActionTray({ buttons }: ActionTrayProps) {
+  const scheme = useColorScheme() ?? "light";
+  const C = Colors[scheme];
+  const insets = useSafeAreaInsets();
+  const isIOS = Platform.OS === "ios";
+  const isWeb = Platform.OS === "web";
+
+  return (
+    <View
+      style={[
+        styles.tray,
+        {
+          backgroundColor: C.surface,
+          borderTopColor: C.border,
+          paddingBottom: isWeb ? 34 : insets.bottom + 8,
+        },
+      ]}
+    >
+      <View style={styles.grid}>
+        {buttons.map((btn) => {
+          const bgColor = btn.primary
+            ? C.accent
+            : btn.danger
+            ? "#FFF0EE"
+            : C.surfaceAlt;
+          const textColor = btn.primary
+            ? "#FFFFFF"
+            : btn.danger
+            ? C.coral
+            : C.text;
+          const iconColor = btn.primary ? "#FFFFFF" : btn.danger ? C.coral : C.accent;
+
+          return (
+            <Pressable
+              key={btn.id}
+              testID={`action-${btn.id}`}
+              disabled={btn.disabled || btn.loading}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                btn.onPress();
+              }}
+              style={({ pressed }) => [
+                styles.btn,
+                { backgroundColor: bgColor },
+                (btn.disabled || btn.loading) && { opacity: 0.5 },
+                pressed && { opacity: 0.75 },
+                btn.primary && styles.primaryBtn,
+              ]}
+            >
+              {btn.loading ? (
+                <ActivityIndicator color={iconColor} size="small" />
+              ) : btn.sfIcon && isIOS ? (
+                <SymbolView name={btn.sfIcon} tintColor={iconColor} size={18} />
+              ) : btn.featherIcon ? (
+                <Feather name={btn.featherIcon as any} size={18} color={iconColor} />
+              ) : null}
+              <Text style={[styles.btnLabel, { color: textColor }]}>{btn.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  tray: {
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  btn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    minWidth: 100,
+    flex: 1,
+    justifyContent: "center",
+  },
+  primaryBtn: {
+    flex: 2,
+    minWidth: "100%",
+  },
+  btnLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+});

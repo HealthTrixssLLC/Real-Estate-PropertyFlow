@@ -1,0 +1,635 @@
+import { Feather } from "@expo/vector-icons";
+import {
+  useGetTourStop,
+  useAddStopNote,
+  useUpdateTourStop,
+} from "@workspace/api-client-react";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useColorScheme,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { StarRating } from "@/components/StarRating";
+import { StatusChip } from "@/components/StatusChip";
+import { VoiceRecorder } from "@/components/VoiceRecorder";
+import Colors from "@/constants/colors";
+
+export default function StopDetailScreen() {
+  const { stopId } = useLocalSearchParams<{ stopId: string }>();
+  const scheme = useColorScheme() ?? "light";
+  const C = Colors[scheme];
+  const insets = useSafeAreaInsets();
+  const isIOS = Platform.OS === "ios";
+  const isWeb = Platform.OS === "web";
+  const navigation = useNavigation();
+
+  const [noteText, setNoteText] = useState("");
+  const [isUploadingVoice, setIsUploadingVoice] = useState(false);
+
+  const { data, isLoading, refetch } = useGetTourStop(stopId ?? "", {
+    query: { enabled: !!stopId },
+  });
+
+  const { mutate: addNote, isPending: isAddingNote } = useAddStopNote({
+    mutation: { onSuccess: () => { setNoteText(""); refetch(); } },
+  });
+
+  const { mutate: updateStop } = useUpdateTourStop({
+    mutation: { onSuccess: () => refetch() },
+  });
+
+  const stop = data?.stop;
+  const property = data?.property;
+  const showingRequest = data?.showingRequest;
+  const restrictionNote = data?.restrictionNote;
+  const voiceNotes = data?.voiceNotes ?? [];
+  const summary = data?.propertySummary;
+
+  useEffect(() => {
+    if (property) {
+      navigation.setOptions({ title: property.nickname ?? property.formattedAddress });
+    }
+  }, [property, navigation]);
+
+  const handleAddNote = () => {
+    if (!noteText.trim() || !stopId) return;
+    addNote({ stopId, data: { note: noteText.trim() } });
+  };
+
+  const handleVoiceComplete = async (uri: string, durationSeconds: number) => {
+    if (!stopId || Platform.OS === "web") return;
+    setIsUploadingVoice(true);
+    try {
+      const FileSystem = await import("expo-file-system");
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const blob = await fetch(`data:audio/m4a;base64,${base64}`).then((r) => r.blob());
+      const { uploadVoiceNote } = await import("@workspace/api-client-react");
+      await uploadVoiceNote({ tourStopId: stopId, audio: blob, durationSeconds });
+      refetch();
+    } catch (e) {
+      Alert.alert("Upload failed", "Could not upload voice note. Try again.");
+    } finally {
+      setIsUploadingVoice(false);
+    }
+  };
+
+  const handleRatingChange = (field: string, val: number) => {
+    if (!stopId) return;
+    updateStop({ stopId, data: { [field]: val } as any });
+  };
+
+  const topPad = isWeb ? 67 : 0;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.center, { backgroundColor: C.background }]}>
+        <ActivityIndicator color={C.accent} />
+      </View>
+    );
+  }
+
+  if (!stop) {
+    return (
+      <View style={[styles.center, { backgroundColor: C.background }]}>
+        <Text style={{ color: C.textSecondary }}>Stop not found.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: C.background }]}
+      behavior={isIOS ? "padding" : "height"}
+      keyboardVerticalOffset={isIOS ? 0 : 20}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: topPad + 16, paddingBottom: isWeb ? 34 : insets.bottom + 20 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {property && (
+          <View style={[styles.propertyCard, { backgroundColor: C.primary }]}>
+            <Text style={styles.propertyAddress} numberOfLines={2}>
+              {property.formattedAddress}
+            </Text>
+            {property.nickname && (
+              <Text style={styles.propertyNickname}>{property.nickname}</Text>
+            )}
+            <View style={styles.propertyStats}>
+              {property.listPrice && (
+                <Text style={styles.propStat}>
+                  ${(property.listPrice / 1000).toFixed(0)}k
+                </Text>
+              )}
+              {property.beds && <Text style={styles.propStat}>{property.beds} bd</Text>}
+              {property.baths && <Text style={styles.propStat}>{property.baths} ba</Text>}
+              {property.squareFeet && (
+                <Text style={styles.propStat}>{property.squareFeet.toLocaleString()} sqft</Text>
+              )}
+            </View>
+            <View style={styles.statusRow}>
+              <StatusChip status={stop.approvedStatus} />
+            </View>
+          </View>
+        )}
+
+        {showingRequest && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: C.text }]}>Listing Agent</Text>
+            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+              {showingRequest.listingAgentName && (
+                <InfoRow
+                  label="Agent"
+                  value={showingRequest.listingAgentName}
+                  sfIcon="person"
+                  featherIcon="user"
+                  C={C}
+                  isIOS={isIOS}
+                />
+              )}
+              {showingRequest.brokerageName && (
+                <InfoRow
+                  label="Brokerage"
+                  value={showingRequest.brokerageName}
+                  sfIcon="building.2"
+                  featherIcon="briefcase"
+                  C={C}
+                  isIOS={isIOS}
+                />
+              )}
+              {showingRequest.phone && (
+                <InfoRow
+                  label="Phone"
+                  value={showingRequest.phone}
+                  sfIcon="phone"
+                  featherIcon="phone"
+                  C={C}
+                  isIOS={isIOS}
+                  onPress={() => {
+                    import("expo-linking").then(({ openURL }) =>
+                      openURL(`tel:${showingRequest.phone}`)
+                    );
+                  }}
+                />
+              )}
+              {showingRequest.email && (
+                <InfoRow
+                  label="Email"
+                  value={showingRequest.email}
+                  sfIcon="envelope"
+                  featherIcon="mail"
+                  C={C}
+                  isIOS={isIOS}
+                  onPress={() => {
+                    import("expo-linking").then(({ openURL }) =>
+                      openURL(`mailto:${showingRequest.email}`)
+                    );
+                  }}
+                />
+              )}
+              {showingRequest.notes && (
+                <InfoRow
+                  label="Notes"
+                  value={showingRequest.notes}
+                  sfIcon="note.text"
+                  featherIcon="file-text"
+                  C={C}
+                  isIOS={isIOS}
+                />
+              )}
+            </View>
+          </View>
+        )}
+
+        {restrictionNote && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: C.text }]}>Restrictions</Text>
+            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+              {restrictionNote.gateCode && (
+                <InfoRow label="Gate Code" value={restrictionNote.gateCode} sfIcon="lock" featherIcon="lock" C={C} isIOS={isIOS} />
+              )}
+              {restrictionNote.alarmInstructions && (
+                <InfoRow label="Alarm" value={restrictionNote.alarmInstructions} sfIcon="bell.slash" featherIcon="bell-off" C={C} isIOS={isIOS} />
+              )}
+              {restrictionNote.petInstructions && (
+                <InfoRow label="Pets" value={restrictionNote.petInstructions} sfIcon="pawprint" featherIcon="heart" C={C} isIOS={isIOS} />
+              )}
+              {restrictionNote.parkingInstructions && (
+                <InfoRow label="Parking" value={restrictionNote.parkingInstructions} sfIcon="car" featherIcon="truck" C={C} isIOS={isIOS} />
+              )}
+              {restrictionNote.timeRestriction && (
+                <InfoRow label="Time Window" value={restrictionNote.timeRestriction} sfIcon="clock" featherIcon="clock" C={C} isIOS={isIOS} />
+              )}
+              {restrictionNote.removeShoes && (
+                <FlagRow label="Remove shoes before entering" C={C} isIOS={isIOS} />
+              )}
+              {restrictionNote.doNotUseBathroom && (
+                <FlagRow label="Do not use bathroom" C={C} isIOS={isIOS} />
+              )}
+              {restrictionNote.occupied && (
+                <FlagRow label="Property is occupied" C={C} isIOS={isIOS} />
+              )}
+              {restrictionNote.freeTextNotes && (
+                <View style={styles.freeText}>
+                  <Text style={[styles.freeTextContent, { color: C.textSecondary }]}>
+                    {restrictionNote.freeTextNotes}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Ratings</Text>
+          <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+            {([
+              ["Overall Fit", "overallFitRating", stop.overallFitRating],
+              ["Buyer Interest", "buyerInterest", stop.buyerInterest],
+              ["Kitchen", "kitchenRating", stop.kitchenRating],
+              ["Primary Suite", "primarySuiteRating", stop.primarySuiteRating],
+              ["Backyard", "backyardRating", stop.backyardRating],
+              ["Road Noise", "roadNoiseRating", stop.roadNoiseRating],
+            ] as [string, string, number | null | undefined][]).map(([label, field, val]) => (
+              <View key={field} style={styles.ratingRow}>
+                <Text style={[styles.ratingLabel, { color: C.text }]}>{label}</Text>
+                <StarRating
+                  value={val}
+                  onChange={(v) => handleRatingChange(field, v)}
+                  size={20}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Voice Notes</Text>
+          <VoiceRecorder
+            onRecordingComplete={handleVoiceComplete}
+            isUploading={isUploadingVoice}
+          />
+          {voiceNotes.length > 0 && (
+            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginTop: 12 }]}>
+              {voiceNotes.map((vn, i) => (
+                <View key={vn.id} style={[styles.voiceRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}>
+                  {isIOS ? (
+                    <SymbolView name="waveform" tintColor={C.accent} size={16} />
+                  ) : (
+                    <Feather name="mic" size={16} color={C.accent} />
+                  )}
+                  <View style={styles.voiceContent}>
+                    <Text style={[styles.voiceTime, { color: C.text }]}>
+                      {vn.durationSeconds ? `${vn.durationSeconds}s recording` : "Voice note"}
+                    </Text>
+                    {vn.typedNote && (
+                      <Text style={[styles.voiceTranscript, { color: C.textSecondary }]}>
+                        {vn.typedNote}
+                      </Text>
+                    )}
+                    <Text style={[styles.voiceStatus, { color: C.textTertiary }]}>
+                      Transcription: {vn.transcriptionStatus}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Add Note</Text>
+          <View style={[styles.noteInput, { backgroundColor: C.card, borderColor: C.border }]}>
+            <TextInput
+              testID="note-input"
+              value={noteText}
+              onChangeText={setNoteText}
+              placeholder="Type a note about this property…"
+              placeholderTextColor={C.textTertiary}
+              multiline
+              style={[styles.noteTextField, { color: C.text }]}
+            />
+            <Pressable
+              testID="add-note-btn"
+              onPress={handleAddNote}
+              disabled={!noteText.trim() || isAddingNote}
+              style={({ pressed }) => [
+                styles.addNoteBtn,
+                { backgroundColor: C.accent },
+                (!noteText.trim() || isAddingNote) && { opacity: 0.5 },
+                pressed && { opacity: 0.75 },
+              ]}
+            >
+              {isAddingNote ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : isIOS ? (
+                <SymbolView name="paperplane.fill" tintColor="#FFF" size={16} />
+              ) : (
+                <Feather name="send" size={16} color="#FFF" />
+              )}
+            </Pressable>
+          </View>
+        </View>
+
+        {summary && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: C.text }]}>AI Summary</Text>
+            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+              <Text style={[styles.summaryText, { color: C.text }]}>{summary.summaryText}</Text>
+              {summary.positives && summary.positives.length > 0 && (
+                <View style={styles.summaryList}>
+                  <Text style={[styles.summaryListTitle, { color: C.green }]}>Positives</Text>
+                  {summary.positives.map((p, i) => (
+                    <Text key={i} style={[styles.summaryListItem, { color: C.textSecondary }]}>• {p}</Text>
+                  ))}
+                </View>
+              )}
+              {summary.negatives && summary.negatives.length > 0 && (
+                <View style={styles.summaryList}>
+                  <Text style={[styles.summaryListTitle, { color: C.coral }]}>Concerns</Text>
+                  {summary.negatives.map((n, i) => (
+                    <Text key={i} style={[styles.summaryListItem, { color: C.textSecondary }]}>• {n}</Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {stop.skipped && (
+          <View style={[styles.skippedBanner, { backgroundColor: C.surfaceAlt }]}>
+            {isIOS ? (
+              <SymbolView name="forward.fill" tintColor={C.textSecondary} size={20} />
+            ) : (
+              <Feather name="skip-forward" size={20} color={C.textSecondary} />
+            )}
+            <View>
+              <Text style={[styles.skippedTitle, { color: C.text }]}>Stop was skipped</Text>
+              {stop.skipReason && (
+                <Text style={[styles.skippedReason, { color: C.textSecondary }]}>
+                  {stop.skipReason.replace(/_/g, " ")}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  sfIcon,
+  featherIcon,
+  onPress,
+  C,
+  isIOS,
+}: {
+  label: string;
+  value: string;
+  sfIcon?: string;
+  featherIcon?: string;
+  onPress?: () => void;
+  C: any;
+  isIOS: boolean;
+}) {
+  const content = (
+    <View style={styles.infoRow}>
+      <View style={styles.infoLeft}>
+        {sfIcon && isIOS ? (
+          <SymbolView name={sfIcon} tintColor={C.textTertiary} size={14} />
+        ) : featherIcon ? (
+          <Feather name={featherIcon as any} size={14} color={C.textTertiary} />
+        ) : null}
+        <Text style={[styles.infoLabel, { color: C.textSecondary }]}>{label}</Text>
+      </View>
+      <Text
+        style={[styles.infoValue, { color: onPress ? C.accent : C.text }]}
+        numberOfLines={2}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+
+  if (onPress) {
+    return <Pressable onPress={onPress}>{content}</Pressable>;
+  }
+  return content;
+}
+
+function FlagRow({ label, C, isIOS }: { label: string; C: any; isIOS: boolean }) {
+  return (
+    <View style={[styles.infoRow, styles.flagRow]}>
+      {isIOS ? (
+        <SymbolView name="exclamationmark.triangle" tintColor={C.amber} size={14} />
+      ) : (
+        <Feather name="alert-triangle" size={14} color={C.amber} />
+      )}
+      <Text style={[styles.infoLabel, { color: C.text }]}>{label}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  content: { paddingHorizontal: 20 },
+  propertyCard: {
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 20,
+  },
+  propertyAddress: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#FFF",
+    marginBottom: 4,
+  },
+  propertyNickname: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.7)",
+    marginBottom: 12,
+  },
+  propertyStats: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 12,
+  },
+  propStat: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.85)",
+  },
+  statusRow: {
+    flexDirection: "row",
+  },
+  section: { marginBottom: 20 },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 10,
+  },
+  card: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.06)",
+    gap: 8,
+  },
+  infoLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minWidth: 80,
+  },
+  infoLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  infoValue: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+    textAlign: "right",
+  },
+  flagRow: {
+    justifyContent: "flex-start",
+    gap: 8,
+  },
+  freeText: {
+    padding: 14,
+  },
+  freeTextContent: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.06)",
+  },
+  ratingLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  voiceRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 12,
+  },
+  voiceContent: { flex: 1 },
+  voiceTime: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  voiceTranscript: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  voiceStatus: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  noteInput: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+  },
+  noteTextField: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    minHeight: 44,
+    maxHeight: 120,
+  },
+  addNoteBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  summaryText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+    padding: 14,
+  },
+  summaryList: {
+    padding: 14,
+    paddingTop: 0,
+    gap: 4,
+  },
+  summaryListTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 4,
+  },
+  summaryListItem: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  skippedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 20,
+  },
+  skippedTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  skippedReason: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textTransform: "capitalize",
+    marginTop: 2,
+  },
+});
