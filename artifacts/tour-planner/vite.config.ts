@@ -46,6 +46,9 @@ export default defineConfig({
         ]
       : []),
   ],
+  define: {
+    "import.meta.env.VITE_GOOGLE_MAPS_API_KEY": JSON.stringify(process.env.GOOGLE_MAPS_API_KEY ?? ""),
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),

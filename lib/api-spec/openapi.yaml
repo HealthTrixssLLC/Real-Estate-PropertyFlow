@@ -1169,6 +1169,15 @@ components:
         publishedAt:
           type: [string, 'null']
           format: date-time
+        stopCount:
+          type: integer
+          description: Total number of stops on this tour
+        approvedCount:
+          type: integer
+          description: Number of stops with approved showing status
+        pendingShowingsCount:
+          type: integer
+          description: Number of stops with pending or requested showing status
         createdAt:
           type: string
           format: date-time

@@ -214,6 +214,12 @@ export interface Tour {
   status: TourStatus;
   /** @nullable */
   publishedAt?: string | null;
+  /** Total number of stops on this tour */
+  stopCount?: number;
+  /** Number of stops with approved showing status */
+  approvedCount?: number;
+  /** Number of stops with pending or requested showing status */
+  pendingShowingsCount?: number;
   createdAt: string;
   updatedAt: string;
 }

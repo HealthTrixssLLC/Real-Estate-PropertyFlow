@@ -337,6 +337,18 @@ export const ListToursResponse = zod.object({
         "cancelled",
       ]),
       publishedAt: zod.coerce.date().nullish(),
+      stopCount: zod
+        .number()
+        .optional()
+        .describe("Total number of stops on this tour"),
+      approvedCount: zod
+        .number()
+        .optional()
+        .describe("Number of stops with approved showing status"),
+      pendingShowingsCount: zod
+        .number()
+        .optional()
+        .describe("Number of stops with pending or requested showing status"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -394,6 +406,18 @@ export const GetTourResponse = zod.object({
       "cancelled",
     ]),
     publishedAt: zod.coerce.date().nullish(),
+    stopCount: zod
+      .number()
+      .optional()
+      .describe("Total number of stops on this tour"),
+    approvedCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with approved showing status"),
+    pendingShowingsCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with pending or requested showing status"),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -499,6 +523,18 @@ export const UpdateTourResponse = zod.object({
       "cancelled",
     ]),
     publishedAt: zod.coerce.date().nullish(),
+    stopCount: zod
+      .number()
+      .optional()
+      .describe("Total number of stops on this tour"),
+    approvedCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with approved showing status"),
+    pendingShowingsCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with pending or requested showing status"),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -701,6 +737,18 @@ export const PublishTourResponse = zod.object({
       "cancelled",
     ]),
     publishedAt: zod.coerce.date().nullish(),
+    stopCount: zod
+      .number()
+      .optional()
+      .describe("Total number of stops on this tour"),
+    approvedCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with approved showing status"),
+    pendingShowingsCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with pending or requested showing status"),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -774,6 +822,18 @@ export const GetActiveMobileToursResponse = zod.object({
         "cancelled",
       ]),
       publishedAt: zod.coerce.date().nullish(),
+      stopCount: zod
+        .number()
+        .optional()
+        .describe("Total number of stops on this tour"),
+      approvedCount: zod
+        .number()
+        .optional()
+        .describe("Number of stops with approved showing status"),
+      pendingShowingsCount: zod
+        .number()
+        .optional()
+        .describe("Number of stops with pending or requested showing status"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),

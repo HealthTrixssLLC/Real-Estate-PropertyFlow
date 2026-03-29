@@ -24,7 +24,7 @@ export default function AdminAI() {
 
   const c = configData?.config
 
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveToggles = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     const txProvider = fd.get("tx_provider") as SaveAiConfigRequestTranscriptionProvider
@@ -38,15 +38,39 @@ export default function AdminAI() {
           summarizationProvider: sumProvider,
           draftingEnabled: fd.get("draft_enabled") === "on",
           patternAnalysisEnabled: fd.get("pattern_enabled") === "on",
+          azureOpenAiBaseUrl: c?.azureOpenAiConfigured ? undefined : undefined,
+          azureOpenAiModel: undefined,
+          azureSpeechRegion: undefined,
+        },
+      })
+      toast({ title: "Feature settings saved" })
+      refetch()
+    } catch {
+      toast({ title: "Failed to save feature settings", variant: "destructive" })
+    }
+  }
+
+  const handleSaveEndpoints = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    try {
+      await saveConfig.mutateAsync({
+        data: {
+          transcriptionEnabled: c?.transcription?.enabled ?? false,
+          transcriptionProvider: (c?.transcription?.provider as SaveAiConfigRequestTranscriptionProvider) || SaveAiConfigRequestTranscriptionProvider.azure_speech,
+          summarizationEnabled: c?.summarization?.enabled ?? false,
+          summarizationProvider: (c?.summarization?.provider as SaveAiConfigRequestSummarizationProvider) || SaveAiConfigRequestSummarizationProvider.azure_openai,
+          draftingEnabled: c?.drafting?.enabled ?? false,
+          patternAnalysisEnabled: c?.patternAnalysis?.enabled ?? false,
           azureOpenAiBaseUrl: (fd.get("azure_openai_base_url") as string) || undefined,
           azureOpenAiModel: (fd.get("azure_openai_model") as string) || undefined,
           azureSpeechRegion: (fd.get("azure_speech_region") as string) || undefined,
-        }
+        },
       })
-      toast({ title: "Configuration saved successfully" })
+      toast({ title: "Endpoint configuration saved" })
       refetch()
     } catch {
-      toast({ title: "Failed to save configuration", variant: "destructive" })
+      toast({ title: "Failed to save endpoints", variant: "destructive" })
     }
   }
 
@@ -91,7 +115,7 @@ export default function AdminAI() {
               <CardDescription>Enable or disable specific AI capabilities and select providers</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <form id="ai-config-form" onSubmit={handleSave} className="space-y-6">
+              <form id="ai-config-form" onSubmit={handleSaveToggles} className="space-y-6">
 
                 <div className="grid grid-cols-[1fr_auto_200px] gap-4 items-center p-4 bg-background rounded-lg border">
                   <div>
@@ -153,7 +177,7 @@ export default function AdminAI() {
               <CardDescription>Configure deployment-specific endpoints and model identifiers</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <form onSubmit={handleSave} className="space-y-4">
+              <form onSubmit={handleSaveEndpoints} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="azure_openai_base_url" className="text-sm font-semibold">Azure OpenAI Base URL</Label>
                   <Input
