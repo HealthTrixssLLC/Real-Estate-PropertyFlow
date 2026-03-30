@@ -253,7 +253,6 @@ interface PropertyFormProps {
 
 function PropertyForm({ form, onChange, addressValidated, onAddressValidationChange }: PropertyFormProps) {
   const { hasApiKey } = useGoogleMaps()
-  const addressTouched = form.addressInput.length > 0 && !addressValidated
 
   const handlePlaceSelected = (place: PlaceResult) => {
     onAddressValidationChange(true)
@@ -275,8 +274,10 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
   const handleAddressChange = (value: string) => {
     if (value !== form.addressInput) {
       onAddressValidationChange(false)
+      onChange({ ...form, addressInput: value, placeData: {} })
+    } else {
+      onChange({ ...form, addressInput: value })
     }
-    onChange({ ...form, addressInput: value })
   }
 
   return (
@@ -296,10 +297,10 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
             Geocoded: {form.placeData.lat.toFixed(5)}, {form.placeData.lng?.toFixed(5)}
           </p>
         )}
-        {addressTouched && hasApiKey && (
-          <p className="text-xs text-amber-600 flex items-center gap-1">
-            <AlertCircle className="h-3 w-3" />
-            Please select an address from the dropdown to validate it.
+        {!addressValidated && form.placeData.lat == null && hasApiKey && form.addressInput.length > 0 && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            Tip: selecting from the dropdown will auto-fill coordinates for map view.
           </p>
         )}
       </div>
@@ -380,7 +381,6 @@ interface PropertyDetailProps {
 }
 
 function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
-  const { hasApiKey } = useGoogleMaps()
   const updateProperty = useUpdateProperty()
   const { toast } = useToast()
   const [view, setView] = useState<DetailView>("detail")
@@ -418,10 +418,6 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
   const handleSaveEdit = async () => {
     if (!editForm.addressInput) {
       toast({ title: "Address is required", variant: "destructive" })
-      return
-    }
-    if (hasApiKey && !editAddressValidated) {
-      toast({ title: "Please select a valid address from the dropdown", variant: "destructive" })
       return
     }
     try {
@@ -598,7 +594,6 @@ export default function Properties() {
   const { data, isLoading, refetch } = useListProperties({ includeArchived: showArchived })
   const createProperty = useCreateProperty()
   const { toast } = useToast()
-  const { hasApiKey } = useGoogleMaps()
 
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [addForm, setAddForm] = useState<PropertyFormData>(emptyForm())
@@ -624,10 +619,6 @@ export default function Properties() {
     e.preventDefault()
     if (!addForm.addressInput) {
       toast({ title: "Address required", variant: "destructive" })
-      return
-    }
-    if (hasApiKey && !addAddressValidated) {
-      toast({ title: "Please select a valid address from the dropdown", variant: "destructive" })
       return
     }
     try {
@@ -691,7 +682,7 @@ export default function Properties() {
                 <Button type="button" variant="outline" onClick={handleAddClose}>Cancel</Button>
                 <Button
                   type="submit"
-                  disabled={createProperty.isPending || (hasApiKey && !!addForm.addressInput && !addAddressValidated)}
+                  disabled={createProperty.isPending}
                 >
                   {createProperty.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Save Property

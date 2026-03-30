@@ -63,8 +63,6 @@ export default function PlacesAutocomplete({
         state: components.find(c => c.types.includes("administrative_area_level_1"))?.short_name,
         zip: getComponent("postal_code"),
       })
-
-      onChange(place.formatted_address ?? "")
     })
 
     return () => {
@@ -73,7 +71,7 @@ export default function PlacesAutocomplete({
         autocompleteRef.current = null
       }
     }
-  }, [status, onPlaceSelected, onChange])
+  }, [status, onPlaceSelected])
 
   if (status === "error") {
     return (
