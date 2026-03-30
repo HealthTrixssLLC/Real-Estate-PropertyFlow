@@ -46,7 +46,7 @@ class AzureOpenAiTextProvider implements AiTextProvider {
       headers: { "Content-Type": "application/json", "api-key": apiKey },
       body: JSON.stringify({
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         temperature: 0.7,
       }),
     });
