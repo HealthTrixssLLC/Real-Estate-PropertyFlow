@@ -130,7 +130,6 @@ class AzureOpenAiWhisperProvider implements AiSpeechProvider {
     const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "mp4" : "wav";
     const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
     formData.append("file", blob, `audio.${ext}`);
-    formData.append("model", deployment);
     const response = await fetch(url, {
       method: "POST",
       headers: { "api-key": apiKey },
@@ -149,25 +148,12 @@ class AzureOpenAiWhisperProvider implements AiSpeechProvider {
     const { apiKey, baseUrl, deployment } = this.getConfig();
     try {
       const url = `${baseUrl.replace(/\/$/, "")}/openai/deployments/${deployment}/audio/transcriptions?api-version=2024-06-01`;
-      const formData = new FormData();
-      const silence = Buffer.alloc(44);
-      silence.write("RIFF", 0);
-      silence.writeUInt32LE(36, 4);
-      silence.write("WAVE", 8);
-      silence.write("fmt ", 12);
-      silence.writeUInt32LE(16, 16);
-      silence.writeUInt16LE(1, 20);
-      silence.writeUInt16LE(1, 22);
-      silence.writeUInt32LE(8000, 24);
-      silence.writeUInt32LE(16000, 28);
-      silence.writeUInt16LE(2, 32);
-      silence.writeUInt16LE(16, 34);
-      silence.write("data", 36);
-      silence.writeUInt32LE(0, 40);
-      formData.append("file", new Blob([new Uint8Array(silence)], { type: "audio/wav" }), "ping.wav");
-      formData.append("model", deployment);
-      const res = await fetch(url, { method: "POST", headers: { "api-key": apiKey }, body: formData });
-      if (res.ok || res.status === 400) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "api-key": apiKey },
+        body: new FormData(),
+      });
+      if (res.ok || res.status === 400 || res.status === 415 || res.status === 422 || res.status === 429) {
         return { healthy: true, error: null };
       }
       const text = await res.text();
