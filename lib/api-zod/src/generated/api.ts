@@ -1576,7 +1576,7 @@ export const GetAiConfigResponse = zod.object({
       .object({
         enabled: zod.boolean().optional(),
         provider: zod
-          .enum(["azure_openai", "openai", "azure_speech"])
+          .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
           .optional(),
       })
       .optional(),
@@ -1584,7 +1584,7 @@ export const GetAiConfigResponse = zod.object({
       .object({
         enabled: zod.boolean().optional(),
         provider: zod
-          .enum(["azure_openai", "openai", "azure_speech"])
+          .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
           .optional(),
       })
       .optional(),
@@ -1592,7 +1592,7 @@ export const GetAiConfigResponse = zod.object({
       .object({
         enabled: zod.boolean().optional(),
         provider: zod
-          .enum(["azure_openai", "openai", "azure_speech"])
+          .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
           .optional(),
       })
       .optional(),
@@ -1600,11 +1600,15 @@ export const GetAiConfigResponse = zod.object({
       .object({
         enabled: zod.boolean().optional(),
         provider: zod
-          .enum(["azure_openai", "openai", "azure_speech"])
+          .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
           .optional(),
       })
       .optional(),
     azureOpenAiConfigured: zod.boolean().optional(),
+    azureOpenAiBaseUrl: zod.string().nullish(),
+    azureOpenAiModel: zod.string().nullish(),
+    azureWhisperConfigured: zod.boolean().optional(),
+    azureWhisperDeployment: zod.string().optional(),
     azureSpeechConfigured: zod.boolean().optional(),
     openAiConfigured: zod.boolean().optional(),
   }),
@@ -1616,7 +1620,7 @@ export const GetAiConfigResponse = zod.object({
 export const SaveAiConfigBody = zod.object({
   transcriptionEnabled: zod.boolean().optional(),
   transcriptionProvider: zod
-    .enum(["azure_openai", "openai", "azure_speech"])
+    .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
     .optional(),
   summarizationEnabled: zod.boolean().optional(),
   summarizationProvider: zod.enum(["azure_openai", "openai"]).optional(),
@@ -1630,6 +1634,10 @@ export const SaveAiConfigBody = zod.object({
     .string()
     .optional()
     .describe("Azure OpenAI deployment model name"),
+  azureOpenAiWhisperDeployment: zod
+    .string()
+    .optional()
+    .describe("Azure OpenAI Whisper deployment name"),
   azureSpeechRegion: zod
     .string()
     .optional()
@@ -1642,7 +1650,7 @@ export const SaveAiConfigResponse = zod.object({
       .object({
         enabled: zod.boolean().optional(),
         provider: zod
-          .enum(["azure_openai", "openai", "azure_speech"])
+          .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
           .optional(),
       })
       .optional(),
@@ -1650,7 +1658,7 @@ export const SaveAiConfigResponse = zod.object({
       .object({
         enabled: zod.boolean().optional(),
         provider: zod
-          .enum(["azure_openai", "openai", "azure_speech"])
+          .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
           .optional(),
       })
       .optional(),
@@ -1658,7 +1666,7 @@ export const SaveAiConfigResponse = zod.object({
       .object({
         enabled: zod.boolean().optional(),
         provider: zod
-          .enum(["azure_openai", "openai", "azure_speech"])
+          .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
           .optional(),
       })
       .optional(),
@@ -1666,11 +1674,15 @@ export const SaveAiConfigResponse = zod.object({
       .object({
         enabled: zod.boolean().optional(),
         provider: zod
-          .enum(["azure_openai", "openai", "azure_speech"])
+          .enum(["azure_openai", "openai", "azure_whisper", "azure_speech"])
           .optional(),
       })
       .optional(),
     azureOpenAiConfigured: zod.boolean().optional(),
+    azureOpenAiBaseUrl: zod.string().nullish(),
+    azureOpenAiModel: zod.string().nullish(),
+    azureWhisperConfigured: zod.boolean().optional(),
+    azureWhisperDeployment: zod.string().optional(),
     azureSpeechConfigured: zod.boolean().optional(),
     openAiConfigured: zod.boolean().optional(),
   }),
@@ -1696,6 +1708,12 @@ export const TestAiConfigResponse = zod.object({
 export const GetAiHealthResponse = zod.object({
   providers: zod.object({
     azure_openai: zod
+      .object({
+        healthy: zod.boolean().optional(),
+        error: zod.string().nullish(),
+      })
+      .optional(),
+    azure_whisper: zod
       .object({
         healthy: zod.boolean().optional(),
         error: zod.string().nullish(),
