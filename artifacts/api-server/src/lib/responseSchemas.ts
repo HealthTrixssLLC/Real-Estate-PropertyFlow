@@ -225,6 +225,10 @@ export const AiConfigResponseSchema = z.object({
     drafting: AiFeatureConfigSchema,
     patternAnalysis: AiFeatureConfigSchema,
     azureOpenAiConfigured: z.boolean(),
+    azureOpenAiBaseUrl: z.string().nullable().optional(),
+    azureOpenAiModel: z.string().nullable().optional(),
+    azureWhisperConfigured: z.boolean(),
+    azureWhisperDeployment: z.string().optional(),
     azureSpeechConfigured: z.boolean(),
     openAiConfigured: z.boolean(),
   }),
@@ -244,6 +248,7 @@ const ProviderHealthSchema = z.object({
 export const AiHealthResponseSchema = z.object({
   providers: z.object({
     azure_openai: ProviderHealthSchema,
+    azure_whisper: ProviderHealthSchema,
     azure_speech: ProviderHealthSchema,
     openai: ProviderHealthSchema,
   }),

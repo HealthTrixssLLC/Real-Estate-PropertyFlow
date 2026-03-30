@@ -1910,7 +1910,7 @@ components:
           type: boolean
         provider:
           type: string
-          enum: [azure_openai, openai, azure_speech]
+          enum: [azure_openai, openai, azure_whisper, azure_speech]
 
     AiConfig:
       type: object
@@ -1925,6 +1925,14 @@ components:
           $ref: '#/components/schemas/AiFeatureConfig'
         azureOpenAiConfigured:
           type: boolean
+        azureOpenAiBaseUrl:
+          type: [string, 'null']
+        azureOpenAiModel:
+          type: [string, 'null']
+        azureWhisperConfigured:
+          type: boolean
+        azureWhisperDeployment:
+          type: string
         azureSpeechConfigured:
           type: boolean
         openAiConfigured:
@@ -1944,7 +1952,7 @@ components:
           type: boolean
         transcriptionProvider:
           type: string
-          enum: [azure_openai, openai, azure_speech]
+          enum: [azure_openai, openai, azure_whisper, azure_speech]
         summarizationEnabled:
           type: boolean
         summarizationProvider:
@@ -1960,6 +1968,9 @@ components:
         azureOpenAiModel:
           type: string
           description: Azure OpenAI deployment model name
+        azureOpenAiWhisperDeployment:
+          type: string
+          description: Azure OpenAI Whisper deployment name
         azureSpeechRegion:
           type: string
           description: Azure Speech Services region
@@ -1993,6 +2004,13 @@ components:
           type: object
           properties:
             azure_openai:
+              type: object
+              properties:
+                healthy:
+                  type: boolean
+                error:
+                  type: [string, 'null']
+            azure_whisper:
               type: object
               properties:
                 healthy:

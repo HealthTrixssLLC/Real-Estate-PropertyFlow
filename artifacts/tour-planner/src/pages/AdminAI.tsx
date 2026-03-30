@@ -3,24 +3,26 @@ import {
   SaveAiConfigRequestTranscriptionProvider,
   SaveAiConfigRequestSummarizationProvider,
 } from "@workspace/api-client-react"
-import { Bot, CheckCircle2, XCircle, Loader2, Save, Activity, Settings2, Globe } from "lucide-react"
+import { Bot, CheckCircle2, XCircle, Loader2, Save, Activity, Settings2, Globe, Mic, Cpu } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 export default function AdminAI() {
   const { data: configData, isLoading: configLoading, refetch } = useGetAiConfig()
-  const { data: healthData, isLoading: healthLoading } = useGetAiHealth()
+  const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useGetAiHealth()
   const saveConfig = useSaveAiConfig()
   const testConfig = useTestAiConfig()
   const { toast } = useToast()
   const [testResult, setTestResult] = useState<string | null>(null)
+  const [healthRefreshing, setHealthRefreshing] = useState(false)
 
   const c = configData?.config
 
@@ -54,13 +56,14 @@ export default function AdminAI() {
       await saveConfig.mutateAsync({
         data: {
           transcriptionEnabled: c?.transcription?.enabled ?? false,
-          transcriptionProvider: (c?.transcription?.provider as SaveAiConfigRequestTranscriptionProvider) || SaveAiConfigRequestTranscriptionProvider.azure_speech,
+          transcriptionProvider: (c?.transcription?.provider as SaveAiConfigRequestTranscriptionProvider) || SaveAiConfigRequestTranscriptionProvider.azure_whisper,
           summarizationEnabled: c?.summarization?.enabled ?? false,
           summarizationProvider: (c?.summarization?.provider as SaveAiConfigRequestSummarizationProvider) || SaveAiConfigRequestSummarizationProvider.azure_openai,
           draftingEnabled: c?.drafting?.enabled ?? false,
           patternAnalysisEnabled: c?.patternAnalysis?.enabled ?? false,
           azureOpenAiBaseUrl: (fd.get("azure_openai_base_url") as string) || undefined,
           azureOpenAiModel: (fd.get("azure_openai_model") as string) || undefined,
+          azureOpenAiWhisperDeployment: (fd.get("azure_openai_whisper_deployment") as string) || undefined,
           azureSpeechRegion: (fd.get("azure_speech_region") as string) || undefined,
         },
       })
@@ -85,6 +88,12 @@ export default function AdminAI() {
     } catch {
       toast({ title: "Test request failed", variant: "destructive" })
     }
+  }
+
+  const handleRefreshHealth = async () => {
+    setHealthRefreshing(true)
+    await refetchHealth()
+    setHealthRefreshing(false)
   }
 
   if (configLoading || healthLoading) return (
@@ -112,7 +121,7 @@ export default function AdminAI() {
               <CardDescription>Enable or disable specific AI capabilities and select providers</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <form id="ai-config-form" onSubmit={handleSaveToggles} className="space-y-6">
+              <form id="ai-config-form" onSubmit={handleSaveToggles} className="space-y-4">
 
                 <div className="grid grid-cols-[1fr_auto_200px] gap-4 items-center p-4 bg-background rounded-lg border">
                   <div>
@@ -120,9 +129,10 @@ export default function AdminAI() {
                     <p className="text-sm text-muted-foreground">Convert audio notes to text</p>
                   </div>
                   <Switch name="tx_enabled" defaultChecked={c?.transcription?.enabled} />
-                  <Select name="tx_provider" defaultValue={c?.transcription?.provider || SaveAiConfigRequestTranscriptionProvider.azure_speech}>
+                  <Select name="tx_provider" defaultValue={c?.transcription?.provider || SaveAiConfigRequestTranscriptionProvider.azure_whisper}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={SaveAiConfigRequestTranscriptionProvider.azure_whisper}>Azure OpenAI Whisper</SelectItem>
                       <SelectItem value={SaveAiConfigRequestTranscriptionProvider.azure_speech}>Azure Speech</SelectItem>
                       <SelectItem value={SaveAiConfigRequestTranscriptionProvider.openai}>OpenAI Whisper</SelectItem>
                     </SelectContent>
@@ -155,7 +165,7 @@ export default function AdminAI() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t">
+                <div className="flex justify-end pt-2 border-t">
                   <Button type="submit" form="ai-config-form" disabled={saveConfig.isPending} className="gap-2">
                     <Save className="h-4 w-4" />
                     {saveConfig.isPending ? "Saving..." : "Save Settings"}
@@ -174,50 +184,93 @@ export default function AdminAI() {
               <CardDescription>Configure deployment-specific endpoints and model identifiers</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <form onSubmit={handleSaveEndpoints} className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="azure_openai_base_url" className="text-sm font-semibold">Azure OpenAI Base URL</Label>
-                    {c?.azureOpenAiConfigured && (
-                      <span className="text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">Configured</span>
-                    )}
+              <form onSubmit={handleSaveEndpoints} className="space-y-6">
+
+                <div className="rounded-lg border p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Cpu className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">Azure OpenAI (Text Generation)</span>
+                    {c?.azureOpenAiConfigured
+                      ? <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 ml-auto">Configured</Badge>
+                      : <Badge variant="outline" className="text-muted-foreground ml-auto">Not Set</Badge>
+                    }
                   </div>
-                  <Input
-                    id="azure_openai_base_url"
-                    name="azure_openai_base_url"
-                    type="url"
-                    placeholder={c?.azureOpenAiConfigured ? "Leave blank to keep current value" : "https://<resource>.openai.azure.com/"}
-                  />
-                  <p className="text-xs text-muted-foreground">Your Azure OpenAI resource endpoint. Set AZURE_OPENAI_BASE_URL in environment secrets.</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="azure_openai_model" className="text-sm font-semibold">Azure OpenAI Deployment Name</Label>
-                    {c?.azureOpenAiConfigured && (
-                      <span className="text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">Configured</span>
-                    )}
+                  {c?.azureOpenAiBaseUrl && (
+                    <p className="text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded border truncate">
+                      {c.azureOpenAiBaseUrl}
+                    </p>
+                  )}
+                  <div className="space-y-1">
+                    <Label htmlFor="azure_openai_base_url" className="text-xs">Base URL</Label>
+                    <Input
+                      id="azure_openai_base_url"
+                      name="azure_openai_base_url"
+                      type="url"
+                      placeholder={c?.azureOpenAiConfigured ? "Leave blank to keep current value" : "https://<resource>.cognitiveservices.azure.com/"}
+                    />
                   </div>
-                  <Input
-                    id="azure_openai_model"
-                    name="azure_openai_model"
-                    placeholder={c?.azureOpenAiConfigured ? "Leave blank to keep current value" : "gpt-4o"}
-                  />
-                  <p className="text-xs text-muted-foreground">The deployment model name (e.g. gpt-4o, gpt-35-turbo). Set AZURE_OPENAI_MODEL in environment secrets.</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="azure_speech_region" className="text-sm font-semibold">Azure Speech Region</Label>
-                    {c?.azureSpeechConfigured && (
-                      <span className="text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">Configured</span>
-                    )}
+                  <div className="space-y-1">
+                    <Label htmlFor="azure_openai_model" className="text-xs">
+                      Model / Deployment Name
+                      {c?.azureOpenAiModel && (
+                        <span className="ml-2 text-muted-foreground font-mono">current: {c.azureOpenAiModel}</span>
+                      )}
+                    </Label>
+                    <Input
+                      id="azure_openai_model"
+                      name="azure_openai_model"
+                      placeholder={c?.azureOpenAiModel ?? "gpt-4o"}
+                    />
+                    <p className="text-xs text-muted-foreground">Set AZURE_OPENAI_MODEL in environment secrets.</p>
                   </div>
-                  <Input
-                    id="azure_speech_region"
-                    name="azure_speech_region"
-                    placeholder={c?.azureSpeechConfigured ? "Leave blank to keep current value" : "eastus"}
-                  />
-                  <p className="text-xs text-muted-foreground">Azure Speech Services region (e.g. eastus, westus2). Set AZURE_SPEECH_REGION in environment secrets.</p>
                 </div>
+
+                <div className="rounded-lg border p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mic className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">Azure OpenAI Whisper (Transcription)</span>
+                    {c?.azureWhisperConfigured
+                      ? <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 ml-auto">Configured</Badge>
+                      : <Badge variant="outline" className="text-muted-foreground ml-auto">Not Set</Badge>
+                    }
+                  </div>
+                  <p className="text-xs text-muted-foreground">Uses the same Azure resource and API key as text generation. Only the deployment name differs.</p>
+                  <div className="space-y-1">
+                    <Label htmlFor="azure_openai_whisper_deployment" className="text-xs">
+                      Whisper Deployment Name
+                      {c?.azureWhisperDeployment && (
+                        <span className="ml-2 text-muted-foreground font-mono">current: {c.azureWhisperDeployment}</span>
+                      )}
+                    </Label>
+                    <Input
+                      id="azure_openai_whisper_deployment"
+                      name="azure_openai_whisper_deployment"
+                      placeholder={c?.azureWhisperDeployment ?? "whisper"}
+                    />
+                    <p className="text-xs text-muted-foreground">Set AZURE_OPENAI_WHISPER_DEPLOYMENT in environment secrets.</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mic className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold text-sm text-muted-foreground">Azure Speech Services (Legacy)</span>
+                    {c?.azureSpeechConfigured
+                      ? <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 ml-auto">Configured</Badge>
+                      : <Badge variant="outline" className="text-muted-foreground ml-auto">Not Set</Badge>
+                    }
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="azure_speech_region" className="text-xs">Region</Label>
+                    <Input
+                      id="azure_speech_region"
+                      name="azure_speech_region"
+                      placeholder={c?.azureSpeechConfigured ? "Leave blank to keep current value" : "eastus"}
+                    />
+                    <p className="text-xs text-muted-foreground">Set AZURE_SPEECH_KEY + AZURE_SPEECH_REGION in environment secrets.</p>
+                  </div>
+                </div>
+
                 <div className="flex justify-end pt-2 border-t">
                   <Button type="submit" disabled={saveConfig.isPending} className="gap-2">
                     <Save className="h-4 w-4" />
@@ -252,25 +305,57 @@ export default function AdminAI() {
 
         <div className="space-y-6">
           <Card className="border-border/50 shadow-sm bg-gradient-to-b from-card to-muted/20">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Activity className="h-5 w-5 text-primary" />
-                Provider Health
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Activity className="h-5 w-5 text-primary" />
+                  Provider Health
+                </CardTitle>
+                <Button variant="ghost" size="sm" onClick={handleRefreshHealth} disabled={healthRefreshing} className="h-7 px-2 text-xs">
+                  {healthRefreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Refresh"}
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <HealthRow name="Azure OpenAI" ok={h?.azure_openai?.healthy} error={h?.azure_openai?.error} />
+            <CardContent className="space-y-3">
+              <HealthRow name="Azure OpenAI (GPT)" subtitle={c?.azureOpenAiModel ?? undefined} ok={h?.azure_openai?.healthy} error={h?.azure_openai?.error} />
+              <HealthRow name="Azure OpenAI Whisper" subtitle={c?.azureWhisperDeployment ?? undefined} ok={h?.azure_whisper?.healthy} error={h?.azure_whisper?.error} />
               <HealthRow name="Azure Speech" ok={h?.azure_speech?.healthy} error={h?.azure_speech?.error} />
               <HealthRow name="OpenAI" ok={h?.openai?.healthy} error={h?.openai?.error} />
 
-              <div className="mt-6 pt-6 border-t border-border/50">
-                <p className="text-xs text-muted-foreground mb-3 font-semibold uppercase tracking-wider">Env Status</p>
-                <div className="space-y-2">
-                  <EnvBadge name="AZURE_OPENAI_API_KEY" ok={c?.azureOpenAiConfigured} />
-                  <EnvBadge name="AZURE_OPENAI_BASE_URL" ok={c?.azureOpenAiConfigured} />
+              <div className="mt-4 pt-4 border-t border-border/50">
+                <p className="text-xs text-muted-foreground mb-3 font-semibold uppercase tracking-wider">Env Variables</p>
+                <div className="space-y-1.5">
+                  <EnvBadge name="AZURE_OPENAI_API_KEY" ok={c?.azureWhisperConfigured} />
+                  <EnvBadge name="AZURE_OPENAI_BASE_URL" ok={c?.azureWhisperConfigured} />
+                  <EnvBadge name="AZURE_OPENAI_MODEL" ok={c?.azureOpenAiConfigured} />
+                  <EnvBadge name="AZURE_OPENAI_WHISPER_DEPLOYMENT" ok={c?.azureWhisperConfigured} value={c?.azureWhisperDeployment} />
                   <EnvBadge name="AZURE_SPEECH_KEY" ok={c?.azureSpeechConfigured} />
                   <EnvBadge name="OPENAI_API_KEY" ok={c?.openAiConfigured} />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Active Providers</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Transcription</span>
+                <ProviderBadge provider={c?.transcription?.provider} />
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Summarization</span>
+                <ProviderBadge provider={c?.summarization?.provider} />
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Drafting</span>
+                <ProviderBadge provider={c?.drafting?.provider} />
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Analysis</span>
+                <ProviderBadge provider={c?.patternAnalysis?.provider} />
               </div>
             </CardContent>
           </Card>
@@ -280,23 +365,43 @@ export default function AdminAI() {
   )
 }
 
-function HealthRow({ name, ok, error }: { name: string; ok?: boolean; error?: string | null }) {
+function HealthRow({ name, subtitle, ok, error }: { name: string; subtitle?: string; ok?: boolean; error?: string | null }) {
   return (
     <div className="flex items-start justify-between p-3 bg-background rounded-lg border shadow-sm">
-      <div>
+      <div className="min-w-0">
         <div className="font-medium text-sm">{name}</div>
-        {error && <div className="text-xs text-destructive mt-1">{error}</div>}
+        {subtitle && <div className="text-xs text-muted-foreground font-mono">{subtitle}</div>}
+        {error && <div className="text-xs text-destructive mt-1 break-all">{error}</div>}
       </div>
-      {ok ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-muted-foreground/30" />}
+      <div className="ml-2 shrink-0">
+        {ok ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-muted-foreground/30" />}
+      </div>
     </div>
   )
 }
 
-function EnvBadge({ name, ok }: { name: string; ok?: boolean }) {
+function EnvBadge({ name, ok, value }: { name: string; ok?: boolean; value?: string }) {
   return (
     <div className="flex items-center justify-between text-xs font-mono p-1.5 bg-background rounded border">
-      <span className="text-muted-foreground">{name}</span>
-      <div className={cn("h-2 w-2 rounded-full", ok ? "bg-green-500" : "bg-destructive/50")} />
+      <div className="min-w-0">
+        <span className="text-muted-foreground truncate block">{name}</span>
+        {value && <span className="text-primary/70 truncate block">{value}</span>}
+      </div>
+      <div className={cn("h-2 w-2 rounded-full shrink-0 ml-1", ok ? "bg-green-500" : "bg-destructive/50")} />
     </div>
+  )
+}
+
+function ProviderBadge({ provider }: { provider?: string }) {
+  const labels: Record<string, string> = {
+    azure_whisper: "Azure Whisper",
+    azure_openai: "Azure OpenAI",
+    azure_speech: "Azure Speech",
+    openai: "OpenAI",
+  }
+  return (
+    <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+      {provider ? (labels[provider] ?? provider) : "—"}
+    </span>
   )
 }

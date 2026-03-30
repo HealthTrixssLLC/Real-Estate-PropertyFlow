@@ -13,13 +13,14 @@ export interface AiConfigState {
 const CONFIG_KEY = "ai_config";
 
 function buildDefaultConfig(): AiConfigState {
+  const hasAzureOpenAi = !!(process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_BASE_URL);
   return {
-    transcriptionEnabled: !!(process.env.AZURE_SPEECH_KEY || process.env.OPENAI_API_KEY),
-    transcriptionProvider: process.env.AZURE_SPEECH_KEY ? "azure_speech" : "openai",
-    summarizationEnabled: !!(process.env.AZURE_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
-    summarizationProvider: process.env.AZURE_OPENAI_API_KEY ? "azure_openai" : "openai",
-    draftingEnabled: !!(process.env.AZURE_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
-    patternAnalysisEnabled: !!(process.env.AZURE_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
+    transcriptionEnabled: !!(hasAzureOpenAi || process.env.AZURE_SPEECH_KEY || process.env.OPENAI_API_KEY),
+    transcriptionProvider: hasAzureOpenAi ? "azure_whisper" : process.env.AZURE_SPEECH_KEY ? "azure_speech" : "openai",
+    summarizationEnabled: !!(hasAzureOpenAi || process.env.OPENAI_API_KEY),
+    summarizationProvider: hasAzureOpenAi ? "azure_openai" : "openai",
+    draftingEnabled: !!(hasAzureOpenAi || process.env.OPENAI_API_KEY),
+    patternAnalysisEnabled: !!(hasAzureOpenAi || process.env.OPENAI_API_KEY),
   };
 }
 
@@ -49,6 +50,7 @@ export function updateAiConfig(updates: Partial<AiConfigState>): void {
 }
 
 export function getAiConfigResponse() {
+  const hasAzureKey = !!(process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_BASE_URL);
   return {
     transcription: {
       enabled: aiConfig.transcriptionEnabled,
@@ -66,11 +68,11 @@ export function getAiConfigResponse() {
       enabled: aiConfig.patternAnalysisEnabled,
       provider: aiConfig.summarizationProvider,
     },
-    azureOpenAiConfigured: !!(
-      process.env.AZURE_OPENAI_API_KEY &&
-      process.env.AZURE_OPENAI_BASE_URL &&
-      process.env.AZURE_OPENAI_MODEL
-    ),
+    azureOpenAiConfigured: !!(hasAzureKey && process.env.AZURE_OPENAI_MODEL),
+    azureOpenAiBaseUrl: process.env.AZURE_OPENAI_BASE_URL ?? null,
+    azureOpenAiModel: process.env.AZURE_OPENAI_MODEL ?? null,
+    azureWhisperConfigured: hasAzureKey,
+    azureWhisperDeployment: process.env.AZURE_OPENAI_WHISPER_DEPLOYMENT ?? "whisper",
     azureSpeechConfigured: !!(process.env.AZURE_SPEECH_KEY && process.env.AZURE_SPEECH_REGION),
     openAiConfigured: !!process.env.OPENAI_API_KEY,
   };

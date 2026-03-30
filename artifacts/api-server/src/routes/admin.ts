@@ -5,8 +5,9 @@ import { aiConfig, updateAiConfig, getAiConfigResponse } from "../lib/aiConfig";
 import {
   generateText,
   azureOpenAiProvider,
-  openAiProvider,
+  azureWhisperProvider,
   azureSpeechProvider,
+  openAiProvider,
   resolveSpeechProvider,
 } from "../lib/ai";
 import {
@@ -39,6 +40,7 @@ router.post("/admin/ai/config", requireRole("admin"), (req: Request, res: Respon
     patternAnalysisEnabled?: boolean;
     azureOpenAiBaseUrl?: string;
     azureOpenAiModel?: string;
+    azureOpenAiWhisperDeployment?: string;
     azureSpeechRegion?: string;
   };
 
@@ -53,6 +55,7 @@ router.post("/admin/ai/config", requireRole("admin"), (req: Request, res: Respon
 
   if (body.azureOpenAiBaseUrl) process.env.AZURE_OPENAI_BASE_URL = body.azureOpenAiBaseUrl;
   if (body.azureOpenAiModel) process.env.AZURE_OPENAI_MODEL = body.azureOpenAiModel;
+  if (body.azureOpenAiWhisperDeployment) process.env.AZURE_OPENAI_WHISPER_DEPLOYMENT = body.azureOpenAiWhisperDeployment;
   if (body.azureSpeechRegion) process.env.AZURE_SPEECH_REGION = body.azureSpeechRegion;
 
   sendValidated(res, AiConfigResponseSchema, { config: getAiConfigResponse() });
@@ -90,8 +93,9 @@ router.post("/admin/ai/config/test", requireRole("admin"), async (req: Request, 
 });
 
 router.get("/admin/ai/health", requireRole("admin"), async (_req: Request, res: Response) => {
-  const [azureOpenAi, azureSpeech, openaiResult] = await Promise.all([
+  const [azureOpenAi, azureWhisper, azureSpeech, openaiResult] = await Promise.all([
     azureOpenAiProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
+    azureWhisperProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
     azureSpeechProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
     openAiProvider.ping().catch((e: unknown) => ({ healthy: false, error: String(e) })),
   ]);
@@ -99,6 +103,7 @@ router.get("/admin/ai/health", requireRole("admin"), async (_req: Request, res: 
   sendValidated(res, AiHealthResponseSchema, {
     providers: {
       azure_openai: azureOpenAi,
+      azure_whisper: azureWhisper,
       azure_speech: azureSpeech,
       openai: openaiResult,
     },

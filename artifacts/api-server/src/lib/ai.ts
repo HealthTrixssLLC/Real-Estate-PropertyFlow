@@ -106,6 +106,78 @@ class OpenAiTextProvider implements AiTextProvider {
   }
 }
 
+class AzureOpenAiWhisperProvider implements AiSpeechProvider {
+  readonly name = "azure_whisper";
+
+  private getConfig() {
+    return {
+      apiKey: process.env.AZURE_OPENAI_API_KEY ?? "",
+      baseUrl: process.env.AZURE_OPENAI_BASE_URL ?? "",
+      deployment: process.env.AZURE_OPENAI_WHISPER_DEPLOYMENT ?? "whisper",
+    };
+  }
+
+  isConfigured(): boolean {
+    const { apiKey, baseUrl } = this.getConfig();
+    return !!(apiKey && baseUrl);
+  }
+
+  async transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<{ text: string; confidence?: number }> {
+    const { apiKey, baseUrl, deployment } = this.getConfig();
+    if (!apiKey || !baseUrl) throw new Error("Azure OpenAI Whisper not configured: missing AZURE_OPENAI_API_KEY or AZURE_OPENAI_BASE_URL");
+    const url = `${baseUrl.replace(/\/$/, "")}/openai/deployments/${deployment}/audio/transcriptions?api-version=2024-06-01`;
+    const formData = new FormData();
+    const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "mp4" : "wav";
+    const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
+    formData.append("file", blob, `audio.${ext}`);
+    formData.append("model", deployment);
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "api-key": apiKey },
+      body: formData,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Azure Whisper error: ${response.status} ${text}`);
+    }
+    const data = (await response.json()) as { text: string };
+    return { text: data.text };
+  }
+
+  async ping(): Promise<{ healthy: boolean; error: string | null }> {
+    if (!this.isConfigured()) return { healthy: false, error: "AZURE_OPENAI_API_KEY or AZURE_OPENAI_BASE_URL not set" };
+    const { apiKey, baseUrl, deployment } = this.getConfig();
+    try {
+      const url = `${baseUrl.replace(/\/$/, "")}/openai/deployments/${deployment}/audio/transcriptions?api-version=2024-06-01`;
+      const formData = new FormData();
+      const silence = Buffer.alloc(44);
+      silence.write("RIFF", 0);
+      silence.writeUInt32LE(36, 4);
+      silence.write("WAVE", 8);
+      silence.write("fmt ", 12);
+      silence.writeUInt32LE(16, 16);
+      silence.writeUInt16LE(1, 20);
+      silence.writeUInt16LE(1, 22);
+      silence.writeUInt32LE(8000, 24);
+      silence.writeUInt32LE(16000, 28);
+      silence.writeUInt16LE(2, 32);
+      silence.writeUInt16LE(16, 34);
+      silence.write("data", 36);
+      silence.writeUInt32LE(0, 40);
+      formData.append("file", new Blob([new Uint8Array(silence)], { type: "audio/wav" }), "ping.wav");
+      formData.append("model", deployment);
+      const res = await fetch(url, { method: "POST", headers: { "api-key": apiKey }, body: formData });
+      if (res.ok || res.status === 400) {
+        return { healthy: true, error: null };
+      }
+      const text = await res.text();
+      return { healthy: false, error: `HTTP ${res.status}: ${text.slice(0, 200)}` };
+    } catch (err) {
+      return { healthy: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+}
+
 class AzureSpeechProvider implements AiSpeechProvider {
   readonly name = "azure_speech";
 
@@ -181,6 +253,7 @@ class OpenAiSpeechProvider implements AiSpeechProvider {
 
 export const azureOpenAiProvider = new AzureOpenAiTextProvider();
 export const openAiProvider = new OpenAiTextProvider();
+export const azureWhisperProvider = new AzureOpenAiWhisperProvider();
 export const azureSpeechProvider = new AzureSpeechProvider();
 export const openAiSpeechProvider = new OpenAiSpeechProvider();
 
@@ -193,11 +266,13 @@ export function resolveTextProvider(preferredName: string): AiTextProvider {
 }
 
 export function resolveSpeechProvider(preferredName: string): AiSpeechProvider {
+  if (preferredName === "azure_whisper" && azureWhisperProvider.isConfigured()) return azureWhisperProvider;
   if (preferredName === "azure_speech" && azureSpeechProvider.isConfigured()) return azureSpeechProvider;
   if (preferredName === "openai" && openAiSpeechProvider.isConfigured()) return openAiSpeechProvider;
+  if (azureWhisperProvider.isConfigured()) return azureWhisperProvider;
   if (azureSpeechProvider.isConfigured()) return azureSpeechProvider;
   if (openAiSpeechProvider.isConfigured()) return openAiSpeechProvider;
-  throw new Error("No speech provider configured. Set AZURE_SPEECH_KEY/AZURE_SPEECH_REGION or OPENAI_API_KEY.");
+  throw new Error("No speech provider configured. Set AZURE_OPENAI_API_KEY/AZURE_OPENAI_BASE_URL, AZURE_SPEECH_KEY/AZURE_SPEECH_REGION, or OPENAI_API_KEY.");
 }
 
 export async function generateText(prompt: string, preferredProvider?: string): Promise<AiTextResult> {
@@ -207,7 +282,7 @@ export async function generateText(prompt: string, preferredProvider?: string): 
 }
 
 export async function transcribeAudio(audioBuffer: Buffer, mimeType: string, preferredProvider?: string): Promise<AiTranscriptResult> {
-  const provider = resolveSpeechProvider(preferredProvider ?? "azure_speech");
+  const provider = resolveSpeechProvider(preferredProvider ?? "azure_whisper");
   const result = await provider.transcribeAudio(audioBuffer, mimeType);
   return { text: result.text, provider: provider.name, confidence: result.confidence };
 }
@@ -217,5 +292,5 @@ export function isTextAiAvailable(): boolean {
 }
 
 export function isSpeechAiAvailable(): boolean {
-  return azureSpeechProvider.isConfigured() || openAiSpeechProvider.isConfigured();
+  return azureWhisperProvider.isConfigured() || azureSpeechProvider.isConfigured() || openAiSpeechProvider.isConfigured();
 }

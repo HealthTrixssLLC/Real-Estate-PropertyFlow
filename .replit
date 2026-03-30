@@ -33,3 +33,4 @@ channel = "stable-25_05"
 [userenv.shared]
 AZURE_OPENAI_BASE_URL = "https://jayba-mesu389q-eastus2.cognitiveservices.azure.com/"
 AZURE_OPENAI_MODEL = "gpt-5.4-mini"
+AZURE_OPENAI_WHISPER_DEPLOYMENT = "whisper"

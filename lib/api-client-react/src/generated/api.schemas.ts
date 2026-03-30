@@ -711,6 +711,7 @@ export type AiFeatureConfigProvider =
 export const AiFeatureConfigProvider = {
   azure_openai: "azure_openai",
   openai: "openai",
+  azure_whisper: "azure_whisper",
   azure_speech: "azure_speech",
 } as const;
 
@@ -725,6 +726,12 @@ export interface AiConfig {
   drafting?: AiFeatureConfig;
   patternAnalysis?: AiFeatureConfig;
   azureOpenAiConfigured?: boolean;
+  /** @nullable */
+  azureOpenAiBaseUrl?: string | null;
+  /** @nullable */
+  azureOpenAiModel?: string | null;
+  azureWhisperConfigured?: boolean;
+  azureWhisperDeployment?: string;
   azureSpeechConfigured?: boolean;
   openAiConfigured?: boolean;
 }
@@ -739,6 +746,7 @@ export type SaveAiConfigRequestTranscriptionProvider =
 export const SaveAiConfigRequestTranscriptionProvider = {
   azure_openai: "azure_openai",
   openai: "openai",
+  azure_whisper: "azure_whisper",
   azure_speech: "azure_speech",
 } as const;
 
@@ -761,6 +769,8 @@ export interface SaveAiConfigRequest {
   azureOpenAiBaseUrl?: string;
   /** Azure OpenAI deployment model name */
   azureOpenAiModel?: string;
+  /** Azure OpenAI Whisper deployment name */
+  azureOpenAiWhisperDeployment?: string;
   /** Azure Speech Services region */
   azureSpeechRegion?: string;
 }
@@ -803,8 +813,15 @@ export type AiHealthResponseProvidersOpenai = {
   error?: string | null;
 };
 
+export type AiHealthResponseProvidersAzureWhisper = {
+  healthy?: boolean;
+  /** @nullable */
+  error?: string | null;
+};
+
 export type AiHealthResponseProviders = {
   azure_openai?: AiHealthResponseProvidersAzureOpenai;
+  azure_whisper?: AiHealthResponseProvidersAzureWhisper;
   azure_speech?: AiHealthResponseProvidersAzureSpeech;
   openai?: AiHealthResponseProvidersOpenai;
 };
