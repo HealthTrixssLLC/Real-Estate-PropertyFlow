@@ -60,7 +60,7 @@ export default function TodayScreen() {
       style={{ backgroundColor: C.background }}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: isWeb ? 67 : insets.top + 24, paddingBottom: isWeb ? 34 : insets.bottom + 80 },
+        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 80 },
       ]}
       showsVerticalScrollIndicator={false}
       refreshControl={

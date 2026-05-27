@@ -15,6 +15,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Colors from "@/constants/colors";
+import { Semantic } from "@/constants/semantic";
+import { Typography } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 
 interface SettingsRowProps {
@@ -37,7 +39,6 @@ function SettingsRow({ label, value, sfIcon, featherIcon, onPress, danger }: Set
       testID={`settings-row-${label}`}
       style={({ pressed }) => [
         styles.row,
-        { borderBottomColor: C.border },
         pressed && onPress ? { opacity: 0.7 } : {},
       ]}
     >
@@ -71,7 +72,6 @@ export default function SettingsScreen() {
   const scheme = useColorScheme() ?? "light";
   const C = Colors[scheme];
   const insets = useSafeAreaInsets();
-  const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const { signOut } = useAuth();
   const { data: authData } = useGetCurrentAuthUser();
@@ -80,20 +80,17 @@ export default function SettingsScreen() {
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Agent";
   const email = user?.email ?? "";
 
-  const topPad = isWeb ? 67 : insets.top;
-
   return (
     <ScrollView
-      style={{ backgroundColor: C.background }}
+      style={styles.scroll}
+      contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={[
         styles.content,
-        { paddingTop: topPad + 8, paddingBottom: isWeb ? 34 : insets.bottom + 20 },
+        { paddingBottom: isWeb ? 34 : insets.bottom + 20 },
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[styles.title, { color: C.text }]}>Settings</Text>
-
-      <View style={[styles.profileCard, { backgroundColor: C.card, borderColor: C.border }]}>
+      <View style={[styles.profileCard, { backgroundColor: Semantic.groupedSurface }]}>
         <View style={[styles.avatar, { backgroundColor: C.accent }]}>
           <Text style={styles.avatarInitial}>
             {displayName.charAt(0).toUpperCase()}
@@ -111,7 +108,7 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Support</Text>
-      <View style={[styles.section, { backgroundColor: C.card, borderColor: C.border }]}>
+      <View style={[styles.section, { backgroundColor: Semantic.groupedSurface }]}>
         <SettingsRow
           label="Help & Guide"
           sfIcon="questionmark.circle.fill"
@@ -121,7 +118,7 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>App</Text>
-      <View style={[styles.section, { backgroundColor: C.card, borderColor: C.border }]}>
+      <View style={[styles.section, { backgroundColor: Semantic.groupedSurface }]}>
         <SettingsRow
           label="API Connection"
           value="Connected"
@@ -143,7 +140,7 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Account</Text>
-      <View style={[styles.section, { backgroundColor: C.card, borderColor: C.border }]}>
+      <View style={[styles.section, { backgroundColor: Semantic.groupedSurface }]}>
         <SettingsRow
           label="Sign Out"
           sfIcon="rectangle.portrait.and.arrow.right"
@@ -157,21 +154,19 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    backgroundColor: Semantic.grouped as unknown as string,
+  },
   content: {
     paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 20,
+    paddingTop: 16,
   },
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 12,
     marginBottom: 24,
   },
   avatar: {
@@ -187,28 +182,23 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   profileName: {
-    fontSize: 17,
-    fontWeight: "600",
+    ...Typography.headline,
   },
   profileEmail: {
-    fontSize: 13,
+    ...Typography.footnote,
     marginTop: 2,
   },
   profileRole: {
-    fontSize: 12,
+    ...Typography.caption1,
     fontWeight: "500",
     marginTop: 3,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginBottom: 8,
+    ...Typography.sectionHeader,
+    marginBottom: 6,
   },
   section: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 12,
     overflow: "hidden",
     marginBottom: 24,
   },
@@ -219,6 +209,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
   },
   rowLeft: {
     flexDirection: "row",
@@ -227,7 +218,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowLabel: {
-    fontSize: 15,
+    ...Typography.subheadline,
   },
   rowRight: {
     flexDirection: "row",
@@ -236,6 +227,6 @@ const styles = StyleSheet.create({
     maxWidth: 160,
   },
   rowValue: {
-    fontSize: 14,
+    ...Typography.subheadline,
   },
 });

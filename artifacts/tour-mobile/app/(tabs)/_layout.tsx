@@ -5,9 +5,10 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, useColorScheme } from "react-native";
 
 import Colors from "@/constants/colors";
+import { Semantic } from "@/constants/semantic";
 
 function NativeTabLayout() {
   return (
@@ -49,16 +50,13 @@ function ClassicTabLayout() {
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.tabIconDefault,
         headerTintColor: C.accent,
-        headerStyle: {
-          backgroundColor: isIOS ? "transparent" : isDark ? "#1C1C1E" : "#FFFFFF",
-        },
-        headerTransparent: isIOS,
         headerShadowVisible: false,
         tabBarStyle: {
-          position: "absolute",
-          backgroundColor: isIOS ? "transparent" : isDark ? "#1C1C1E" : "#FFFFFF",
-          borderTopWidth: isWeb ? 1 : StyleSheet.hairlineWidth,
-          borderTopColor: C.border,
+          ...(isIOS
+            ? { position: "absolute", backgroundColor: "transparent" }
+            : { backgroundColor: isDark ? Semantic.surface as unknown as string : Semantic.surface as unknown as string }),
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: Semantic.opaqueSeparator as unknown as string,
           elevation: 0,
           ...(isWeb ? { height: 84 } : {}),
         },
@@ -66,15 +64,8 @@ function ClassicTabLayout() {
           isIOS ? (
             <BlurView
               intensity={100}
-              tint={isDark ? "dark" : "light"}
+              tint={isDark ? "dark" : "systemChromeMaterial"}
               style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" },
-              ]}
             />
           ) : null,
       }}

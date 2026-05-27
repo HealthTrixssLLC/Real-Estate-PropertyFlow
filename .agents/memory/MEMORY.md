@@ -1,1 +1,1 @@
-- [iOS native UI overhaul](ios-ui-overhaul.md) — Semantic.ts (PlatformColor tokens), Typography.ts (type scale), ActionSheetIOS filter, inset-grouped sections, haptics on all primary actions.
+- [iOS native UI overhaul](ios-ui-overhaul.md) — PlatformColor tokens, Typography scale, ActionSheetIOS filter, haptics, inset-grouped sections, native nav/tab rules, sentence-case section headers

@@ -12,5 +12,5 @@ export const Typography: Record<string, TextStyle> = {
   footnote:     { fontSize: 13, fontWeight: "400",   letterSpacing: -0.08 },
   caption1:     { fontSize: 12, fontWeight: "400",   letterSpacing: 0 },
   caption2:     { fontSize: 11, fontWeight: "400",   letterSpacing: 0.07 },
-  sectionHeader:{ fontSize: 13, fontWeight: "500",   letterSpacing: 0.5, textTransform: "uppercase" },
+  sectionHeader:{ fontSize: 13, fontWeight: "500",   letterSpacing: 0 },
 };

@@ -9,9 +9,10 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { Semantic } from "@/constants/semantic";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -19,18 +20,7 @@ export type ErrorFallbackProps = {
 };
 
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
   const insets = useSafeAreaInsets();
-
-  const theme = {
-    background: isDark ? "#000000" : "#FFFFFF",
-    backgroundSecondary: isDark ? "#1C1C1E" : "#F2F2F7",
-    text: isDark ? "#FFFFFF" : "#000000",
-    textSecondary: isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.7)",
-    link: "#007AFF",
-    buttonText: "#FFFFFF",
-  };
 
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -58,7 +48,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       {__DEV__ ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
@@ -68,21 +58,20 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             styles.topButton,
             {
               top: insets.top + 16,
-              backgroundColor: theme.backgroundSecondary,
               opacity: pressed ? 0.8 : 1,
             },
           ]}
         >
-          <Feather name="alert-circle" size={20} color={theme.text} />
+          <Feather name="alert-circle" size={20} color={Semantic.label as unknown as string} />
         </Pressable>
       ) : null}
 
       <View style={styles.content}>
-        <Text style={[styles.title, { color: theme.text }]}>
+        <Text style={styles.title}>
           Something went wrong
         </Text>
 
-        <Text style={[styles.message, { color: theme.textSecondary }]}>
+        <Text style={styles.message}>
           Please reload the app to continue.
         </Text>
 
@@ -91,13 +80,12 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           style={({ pressed }) => [
             styles.button,
             {
-              backgroundColor: theme.link,
               opacity: pressed ? 0.9 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
         >
-          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+          <Text style={styles.buttonText}>
             Try Again
           </Text>
         </Pressable>
@@ -111,23 +99,9 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           onRequestClose={() => setIsModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View
-              style={[
-                styles.modalContainer,
-                { backgroundColor: theme.background },
-              ]}
-            >
-              <View
-                style={[
-                  styles.modalHeader,
-                  {
-                    borderBottomColor: isDark
-                      ? "rgba(255, 255, 255, 0.1)"
-                      : "rgba(0, 0, 0, 0.1)",
-                  },
-                ]}
-              >
-                <Text style={[styles.modalTitle, { color: theme.text }]}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
                   Error Details
                 </Text>
                 <Pressable
@@ -139,7 +113,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                     { opacity: pressed ? 0.6 : 1 },
                   ]}
                 >
-                  <Feather name="x" size={24} color={theme.text} />
+                  <Feather name="x" size={24} color={Semantic.label as unknown as string} />
                 </Pressable>
               </View>
 
@@ -151,19 +125,11 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                 ]}
                 showsVerticalScrollIndicator
               >
-                <View
-                  style={[
-                    styles.errorContainer,
-                    { backgroundColor: theme.backgroundSecondary },
-                  ]}
-                >
+                <View style={styles.errorContainer}>
                   <Text
                     style={[
                       styles.errorText,
-                      {
-                        color: theme.text,
-                        fontFamily: monoFont,
-                      },
+                      { fontFamily: monoFont },
                     ]}
                     selectable
                   >
@@ -187,6 +153,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
+    backgroundColor: Semantic.background as unknown as string,
   },
   content: {
     alignItems: "center",
@@ -200,11 +167,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 40,
+    color: Semantic.label as unknown as string,
   },
   message: {
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
+    color: Semantic.labelSecondary as unknown as string,
   },
   topButton: {
     position: "absolute",
@@ -216,17 +185,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
+    backgroundColor: Semantic.surface as unknown as string,
   },
   button: {
     paddingVertical: 16,
     borderRadius: 8,
     paddingHorizontal: 24,
     minWidth: 200,
+    backgroundColor: "#007AFF",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -235,6 +203,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     fontSize: 16,
+    color: "#FFFFFF",
   },
   modalOverlay: {
     flex: 1,
@@ -246,6 +215,7 @@ const styles = StyleSheet.create({
     height: "90%",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
+    backgroundColor: Semantic.background as unknown as string,
   },
   modalHeader: {
     flexDirection: "row",
@@ -254,11 +224,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "600",
+    color: Semantic.label as unknown as string,
   },
   closeButton: {
     width: 44,
@@ -277,10 +249,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
     padding: 16,
+    backgroundColor: Semantic.surface as unknown as string,
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
     width: "100%",
+    color: Semantic.label as unknown as string,
   },
 });
