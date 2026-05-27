@@ -295,7 +295,7 @@ router.post("/tours/:tourId/properties", async (req: Request, res: Response) => 
         .values({ id: randomUUID(), agentId: user.id, ...propertyData })
         .returning();
       propertyId = property.id;
-    } else {
+    } else if (user.role !== "admin") {
       const [owned] = await db
         .select({ id: propertiesTable.id })
         .from(propertiesTable)
