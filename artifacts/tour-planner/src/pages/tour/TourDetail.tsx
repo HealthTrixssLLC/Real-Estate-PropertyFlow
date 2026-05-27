@@ -264,7 +264,13 @@ export default function TourDetail() {
             <StopsTab tourId={tourId} stops={stops} tourStatus={tour.status} />
           </TabsContent>
           <TabsContent value="map" className="m-0 p-0 outline-none">
-            <MapTab stops={stops} properties={properties} />
+            <MapTab
+              stops={stops}
+              properties={properties}
+              startLat={tour.startLat}
+              startLng={tour.startLng}
+              startAddress={tour.startAddress}
+            />
           </TabsContent>
           <TabsContent value="showings" className="m-0 p-0 outline-none">
             <ShowingsTab stops={stops} />

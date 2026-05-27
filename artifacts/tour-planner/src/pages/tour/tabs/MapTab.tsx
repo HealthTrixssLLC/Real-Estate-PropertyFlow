@@ -7,6 +7,9 @@ import { HelpPopover } from "@/components/shared/HelpPopover"
 interface MapTabProps {
   stops: TourStop[]
   properties: Property[]
+  startLat?: number | null
+  startLng?: number | null
+  startAddress?: string | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -20,12 +23,14 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "#6b7280",
 }
 
-export default function MapTab({ stops, properties }: MapTabProps) {
+export default function MapTab({ stops, properties, startLat, startLng, startAddress }: MapTabProps) {
   const { status, hasApiKey } = useGoogleMaps()
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<google.maps.Marker[]>([])
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null)
+  const polylineRef = useRef<google.maps.Polyline | null>(null)
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return
@@ -40,14 +45,18 @@ export default function MapTab({ stops, properties }: MapTabProps) {
       })
       .filter((s): s is NonNullable<typeof s> => s !== null)
 
-    const defaultCenter = stopsWithCoords.length > 0
-      ? { lat: stopsWithCoords[0].lat, lng: stopsWithCoords[0].lng }
-      : { lat: 37.7749, lng: -122.4194 }
+    const hasStartCoords = startLat != null && startLng != null
+
+    const defaultCenter = hasStartCoords
+      ? { lat: startLat!, lng: startLng! }
+      : stopsWithCoords.length > 0
+        ? { lat: stopsWithCoords[0].lat, lng: stopsWithCoords[0].lng }
+        : { lat: 37.7749, lng: -122.4194 }
 
     if (!mapInstanceRef.current) {
       mapInstanceRef.current = new google.maps.Map(mapRef.current, {
         center: defaultCenter,
-        zoom: stopsWithCoords.length > 0 ? 13 : 10,
+        zoom: stopsWithCoords.length > 0 || hasStartCoords ? 13 : 10,
         mapTypeControl: false,
         fullscreenControl: true,
         streetViewControl: false,
@@ -61,6 +70,53 @@ export default function MapTab({ stops, properties }: MapTabProps) {
 
     markersRef.current.forEach(m => m.setMap(null))
     markersRef.current = []
+
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setMap(null)
+      directionsRendererRef.current = null
+    }
+    if (polylineRef.current) {
+      polylineRef.current.setMap(null)
+      polylineRef.current = null
+    }
+
+    if (hasStartCoords) {
+      const startMarker = new google.maps.Marker({
+        position: { lat: startLat!, lng: startLng! },
+        map: mapInstanceRef.current!,
+        label: {
+          text: "S",
+          color: "#fff",
+          fontWeight: "bold",
+          fontSize: "12px",
+        },
+        icon: {
+          path: "M -10,-10 L 10,-10 L 10,10 L -10,10 Z",
+          fillColor: "#1e293b",
+          fillOpacity: 1,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+          scale: 1,
+          anchor: new google.maps.Point(0, 0),
+        },
+        title: startAddress ?? "Starting Point",
+        zIndex: 20,
+      })
+
+      startMarker.addListener("click", () => {
+        infoWindowRef.current!.setContent(`
+          <div style="max-width:240px;font-family:system-ui,sans-serif;padding:4px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#111">
+              Starting Point
+            </div>
+            ${startAddress ? `<div style="font-size:13px;color:#374151">${startAddress}</div>` : ""}
+          </div>
+        `)
+        infoWindowRef.current!.open(mapInstanceRef.current!, startMarker)
+      })
+
+      markersRef.current.push(startMarker)
+    }
 
     stopsWithCoords.forEach(({ stop, prop, lat, lng }, idx) => {
       const color = stop.skipped
@@ -114,32 +170,95 @@ export default function MapTab({ stops, properties }: MapTabProps) {
       markersRef.current.push(marker)
     })
 
-    if (stopsWithCoords.length > 1) {
-      new google.maps.Polyline({
-        path: stopsWithCoords.map(({ lat, lng }) => ({ lat, lng })),
-        map: mapInstanceRef.current,
-        strokeColor: "#6366f1",
-        strokeOpacity: 0.7,
-        strokeWeight: 3,
-        icons: [{
-          icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3 },
-          offset: "100%",
-          repeat: "80px",
-        }],
-      })
-    }
-
     if (stopsWithCoords.length > 0 && mapInstanceRef.current) {
       const bounds = new google.maps.LatLngBounds()
+      if (hasStartCoords) {
+        bounds.extend({ lat: startLat!, lng: startLng! })
+      }
       stopsWithCoords.forEach(({ lat, lng }) => bounds.extend({ lat, lng }))
       mapInstanceRef.current.fitBounds(bounds, 60)
     }
-  }, [status, stops, properties])
+
+    const routePoints = stopsWithCoords.length > 0 || hasStartCoords
+    if (!routePoints) return
+
+    const origin = hasStartCoords
+      ? { lat: startLat!, lng: startLng! }
+      : { lat: stopsWithCoords[0].lat, lng: stopsWithCoords[0].lng }
+
+    const allPoints = [
+      ...(hasStartCoords ? [] : []),
+      ...stopsWithCoords.map(({ lat, lng }) => ({ lat, lng })),
+    ]
+
+    if (allPoints.length < (hasStartCoords ? 1 : 2)) return
+
+    const destination = allPoints[allPoints.length - 1]
+    const waypoints = allPoints.slice(0, -1).map(pt => ({
+      location: new google.maps.LatLng(pt.lat, pt.lng),
+      stopover: true,
+    }))
+
+    const directionsService = new google.maps.DirectionsService()
+    const renderer = new google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: {
+        strokeColor: "#6366f1",
+        strokeOpacity: 0.85,
+        strokeWeight: 4,
+      },
+    })
+    renderer.setMap(mapInstanceRef.current)
+    directionsRendererRef.current = renderer
+
+    directionsService.route(
+      {
+        origin: new google.maps.LatLng(origin.lat, origin.lng),
+        destination: new google.maps.LatLng(destination.lat, destination.lng),
+        waypoints,
+        travelMode: google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK && result) {
+          renderer.setDirections(result)
+        } else {
+          renderer.setMap(null)
+          directionsRendererRef.current = null
+          const allCoords = [
+            ...(hasStartCoords ? [{ lat: startLat!, lng: startLng! }] : []),
+            ...stopsWithCoords.map(({ lat, lng }) => ({ lat, lng })),
+          ]
+          if (allCoords.length > 1) {
+            polylineRef.current = new google.maps.Polyline({
+              path: allCoords,
+              map: mapInstanceRef.current,
+              strokeColor: "#6366f1",
+              strokeOpacity: 0.7,
+              strokeWeight: 3,
+              icons: [{
+                icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3 },
+                offset: "100%",
+                repeat: "80px",
+              }],
+            })
+          }
+        }
+      }
+    )
+  }, [status, stops, properties, startLat, startLng, startAddress])
 
   useEffect(() => {
     return () => {
       markersRef.current.forEach(m => m.setMap(null))
       markersRef.current = []
+      if (directionsRendererRef.current) {
+        directionsRendererRef.current.setMap(null)
+        directionsRendererRef.current = null
+      }
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null)
+        polylineRef.current = null
+      }
     }
   }, [])
 
@@ -203,6 +322,10 @@ export default function MapTab({ stops, properties }: MapTabProps) {
           <span className="font-semibold text-foreground">{mappableCount}</span>
         </div>
         <div className="pt-2 border-t border-border/50 space-y-1.5 mt-1">
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded-sm flex-shrink-0 border border-white shadow-sm bg-[#1e293b]" />
+            <span className="text-muted-foreground">Start</span>
+          </div>
           {[
             { key: "approved", label: "Approved" },
             { key: "pending", label: "Pending" },
