@@ -1,12 +1,31 @@
 import { useState } from "react"
-import { useGetTour, useListProperties } from "@workspace/api-client-react"
-import { useRoute } from "wouter"
-import { Calendar, MapPin, User, ChevronLeft, Building2, Map as MapIcon, ListChecks, CheckCircle2, Loader2 } from "lucide-react"
+import { useGetTour, useListProperties, useArchiveTour, useRestoreTour, useDeleteTour, getListToursQueryKey } from "@workspace/api-client-react"
+import { useRoute, useLocation } from "wouter"
+import { Calendar, MapPin, User, ChevronLeft, Building2, Map as MapIcon, ListChecks, CheckCircle2, Loader2, Archive, Trash2, AlertTriangle, RotateCcw, MoreHorizontal } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Link } from "wouter"
 import { cn, formatDate, getStatusColor } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { useQueryClient } from "@tanstack/react-query"
 
 import StopsTab from "./tabs/StopsTab"
 import MapTab from "./tabs/MapTab"
@@ -16,11 +35,21 @@ import EditTourDialog from "./EditTourDialog"
 
 export default function TourDetail() {
   const [, params] = useRoute("/tours/:id")
+  const [, navigate] = useLocation()
   const tourId = params?.id || ""
   const [editOpen, setEditOpen] = useState(false)
-  
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
   const { data, isLoading } = useGetTour(tourId)
   const { data: propertiesData } = useListProperties()
+
+  const archiveTour = useArchiveTour()
+  const restoreTour = useRestoreTour()
+  const deleteTour = useDeleteTour()
 
   if (isLoading) return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   if (!data?.tour) return <div>Tour not found.</div>
@@ -28,6 +57,46 @@ export default function TourDetail() {
   const tour = data.tour
   const stops = data.stops || []
   const properties = propertiesData?.properties ?? []
+  const isArchived = tour.status === "cancelled"
+  const isPublished = tour.status === "published"
+
+  const invalidateTours = async () => {
+    await queryClient.invalidateQueries({ queryKey: getListToursQueryKey() })
+    await queryClient.invalidateQueries({ queryKey: getListToursQueryKey({ status: "cancelled" }) })
+  }
+
+  const handleArchive = async () => {
+    try {
+      await archiveTour.mutateAsync({ tourId })
+      await invalidateTours()
+      toast({ title: "Tour archived", description: "You can restore it from the Dashboard." })
+      navigate("/")
+    } catch {
+      toast({ title: "Failed to archive tour", variant: "destructive" })
+    }
+  }
+
+  const handleRestore = async () => {
+    try {
+      await restoreTour.mutateAsync({ tourId })
+      await invalidateTours()
+      toast({ title: "Tour restored", description: "The tour is now in draft status." })
+      navigate("/")
+    } catch {
+      toast({ title: "Failed to restore tour", variant: "destructive" })
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteTour.mutateAsync({ tourId })
+      await invalidateTours()
+      toast({ title: "Tour deleted" })
+      navigate("/")
+    } catch {
+      toast({ title: "Failed to delete tour", variant: "destructive" })
+    }
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-20">
@@ -60,7 +129,7 @@ export default function TourDetail() {
               {data.buyer && (
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-primary/70" />
-                  <span className="font-medium text-foreground">{data.buyer.name}</span>
+                  <span className="font-medium text-foreground">{(data.buyer as { name?: string }).name}</span>
                 </div>
               )}
               {tour.startAddress && (
@@ -73,18 +142,101 @@ export default function TourDetail() {
           </div>
 
           <div className="flex gap-3 w-full md:w-auto z-10">
-            <Button
-              variant="outline"
-              className="flex-1 md:flex-none bg-background shadow-sm hover-elevate"
-              onClick={() => setEditOpen(true)}
-            >
-              Edit Details
-            </Button>
+            {!isArchived && (
+              <Button
+                variant="outline"
+                className="flex-1 md:flex-none bg-background shadow-sm hover-elevate"
+                onClick={() => setEditOpen(true)}
+              >
+                Edit Details
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="bg-background shadow-sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isArchived ? (
+                  <DropdownMenuItem
+                    onClick={handleRestore}
+                    disabled={restoreTour.isPending}
+                    className="gap-2"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Restore Tour
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => isPublished ? setArchiveOpen(true) : handleArchive()}
+                    disabled={archiveTour.isPending}
+                    className="gap-2"
+                  >
+                    <Archive className="h-4 w-4" />
+                    Archive Tour
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setDeleteOpen(true)}
+                  className="gap-2 text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Tour
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
       <EditTourDialog open={editOpen} onOpenChange={setEditOpen} tour={tour} />
+
+      {/* Archive warning dialog for published tours */}
+      <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Archive Published Tour?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This tour is currently <strong>published</strong> and visible on the mobile app. Archiving it will hide it from the active list and remove it from the mobile app.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive}>
+              Archive Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Tour?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{tour.title}</strong> and all its stops. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Tabs */}
       <Tabs defaultValue="stops" className="w-full">

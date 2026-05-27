@@ -75,7 +75,11 @@ router.get("/tours", async (req: Request, res: Response) => {
   }
   const user = (req as Express.AuthedRequest).user;
   try {
-    const rows = await db.select().from(toursTable).where(eq(toursTable.agentId, user.id)).orderBy(toursTable.createdAt);
+    const statusFilter = req.query.status as string | undefined;
+    const whereClause = statusFilter === "cancelled"
+      ? and(eq(toursTable.agentId, user.id), eq(toursTable.status, "cancelled"))
+      : and(eq(toursTable.agentId, user.id), sql`${toursTable.status} != 'cancelled'`);
+    const rows = await db.select().from(toursTable).where(whereClause).orderBy(toursTable.createdAt);
     const stopsAgg = rows.length > 0
       ? await db
           .select({
@@ -267,6 +271,68 @@ router.delete("/tours/:tourId", async (req: Request, res: Response) => {
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete tour");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/tours/:tourId/archive", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const params = parseParams(idParams.tourId, req, res);
+  if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
+  try {
+    const existing = user.role === "admin"
+      ? await (async () => {
+          const [t] = await db.select().from(toursTable).where(eq(toursTable.id, params.tourId));
+          if (!t) { res.status(404).json({ error: "Tour not found" }); return null; }
+          return t;
+        })()
+      : await assertTourOwner(params.tourId, user.id, res);
+    if (!existing) return;
+
+    const [tour] = await db
+      .update(toursTable)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(toursTable.id, params.tourId))
+      .returning();
+    const counts = await getStopCounts(params.tourId);
+    sendValidated(res, TourResponseSchema, { tour: { ...tour, ...counts } });
+  } catch (err) {
+    req.log.error({ err }, "Failed to archive tour");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/tours/:tourId/restore", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const params = parseParams(idParams.tourId, req, res);
+  if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
+  try {
+    const existing = user.role === "admin"
+      ? await (async () => {
+          const [t] = await db.select().from(toursTable).where(eq(toursTable.id, params.tourId));
+          if (!t) { res.status(404).json({ error: "Tour not found" }); return null; }
+          return t;
+        })()
+      : await assertTourOwner(params.tourId, user.id, res);
+    if (!existing) return;
+
+    const [tour] = await db
+      .update(toursTable)
+      .set({ status: "draft", updatedAt: new Date() })
+      .where(eq(toursTable.id, params.tourId))
+      .returning();
+    const counts = await getStopCounts(params.tourId);
+    sendValidated(res, TourResponseSchema, { tour: { ...tour, ...counts } });
+  } catch (err) {
+    req.log.error({ err }, "Failed to restore tour");
     res.status(500).json({ error: "Internal server error" });
   }
 });

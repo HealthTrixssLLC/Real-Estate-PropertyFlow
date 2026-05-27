@@ -337,6 +337,14 @@ paths:
       tags: [tours]
       operationId: listTours
       summary: List all tours for the current agent
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by tour status. Defaults to returning all non-cancelled tours. Pass 'cancelled' to get archived tours.
+          schema:
+            type: string
+            enum: [cancelled]
       responses:
         '200':
           description: List of tours
@@ -490,6 +498,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SkipStopResponse'
+
+  /tours/{tourId}/archive:
+    post:
+      tags: [tours]
+      operationId: archiveTour
+      summary: Archive a tour (sets status to cancelled)
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      responses:
+        '200':
+          description: Tour archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourResponse'
+
+  /tours/{tourId}/restore:
+    post:
+      tags: [tours]
+      operationId: restoreTour
+      summary: Restore an archived tour (sets status back to draft)
+      parameters:
+        - $ref: '#/components/parameters/TourIdParam'
+      responses:
+        '200':
+          description: Tour restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourResponse'
 
   /tours/{tourId}/publish:
     post:
