@@ -35,6 +35,7 @@ export const tourStopsTable = pgTable("tour_stops", {
   followUpFlag: boolean("follow_up_flag").notNull().default(false),
   revisitFlag: boolean("revisit_flag").notNull().default(false),
   quickTags: text("quick_tags").array(),
+  predictedFitScore: integer("predicted_fit_score"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

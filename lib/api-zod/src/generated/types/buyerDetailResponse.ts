@@ -6,9 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Buyer } from "./buyer";
+import type { BuyerDetailResponsePreferenceProfile } from "./buyerDetailResponsePreferenceProfile";
 import type { BuyerDetailTour } from "./buyerDetailTour";
 
 export interface BuyerDetailResponse {
   buyer: Buyer;
   tours: BuyerDetailTour[];
+  /** AI-generated buyer preference profile (parsed from buyer.preferenceProfile JSON) */
+  preferenceProfile?: BuyerDetailResponsePreferenceProfile;
 }

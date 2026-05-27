@@ -150,6 +150,13 @@ export interface Buyer {
   phone?: string | null;
   /** @nullable */
   notes?: string | null;
+  /**
+   * JSON blob storing the AI-generated buyer preference profile
+   * @nullable
+   */
+  preferenceProfile?: string | null;
+  /** @nullable */
+  preferenceProfileUpdatedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -230,6 +237,37 @@ export interface BuyerDetailStop {
   revisitFlag: boolean;
   /** @nullable */
   quickTags?: string[] | null;
+  /**
+   * AI-predicted fit score (0-100) for unvisited stops
+   * @nullable
+   */
+  predictedFitScore?: number | null;
+  /**
+   * AI-computed property fit score (0-100) from post-showing debrief
+   * @nullable
+   */
+  fitScore?: number | null;
+  /** @nullable */
+  fitScorePositives?: string[] | null;
+  /** @nullable */
+  fitScoreNegatives?: string[] | null;
+  /** @nullable */
+  fitScoreVerdict?: string | null;
+  /**
+   * Transcribed text from the post-showing voice debrief
+   * @nullable
+   */
+  debriefTranscript?: string | null;
+  /**
+   * AI-generated summary from the post-showing debrief
+   * @nullable
+   */
+  debriefSummary?: string | null;
+  /**
+   * Processing status of the debrief (pending, transcribing, scoring, completed, failed)
+   * @nullable
+   */
+  debriefStatus?: string | null;
   /** Typed notes and transcribed voice notes for this stop */
   comments?: BuyerDetailStopCommentsItem[];
   createdAt: string;
@@ -257,9 +295,18 @@ export interface BuyerDetailTour {
   updatedAt: string;
 }
 
+/**
+ * AI-generated buyer preference profile (parsed from buyer.preferenceProfile JSON)
+ */
+export type BuyerDetailResponsePreferenceProfile = {
+  [key: string]: unknown;
+} | null;
+
 export interface BuyerDetailResponse {
   buyer: Buyer;
   tours: BuyerDetailTour[];
+  /** AI-generated buyer preference profile (parsed from buyer.preferenceProfile JSON) */
+  preferenceProfile?: BuyerDetailResponsePreferenceProfile;
 }
 
 export type TourStatus = (typeof TourStatus)[keyof typeof TourStatus];
@@ -425,6 +472,11 @@ export interface TourStop {
   revisitFlag: boolean;
   /** @nullable */
   quickTags?: string[] | null;
+  /**
+   * AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile
+   * @nullable
+   */
+  predictedFitScore?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -537,6 +589,46 @@ export interface PropertySummary {
   createdAt: string;
 }
 
+export type DebriefVoiceNoteProcessingStatus =
+  (typeof DebriefVoiceNoteProcessingStatus)[keyof typeof DebriefVoiceNoteProcessingStatus];
+
+export const DebriefVoiceNoteProcessingStatus = {
+  pending: "pending",
+  transcribing: "transcribing",
+  scoring: "scoring",
+  completed: "completed",
+  failed: "failed",
+} as const;
+
+export interface DebriefVoiceNote {
+  id: string;
+  tourStopId: string;
+  /** @nullable */
+  buyerId?: string | null;
+  /** @nullable */
+  fileUrl?: string | null;
+  /** @nullable */
+  durationSeconds?: number | null;
+  /** @nullable */
+  transcript?: string | null;
+  /** @nullable */
+  aiSummary?: string | null;
+  /**
+   * AI-computed fit score 0-100
+   * @nullable
+   */
+  fitScore?: number | null;
+  /** @nullable */
+  fitScorePositives?: string[] | null;
+  /** @nullable */
+  fitScoreNegatives?: string[] | null;
+  /** @nullable */
+  fitScoreVerdict?: string | null;
+  processingStatus: DebriefVoiceNoteProcessingStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TourStopDetailResponse {
   stop: TourStop;
   property?: Property;
@@ -544,6 +636,7 @@ export interface TourStopDetailResponse {
   restrictionNote?: RestrictionNote | null;
   voiceNotes?: VoiceNote[];
   propertySummary?: PropertySummary | null;
+  debrief?: DebriefVoiceNote | null;
 }
 
 export type TourStopWithAddress = TourStop & {
@@ -791,6 +884,24 @@ export interface TourSummaryResponse {
   summary: TourSummary;
 }
 
+export interface DebriefVoiceNoteResponse {
+  debrief: DebriefVoiceNote;
+}
+
+export interface DebriefVoiceNoteNullableResponse {
+  debrief: DebriefVoiceNote | null;
+}
+
+export type PreferenceProfileResponsePreferenceProfile = {
+  [key: string]: unknown;
+};
+
+export interface PreferenceProfileResponse {
+  preferenceProfile: PreferenceProfileResponsePreferenceProfile;
+  /** Number of unvisited stops whose predicted score was updated */
+  updatedStops: number;
+}
+
 export type AiFeatureConfigProvider =
   (typeof AiFeatureConfigProvider)[keyof typeof AiFeatureConfigProvider];
 
@@ -970,5 +1081,11 @@ export const ListToursStatus = {
 export type UploadVoiceNoteBody = {
   tourStopId: string;
   audio: Blob;
+  durationSeconds?: number;
+};
+
+export type UploadDebriefBody = {
+  /** Audio file (omit to skip debrief) */
+  audio?: Blob;
   durationSeconds?: number;
 };

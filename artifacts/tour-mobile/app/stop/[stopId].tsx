@@ -5,8 +5,10 @@ import {
   useUpdateTourStop,
   useDeleteTourStop,
   useGetTour,
+  useGetDebrief,
   getGetTourStopQueryKey,
   getGetTourQueryKey,
+  getGetDebriefQueryKey,
 } from "@workspace/api-client-react";
 import type { UpdateTourStopRequest } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,6 +35,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StarRating } from "@/components/StarRating";
 import { StatusChip } from "@/components/StatusChip";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
+import { DebriefSheet } from "@/components/DebriefSheet";
 import Colors from "@/constants/colors";
 import { Semantic } from "@/constants/semantic";
 import { Typography } from "@/constants/typography";
@@ -52,6 +55,105 @@ const QUICK_TAG_OPTIONS = [
   "Strong buy",
 ];
 
+function FitScoreMeter({ score }: { score: number }) {
+  const scheme = useColorScheme() ?? "light";
+  const C = Colors[scheme];
+  const color = score >= 75 ? C.green : score >= 50 ? C.amber : C.coral;
+  return (
+    <View style={meterStyles.wrap}>
+      <View style={[meterStyles.ring, { borderColor: color + "44" }]}>
+        <Text style={[meterStyles.score, { color }]}>{score}</Text>
+        <Text style={[meterStyles.sub, { color: C.textTertiary }]}>/100</Text>
+      </View>
+      <View style={meterStyles.labels}>
+        <Text style={[meterStyles.scoreLabel, { color }]}>
+          {score >= 75 ? "Strong Fit" : score >= 50 ? "Moderate Fit" : "Weak Fit"}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const meterStyles = StyleSheet.create({
+  wrap: { flexDirection: "row", alignItems: "center", gap: 12 },
+  ring: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  score: { fontSize: 20, fontFamily: "Inter_700Bold", lineHeight: 24 },
+  sub: { fontSize: 9, fontFamily: "Inter_500Medium" },
+  labels: { flex: 1 },
+  scoreLabel: { fontSize: 15, fontFamily: "Inter_700Bold" },
+});
+
+function InfoRow({
+  label,
+  value,
+  sfIcon,
+  featherIcon,
+  C,
+  isIOS,
+  onPress,
+}: {
+  label: string;
+  value: string;
+  sfIcon: SFSymbol;
+  featherIcon: ComponentProps<typeof Feather>["name"];
+  C: (typeof Colors)["light"];
+  isIOS: boolean;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.infoRow,
+        pressed && onPress ? { opacity: 0.7 } : null,
+      ]}
+    >
+      {isIOS ? (
+        <SymbolView name={sfIcon} tintColor={C.textSecondary} size={15} />
+      ) : (
+        <Feather name={featherIcon} size={15} color={C.textSecondary} />
+      )}
+      <Text style={[styles.infoLabel, { color: C.textSecondary }]}>{label}</Text>
+      <Text
+        style={[styles.infoValue, { color: onPress ? C.accent : C.text }]}
+        numberOfLines={2}
+      >
+        {value}
+      </Text>
+    </Pressable>
+  );
+}
+
+function FlagRow({
+  label,
+  C,
+  isIOS,
+}: {
+  label: string;
+  C: (typeof Colors)["light"];
+  isIOS: boolean;
+}) {
+  return (
+    <View style={styles.infoRow}>
+      {isIOS ? (
+        <SymbolView name="exclamationmark.circle" tintColor={C.amber} size={15} />
+      ) : (
+        <Feather name="alert-circle" size={15} color={C.amber} />
+      )}
+      <Text style={[styles.infoValue, { color: C.text, flex: 1, marginLeft: 0 }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 export default function StopDetailScreen() {
   const { stopId } = useLocalSearchParams<{ stopId: string }>();
   const scheme = useColorScheme() ?? "light";
@@ -64,6 +166,7 @@ export default function StopDetailScreen() {
   const [noteText, setNoteText] = useState("");
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
   const [restrictionsExpanded, setRestrictionsExpanded] = useState(false);
+  const [showDebriefSheet, setShowDebriefSheet] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const voiceY = useRef(0);
 
@@ -73,6 +176,32 @@ export default function StopDetailScreen() {
   const { data, isLoading, refetch } = useGetTourStop(stopId ?? "", {
     query: { queryKey: getGetTourStopQueryKey(stopId ?? ""), enabled: !!stopId },
   });
+
+  const stop = data?.stop;
+  const property = data?.property;
+  const showingRequest = data?.showingRequest;
+  const restrictionNote = data?.restrictionNote;
+  const voiceNotes = data?.voiceNotes ?? [];
+  const summary = data?.propertySummary;
+  const debrief = data?.debrief;
+
+  // Poll debrief status if processing
+  const isDebriefProcessing =
+    debrief?.processingStatus === "pending" ||
+    debrief?.processingStatus === "transcribing" ||
+    debrief?.processingStatus === "scoring";
+
+  const { data: polledDebrief } = useGetDebrief(stopId ?? "", {
+    query: {
+      queryKey: getGetDebriefQueryKey(stopId ?? ""),
+      enabled: !!stopId && isDebriefProcessing,
+      refetchInterval: 4000,
+    },
+  });
+
+  const activeDebrief = isDebriefProcessing && polledDebrief?.debrief
+    ? polledDebrief.debrief
+    : debrief ?? null;
 
   const { mutate: addNote, isPending: isAddingNote } = useAddStopNote({
     mutation: { onSuccess: () => { setNoteText(""); refetch(); } },
@@ -84,15 +213,11 @@ export default function StopDetailScreen() {
 
   const { mutate: deleteStop, isPending: isDeletingStop } = useDeleteTourStop();
 
-  const stop = data?.stop;
-  const property = data?.property;
-  const showingRequest = data?.showingRequest;
-  const restrictionNote = data?.restrictionNote;
-  const voiceNotes = data?.voiceNotes ?? [];
-  const summary = data?.propertySummary;
-
   const { data: tourData } = useGetTour(stop?.tourId ?? "", {
-    query: { enabled: !!stop?.tourId },
+    query: {
+      queryKey: getGetTourQueryKey(stop?.tourId ?? ""),
+      enabled: !!stop?.tourId,
+    },
   });
   const tourStatus = tourData?.tour?.status;
 
@@ -214,6 +339,13 @@ export default function StopDetailScreen() {
   }
 
   const currentTags = stop.quickTags ?? [];
+
+  const debriefIsProcessing =
+    activeDebrief?.processingStatus === "pending" ||
+    activeDebrief?.processingStatus === "transcribing" ||
+    activeDebrief?.processingStatus === "scoring";
+
+  const debriefCompleted = activeDebrief?.processingStatus === "completed";
 
   return (
     <View style={[styles.container, { backgroundColor: Semantic.grouped }]}>
@@ -601,7 +733,7 @@ export default function StopDetailScreen() {
                 <View style={styles.summaryList}>
                   <Text style={[styles.summaryListTitle, { color: C.green }]}>Positives</Text>
                   {summary.positives.map((p, i) => (
-                    <Text key={i} style={[styles.summaryListItem, { color: C.textSecondary }]}>• {p}</Text>
+                    <Text key={i} style={[styles.summaryItem, { color: C.text }]}>+ {p}</Text>
                   ))}
                 </View>
               )}
@@ -609,7 +741,15 @@ export default function StopDetailScreen() {
                 <View style={styles.summaryList}>
                   <Text style={[styles.summaryListTitle, { color: C.coral }]}>Concerns</Text>
                   {summary.negatives.map((n, i) => (
-                    <Text key={i} style={[styles.summaryListItem, { color: C.textSecondary }]}>• {n}</Text>
+                    <Text key={i} style={[styles.summaryItem, { color: C.text }]}>− {n}</Text>
+                  ))}
+                </View>
+              )}
+              {summary.questions && summary.questions.length > 0 && (
+                <View style={styles.summaryList}>
+                  <Text style={[styles.summaryListTitle, { color: C.accent }]}>Questions</Text>
+                  {summary.questions.map((q, i) => (
+                    <Text key={i} style={[styles.summaryItem, { color: C.text }]}>? {q}</Text>
                   ))}
                 </View>
               )}
@@ -617,128 +757,146 @@ export default function StopDetailScreen() {
           </View>
         )}
 
-        {stop.skipped && (
-          <View style={[styles.skippedBanner, { backgroundColor: C.surfaceAlt }]}>
-            {isIOS ? (
-              <SymbolView name="forward.fill" tintColor={C.textSecondary} size={20} />
-            ) : (
-              <Feather name="skip-forward" size={20} color={C.textSecondary} />
-            )}
-            <View>
-              <Text style={[styles.skippedTitle, { color: C.text }]}>Stop was skipped</Text>
-              {stop.skipReason && (
-                <Text style={[styles.skippedReason, { color: C.textSecondary }]}>
-                  {stop.skipReason.replace(/_/g, " ")}
-                </Text>
-              )}
+        {/* Post-Showing Debrief Section */}
+        {stop.visited && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                {isIOS ? (
+                  <SymbolView name="waveform.badge.mic" tintColor={C.accent} size={16} />
+                ) : (
+                  <Feather name="mic" size={16} color={C.accent} />
+                )}
+                <Text style={[styles.sectionTitle, { color: C.text }]}>Post-Showing Debrief</Text>
+              </View>
             </View>
+
+            {!activeDebrief ? (
+              <Pressable
+                onPress={() => setShowDebriefSheet(true)}
+                style={({ pressed }) => [
+                  styles.debriefPrompt,
+                  { backgroundColor: C.accent + "12", borderColor: C.accent + "30" },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                {isIOS ? (
+                  <SymbolView name="mic.circle.fill" tintColor={C.accent} size={28} />
+                ) : (
+                  <Feather name="mic" size={28} color={C.accent} />
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.debriefPromptTitle, { color: C.text }]}>Record Debrief</Text>
+                  <Text style={[styles.debriefPromptSub, { color: C.textSecondary }]}>
+                    Capture your impressions. AI will score fit and summarize.
+                  </Text>
+                </View>
+                {isIOS ? (
+                  <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
+                ) : (
+                  <Feather name="chevron-right" size={14} color={C.textTertiary} />
+                )}
+              </Pressable>
+            ) : debriefIsProcessing ? (
+              <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+                <View style={styles.debriefProcessing}>
+                  <ActivityIndicator color={C.accent} size="small" />
+                  <Text style={[styles.debriefProcessingText, { color: C.textSecondary }]}>
+                    {activeDebrief.processingStatus === "transcribing"
+                      ? "Transcribing audio…"
+                      : activeDebrief.processingStatus === "scoring"
+                      ? "AI scoring in progress…"
+                      : "Processing debrief…"}
+                  </Text>
+                </View>
+              </View>
+            ) : activeDebrief.processingStatus === "failed" ? (
+              <View style={[styles.card, { backgroundColor: C.coral + "12", borderColor: C.coral + "30" }]}>
+                <Text style={[styles.debriefFailed, { color: C.coral }]}>
+                  Debrief processing failed. Transcript may not be available.
+                </Text>
+              </View>
+            ) : debriefCompleted ? (
+              <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+                {activeDebrief.fitScore != null && (
+                  <View style={styles.fitScoreRow}>
+                    <FitScoreMeter score={activeDebrief.fitScore} />
+                  </View>
+                )}
+                {activeDebrief.fitScoreVerdict && (
+                  <Text style={[styles.debriefVerdict, { color: C.textSecondary }]}>
+                    {activeDebrief.fitScoreVerdict}
+                  </Text>
+                )}
+                {activeDebrief.fitScorePositives && activeDebrief.fitScorePositives.length > 0 && (
+                  <View style={styles.summaryList}>
+                    <Text style={[styles.summaryListTitle, { color: C.green }]}>Positives</Text>
+                    {activeDebrief.fitScorePositives.map((p, i) => (
+                      <Text key={i} style={[styles.summaryItem, { color: C.text }]}>+ {p}</Text>
+                    ))}
+                  </View>
+                )}
+                {activeDebrief.fitScoreNegatives && activeDebrief.fitScoreNegatives.length > 0 && (
+                  <View style={styles.summaryList}>
+                    <Text style={[styles.summaryListTitle, { color: C.coral }]}>Concerns</Text>
+                    {activeDebrief.fitScoreNegatives.map((n, i) => (
+                      <Text key={i} style={[styles.summaryItem, { color: C.text }]}>− {n}</Text>
+                    ))}
+                  </View>
+                )}
+                {activeDebrief.aiSummary && (
+                  <View style={styles.summaryList}>
+                    <Text style={[styles.summaryListTitle, { color: C.accent }]}>Summary</Text>
+                    <Text style={[styles.debriefSummaryText, { color: C.textSecondary }]}>
+                      {activeDebrief.aiSummary}
+                    </Text>
+                  </View>
+                )}
+                {activeDebrief.transcript && !activeDebrief.aiSummary && (
+                  <View style={styles.summaryList}>
+                    <Text style={[styles.summaryListTitle, { color: C.textSecondary }]}>Transcript</Text>
+                    <Text style={[styles.debriefSummaryText, { color: C.textSecondary }]}>
+                      "{activeDebrief.transcript}"
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : null}
           </View>
         )}
 
-        {tourStatus !== undefined && tourStatus !== "published" && (
-          <View style={styles.section}>
-            <Pressable
-              testID="remove-stop-btn"
-              onPress={handleRemoveStop}
-              disabled={isDeletingStop}
-              style={({ pressed }) => [
-                styles.removeStopBtn,
-                { borderColor: C.coral, backgroundColor: pressed ? C.coral + "15" : "transparent" },
-                isDeletingStop && { opacity: 0.5 },
-              ]}
-            >
-              {isIOS ? (
-                <SymbolView name="trash" tintColor={C.coral} size={18} />
-              ) : (
-                <Feather name="trash-2" size={18} color={C.coral} />
-              )}
-              <Text style={[styles.removeStopLabel, { color: C.coral }]}>
-                {isDeletingStop ? "Removing…" : "Remove Stop"}
-              </Text>
-            </Pressable>
-          </View>
-        )}
+        <View style={styles.section}>
+          <Pressable
+            onPress={handleRemoveStop}
+            disabled={isDeletingStop}
+            style={({ pressed }) => [
+              styles.removeBtn,
+              { backgroundColor: C.coral + "12", borderColor: C.coral + "30" },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            {isIOS ? (
+              <SymbolView name="trash" tintColor={C.coral} size={16} />
+            ) : (
+              <Feather name="trash-2" size={16} color={C.coral} />
+            )}
+            <Text style={[styles.removeBtnLabel, { color: C.coral }]}>Remove from Tour</Text>
+          </Pressable>
+        </View>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </KeyboardAvoidingView>
 
-    {!isWeb && (
-      <Pressable
-        testID="floating-mic-btn"
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          scrollRef.current?.scrollTo({ y: voiceY.current, animated: true });
+    {showDebriefSheet && stopId && (
+      <DebriefSheet
+        stopId={stopId}
+        onClose={() => {
+          setShowDebriefSheet(false);
+          refetch();
         }}
-        style={[
-          styles.fab,
-          { backgroundColor: isUploadingVoice ? C.textTertiary : C.accent, bottom: insets.bottom + 20 },
-        ]}
-      >
-        {isUploadingVoice ? (
-          <ActivityIndicator color="#FFF" size="small" />
-        ) : isIOS ? (
-          <SymbolView name="mic.fill" tintColor="#FFF" size={22} />
-        ) : (
-          <Feather name="mic" size={22} color="#FFF" />
-        )}
-      </Pressable>
+      />
     )}
-    </View>
-  );
-}
-
-type ColorScheme = (typeof Colors)["light"];
-
-function InfoRow({
-  label,
-  value,
-  sfIcon,
-  featherIcon,
-  onPress,
-  C,
-  isIOS,
-}: {
-  label: string;
-  value: string;
-  sfIcon?: SFSymbol;
-  featherIcon?: ComponentProps<typeof Feather>["name"];
-  onPress?: () => void;
-  C: ColorScheme;
-  isIOS: boolean;
-}) {
-  const content = (
-    <View style={styles.infoRow}>
-      <View style={styles.infoLeft}>
-        {sfIcon && isIOS ? (
-          <SymbolView name={sfIcon} tintColor={C.textTertiary} size={14} />
-        ) : featherIcon ? (
-          <Feather name={featherIcon as ComponentProps<typeof Feather>["name"]} size={14} color={C.textTertiary} />
-        ) : null}
-        <Text style={[styles.infoLabel, { color: C.textSecondary }]}>{label}</Text>
-      </View>
-      <Text
-        style={[styles.infoValue, { color: onPress ? C.accent : C.text }]}
-        numberOfLines={2}
-      >
-        {value}
-      </Text>
-    </View>
-  );
-
-  if (onPress) {
-    return <Pressable onPress={onPress}>{content}</Pressable>;
-  }
-  return content;
-}
-
-function FlagRow({ label, C, isIOS }: { label: string; C: ColorScheme; isIOS: boolean }) {
-  return (
-    <View style={[styles.infoRow, styles.flagInfoRow]}>
-      {isIOS ? (
-        <SymbolView name="exclamationmark.triangle" tintColor={C.amber} size={14} />
-      ) : (
-        <Feather name="alert-triangle" size={14} color={C.amber} />
-      )}
-      <Text style={[styles.infoLabel, { color: C.text }]}>{label}</Text>
     </View>
   );
 }
@@ -764,52 +922,65 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 16 },
   propertyCard: {
     borderRadius: 18,
-    padding: 20,
+    padding: 18,
     marginBottom: 20,
   },
   propertyAddress: {
-    fontSize: 18,
-    fontWeight: "bold",
     color: "#FFF",
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 24,
     marginBottom: 4,
   },
   propertyNickname: {
+    color: "rgba(255,255,255,0.65)",
     fontSize: 13,
-    color: "rgba(255,255,255,0.7)",
-    marginBottom: 12,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 8,
   },
   propertyStats: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 10,
   },
   propStat: {
-    fontSize: 14,
-    fontWeight: "600",
     color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  statusRow: {
-    flexDirection: "row",
-  },
-  section: { marginBottom: 24 },
+  statusRow: { flexDirection: "row", gap: 8 },
+  section: { marginBottom: 20 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 10,
   },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  sectionHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
   sectionHeaderRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-  },
-  sectionHint: {
-    fontSize: 12,
-  },
-  sectionTitle: {
-    ...Typography.sectionHeader,
-    paddingBottom: 6,
+    gap: 6,
   },
   card: {
     borderRadius: 12,
@@ -817,13 +988,12 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
-    paddingVertical: 11,
+    gap: 10,
     paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
-    gap: 8,
+    borderBottomColor: "rgba(0,0,0,0.06)",
   },
   infoLeft: {
     flexDirection: "row",
@@ -832,20 +1002,20 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   infoLabel: {
-    fontSize: 13,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    width: 70,
+    marginTop: 1,
   },
   infoValue: {
-    fontSize: 13,
-    fontWeight: "500",
     flex: 1,
-    textAlign: "right",
-  },
-  flagInfoRow: {
-    justifyContent: "flex-start",
-    gap: 8,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
   },
   freeText: {
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   freeTextContent: {
     fontSize: 13,
@@ -853,15 +1023,16 @@ const styles = StyleSheet.create({
   },
   ratingRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 11,
+    justifyContent: "space-between",
     paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
+    borderBottomColor: "rgba(0,0,0,0.06)",
   },
   ratingLabel: {
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   flagsRow: {
     flexDirection: "row",
@@ -872,13 +1043,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   flagLabel: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
   tagWrap: {
     flexDirection: "row",
@@ -886,103 +1058,115 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   tagLabel: {
-    fontSize: 13,
-    fontWeight: "500",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   voiceRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  voiceContent: { flex: 1 },
+  voiceContent: {
+    flex: 1,
+    gap: 3,
+  },
   voiceTime: {
-    fontSize: 13,
-    fontWeight: "500",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   voiceTranscript: {
-    fontSize: 12,
-    marginTop: 2,
-    lineHeight: 16,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
   },
   voiceStatus: {
     fontSize: 11,
-    marginTop: 2,
+    fontFamily: "Inter_400Regular",
   },
   noteInput: {
+    borderRadius: 14,
+    borderWidth: 1,
     flexDirection: "row",
     alignItems: "flex-end",
-    borderRadius: 12,
-    padding: 12,
+    padding: 10,
     gap: 8,
+    minHeight: 60,
   },
   noteTextField: {
     flex: 1,
     fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
     minHeight: 44,
     maxHeight: 120,
   },
   addNoteBtn: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
   },
   summaryText: {
-    fontSize: 14,
-    lineHeight: 20,
-    padding: 14,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 4,
   },
   summaryList: {
-    padding: 14,
-    paddingTop: 0,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     gap: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.06)",
   },
   summaryListTitle: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
-  summaryListItem: {
+  summaryItem: {
     fontSize: 13,
     lineHeight: 18,
   },
-  skippedBanner: {
+  // Debrief styles
+  debriefPrompt: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 14,
     borderRadius: 14,
-    marginBottom: 20,
+    borderWidth: 1,
+    padding: 14,
   },
-  skippedTitle: {
+  debriefPromptTitle: {
     fontSize: 14,
     fontWeight: "600",
   },
-  skippedReason: {
-    fontSize: 13,
-    textTransform: "capitalize",
+  debriefPromptSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
-  removeStopBtn: {
+  debriefProcessing: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
+    gap: 10,
+    padding: 16,
   },
-  removeStopLabel: {
-    fontSize: 15,
-    fontWeight: "600",
+  removeBtnLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
 });

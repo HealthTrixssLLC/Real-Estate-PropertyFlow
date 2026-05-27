@@ -47,6 +47,7 @@ export const TourStopSchema = z.object({
   followUpFlag: z.boolean(),
   revisitFlag: z.boolean(),
   quickTags: z.array(z.string()).nullable().optional(),
+  predictedFitScore: z.number().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -94,6 +95,8 @@ export const BuyerSchema = z.object({
   email: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  preferenceProfile: z.string().nullable().optional(),
+  preferenceProfileUpdatedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -213,6 +216,31 @@ export const TourSummarySchema = z.object({
   createdAt: z.date(),
 });
 
+export const DebriefVoiceNoteSchema = z.object({
+  id: z.string(),
+  tourStopId: z.string(),
+  buyerId: z.string().nullable().optional(),
+  fileUrl: z.string().nullable().optional(),
+  durationSeconds: z.number().nullable().optional(),
+  transcript: z.string().nullable().optional(),
+  aiSummary: z.string().nullable().optional(),
+  fitScore: z.number().nullable().optional(),
+  fitScorePositives: z.array(z.string()).nullable().optional(),
+  fitScoreNegatives: z.array(z.string()).nullable().optional(),
+  fitScoreVerdict: z.string().nullable().optional(),
+  processingStatus: z.enum(["pending", "transcribing", "scoring", "completed", "failed"]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const DebriefVoiceNoteResponseSchema = z.object({
+  debrief: DebriefVoiceNoteSchema,
+});
+
+export const DebriefVoiceNoteNullableResponseSchema = z.object({
+  debrief: DebriefVoiceNoteSchema.nullable(),
+});
+
 const AiFeatureConfigSchema = z.object({
   enabled: z.boolean(),
   provider: z.string(),
@@ -283,6 +311,7 @@ export const TourStopDetailResponseSchema = z.object({
   restrictionNote: RestrictionNoteSchema.nullable(),
   voiceNotes: z.array(VoiceNoteSchema),
   propertySummary: PropertySummarySchema.nullable(),
+  debrief: DebriefVoiceNoteSchema.nullable(),
 });
 
 export const VoiceNoteDetailResponseSchema = z.object({
@@ -329,6 +358,14 @@ export const BuyerDetailStopSchema = z.object({
   followUpFlag: z.boolean(),
   revisitFlag: z.boolean(),
   quickTags: z.array(z.string()).nullable().optional(),
+  predictedFitScore: z.number().nullable().optional(),
+  fitScore: z.number().nullable().optional(),
+  fitScorePositives: z.array(z.string()).nullable().optional(),
+  fitScoreNegatives: z.array(z.string()).nullable().optional(),
+  fitScoreVerdict: z.string().nullable().optional(),
+  debriefTranscript: z.string().nullable().optional(),
+  debriefSummary: z.string().nullable().optional(),
+  debriefStatus: z.string().nullable().optional(),
   comments: z.array(BuyerDetailStopCommentSchema),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -347,6 +384,12 @@ export const BuyerDetailTourSchema = z.object({
 export const BuyerDetailResponseSchema = z.object({
   buyer: BuyerSchema,
   tours: z.array(BuyerDetailTourSchema),
+  preferenceProfile: z.record(z.unknown()).nullable(),
+});
+
+export const PreferenceProfileResponseSchema = z.object({
+  preferenceProfile: z.record(z.unknown()),
+  updatedStops: z.number(),
 });
 
 export const BuyerResponseSchema = z.object({ buyer: BuyerSchema });

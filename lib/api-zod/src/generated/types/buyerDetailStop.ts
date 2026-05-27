@@ -52,6 +52,37 @@ export interface BuyerDetailStop {
   revisitFlag: boolean;
   /** @nullable */
   quickTags?: string[] | null;
+  /**
+   * AI-predicted fit score (0-100) for unvisited stops
+   * @nullable
+   */
+  predictedFitScore?: number | null;
+  /**
+   * AI-computed property fit score (0-100) from post-showing debrief
+   * @nullable
+   */
+  fitScore?: number | null;
+  /** @nullable */
+  fitScorePositives?: string[] | null;
+  /** @nullable */
+  fitScoreNegatives?: string[] | null;
+  /** @nullable */
+  fitScoreVerdict?: string | null;
+  /**
+   * Transcribed text from the post-showing voice debrief
+   * @nullable
+   */
+  debriefTranscript?: string | null;
+  /**
+   * AI-generated summary from the post-showing debrief
+   * @nullable
+   */
+  debriefSummary?: string | null;
+  /**
+   * Processing status of the debrief (pending, transcribing, scoring, completed, failed)
+   * @nullable
+   */
+  debriefStatus?: string | null;
   /** Typed notes and transcribed voice notes for this stop */
   comments?: BuyerDetailStopCommentsItem[];
   createdAt: Date;

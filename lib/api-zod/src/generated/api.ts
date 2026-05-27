@@ -111,6 +111,13 @@ export const ListBuyersResponse = zod.object({
       email: zod.string().nullish(),
       phone: zod.string().nullish(),
       notes: zod.string().nullish(),
+      preferenceProfile: zod
+        .string()
+        .nullish()
+        .describe(
+          "JSON blob storing the AI-generated buyer preference profile",
+        ),
+      preferenceProfileUpdatedAt: zod.coerce.date().nullish(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -141,6 +148,11 @@ export const GetBuyerResponse = zod.object({
     email: zod.string().nullish(),
     phone: zod.string().nullish(),
     notes: zod.string().nullish(),
+    preferenceProfile: zod
+      .string()
+      .nullish()
+      .describe("JSON blob storing the AI-generated buyer preference profile"),
+    preferenceProfileUpdatedAt: zod.coerce.date().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -167,6 +179,11 @@ export const UpdateBuyerResponse = zod.object({
     email: zod.string().nullish(),
     phone: zod.string().nullish(),
     notes: zod.string().nullish(),
+    preferenceProfile: zod
+      .string()
+      .nullish()
+      .describe("JSON blob storing the AI-generated buyer preference profile"),
+    preferenceProfileUpdatedAt: zod.coerce.date().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -177,6 +194,20 @@ export const UpdateBuyerResponse = zod.object({
  */
 export const DeleteBuyerParams = zod.object({
   buyerId: zod.coerce.string(),
+});
+
+/**
+ * @summary Generate or refresh AI buyer preference profile from all completed debriefs
+ */
+export const GeneratePreferenceProfileParams = zod.object({
+  buyerId: zod.coerce.string(),
+});
+
+export const GeneratePreferenceProfileResponse = zod.object({
+  preferenceProfile: zod.record(zod.string(), zod.unknown()),
+  updatedStops: zod
+    .number()
+    .describe("Number of unvisited stops whose predicted score was updated"),
 });
 
 /**
@@ -193,6 +224,11 @@ export const GetBuyerDetailResponse = zod.object({
     email: zod.string().nullish(),
     phone: zod.string().nullish(),
     notes: zod.string().nullish(),
+    preferenceProfile: zod
+      .string()
+      .nullish()
+      .describe("JSON blob storing the AI-generated buyer preference profile"),
+    preferenceProfileUpdatedAt: zod.coerce.date().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -237,6 +273,33 @@ export const GetBuyerDetailResponse = zod.object({
           followUpFlag: zod.boolean(),
           revisitFlag: zod.boolean(),
           quickTags: zod.array(zod.string()).nullish(),
+          predictedFitScore: zod
+            .number()
+            .nullish()
+            .describe("AI-predicted fit score (0-100) for unvisited stops"),
+          fitScore: zod
+            .number()
+            .nullish()
+            .describe(
+              "AI-computed property fit score (0-100) from post-showing debrief",
+            ),
+          fitScorePositives: zod.array(zod.string()).nullish(),
+          fitScoreNegatives: zod.array(zod.string()).nullish(),
+          fitScoreVerdict: zod.string().nullish(),
+          debriefTranscript: zod
+            .string()
+            .nullish()
+            .describe("Transcribed text from the post-showing voice debrief"),
+          debriefSummary: zod
+            .string()
+            .nullish()
+            .describe("AI-generated summary from the post-showing debrief"),
+          debriefStatus: zod
+            .string()
+            .nullish()
+            .describe(
+              "Processing status of the debrief (pending, transcribing, scoring, completed, failed)",
+            ),
           comments: zod
             .array(
               zod.object({
@@ -257,6 +320,12 @@ export const GetBuyerDetailResponse = zod.object({
       updatedAt: zod.coerce.date(),
     }),
   ),
+  preferenceProfile: zod
+    .record(zod.string(), zod.unknown())
+    .nullish()
+    .describe(
+      "AI-generated buyer preference profile (parsed from buyer.preferenceProfile JSON)",
+    ),
 });
 
 /**
@@ -575,6 +644,12 @@ export const GetTourResponse = zod.object({
         followUpFlag: zod.boolean(),
         revisitFlag: zod.boolean(),
         quickTags: zod.array(zod.string()).nullish(),
+        predictedFitScore: zod
+          .number()
+          .nullish()
+          .describe(
+            "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+          ),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date(),
       })
@@ -603,6 +678,13 @@ export const GetTourResponse = zod.object({
         email: zod.string().nullish(),
         phone: zod.string().nullish(),
         notes: zod.string().nullish(),
+        preferenceProfile: zod
+          .string()
+          .nullish()
+          .describe(
+            "JSON blob storing the AI-generated buyer preference profile",
+          ),
+        preferenceProfileUpdatedAt: zod.coerce.date().nullish(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date(),
       }),
@@ -811,6 +893,12 @@ export const SkipTourStopResponse = zod.object({
     followUpFlag: zod.boolean(),
     revisitFlag: zod.boolean(),
     quickTags: zod.array(zod.string()).nullish(),
+    predictedFitScore: zod
+      .number()
+      .nullish()
+      .describe(
+        "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+      ),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -846,6 +934,12 @@ export const SkipTourStopResponse = zod.object({
         followUpFlag: zod.boolean(),
         revisitFlag: zod.boolean(),
         quickTags: zod.array(zod.string()).nullish(),
+        predictedFitScore: zod
+          .number()
+          .nullish()
+          .describe(
+            "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+          ),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date(),
       }),
@@ -1155,6 +1249,12 @@ export const GetTourStopResponse = zod.object({
     followUpFlag: zod.boolean(),
     revisitFlag: zod.boolean(),
     quickTags: zod.array(zod.string()).nullish(),
+    predictedFitScore: zod
+      .number()
+      .nullish()
+      .describe(
+        "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+      ),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -1267,6 +1367,36 @@ export const GetTourStopResponse = zod.object({
       zod.null(),
     ])
     .optional(),
+  debrief: zod
+    .union([
+      zod.object({
+        id: zod.string(),
+        tourStopId: zod.string(),
+        buyerId: zod.string().nullish(),
+        fileUrl: zod.string().nullish(),
+        durationSeconds: zod.number().nullish(),
+        transcript: zod.string().nullish(),
+        aiSummary: zod.string().nullish(),
+        fitScore: zod
+          .number()
+          .nullish()
+          .describe("AI-computed fit score 0-100"),
+        fitScorePositives: zod.array(zod.string()).nullish(),
+        fitScoreNegatives: zod.array(zod.string()).nullish(),
+        fitScoreVerdict: zod.string().nullish(),
+        processingStatus: zod.enum([
+          "pending",
+          "transcribing",
+          "scoring",
+          "completed",
+          "failed",
+        ]),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
 });
 
 /**
@@ -1331,6 +1461,12 @@ export const UpdateTourStopResponse = zod.object({
     followUpFlag: zod.boolean(),
     revisitFlag: zod.boolean(),
     quickTags: zod.array(zod.string()).nullish(),
+    predictedFitScore: zod
+      .number()
+      .nullish()
+      .describe(
+        "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+      ),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -1381,6 +1517,12 @@ export const MarkStopArrivedResponse = zod.object({
     followUpFlag: zod.boolean(),
     revisitFlag: zod.boolean(),
     quickTags: zod.array(zod.string()).nullish(),
+    predictedFitScore: zod
+      .number()
+      .nullish()
+      .describe(
+        "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+      ),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -1424,6 +1566,12 @@ export const MarkStopCompletedResponse = zod.object({
     followUpFlag: zod.boolean(),
     revisitFlag: zod.boolean(),
     quickTags: zod.array(zod.string()).nullish(),
+    predictedFitScore: zod
+      .number()
+      .nullish()
+      .describe(
+        "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+      ),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -1471,6 +1619,12 @@ export const AddStopNoteResponse = zod.object({
     followUpFlag: zod.boolean(),
     revisitFlag: zod.boolean(),
     quickTags: zod.array(zod.string()).nullish(),
+    predictedFitScore: zod
+      .number()
+      .nullish()
+      .describe(
+        "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+      ),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -1764,6 +1918,56 @@ export const GetVoiceNoteResponse = zod.object({
       zod.null(),
     ])
     .optional(),
+});
+
+/**
+ * @summary Upload or skip a post-showing voice debrief for a stop
+ */
+export const UploadDebriefParams = zod.object({
+  stopId: zod.coerce.string(),
+});
+
+export const UploadDebriefBody = zod.object({
+  audio: zod
+    .instanceof(File)
+    .optional()
+    .describe("Audio file (omit to skip debrief)"),
+  durationSeconds: zod.number().optional(),
+});
+
+/**
+ * @summary Get the debrief for a stop (poll for processing status)
+ */
+export const GetDebriefParams = zod.object({
+  stopId: zod.coerce.string(),
+});
+
+export const GetDebriefResponse = zod.object({
+  debrief: zod.union([
+    zod.object({
+      id: zod.string(),
+      tourStopId: zod.string(),
+      buyerId: zod.string().nullish(),
+      fileUrl: zod.string().nullish(),
+      durationSeconds: zod.number().nullish(),
+      transcript: zod.string().nullish(),
+      aiSummary: zod.string().nullish(),
+      fitScore: zod.number().nullish().describe("AI-computed fit score 0-100"),
+      fitScorePositives: zod.array(zod.string()).nullish(),
+      fitScoreNegatives: zod.array(zod.string()).nullish(),
+      fitScoreVerdict: zod.string().nullish(),
+      processingStatus: zod.enum([
+        "pending",
+        "transcribing",
+        "scoring",
+        "completed",
+        "failed",
+      ]),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+    zod.null(),
+  ]),
 });
 
 /**

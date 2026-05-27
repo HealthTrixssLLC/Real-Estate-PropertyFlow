@@ -10,6 +10,7 @@ import {
   restrictionNotesTable,
   voiceNotesTable,
   propertySummariesTable,
+  debriefVoiceNotesTable,
 } from "@workspace/db";
 import { UpdateTourStopBody, AddStopNoteBody } from "@workspace/api-zod";
 import { parseParams, parseBody } from "../lib/validate";
@@ -85,8 +86,20 @@ router.get("/tour-stops/:stopId", async (req: Request, res: Response) => {
       .select()
       .from(propertySummariesTable)
       .where(eq(propertySummariesTable.tourStopId, params.stopId));
+    const [debrief] = await db
+      .select()
+      .from(debriefVoiceNotesTable)
+      .where(eq(debriefVoiceNotesTable.tourStopId, params.stopId));
 
-    sendValidated(res, TourStopDetailResponseSchema, { stop, property: property ?? null, showingRequest: showingRequest ?? null, restrictionNote: restrictionNote ?? null, voiceNotes, propertySummary: propertySummary ?? null });
+    sendValidated(res, TourStopDetailResponseSchema, {
+      stop,
+      property: property ?? null,
+      showingRequest: showingRequest ?? null,
+      restrictionNote: restrictionNote ?? null,
+      voiceNotes,
+      propertySummary: propertySummary ?? null,
+      debrief: debrief ?? null,
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to get tour stop");
     res.status(500).json({ error: "Internal server error" });

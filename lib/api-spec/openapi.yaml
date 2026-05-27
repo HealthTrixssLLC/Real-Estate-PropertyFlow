@@ -240,6 +240,25 @@ paths:
         '204':
           description: Buyer deleted
 
+  /buyers/{buyerId}/preference-profile:
+    post:
+      tags: [buyers]
+      operationId: generatePreferenceProfile
+      summary: Generate or refresh AI buyer preference profile from all completed debriefs
+      parameters:
+        - $ref: '#/components/parameters/BuyerIdParam'
+      responses:
+        '200':
+          description: Preference profile generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferenceProfileResponse'
+        '400':
+          description: No visited stops with data to analyze
+        '503':
+          description: AI provider not configured
+
   /buyers/{buyerId}/detail:
     get:
       tags: [buyers]
@@ -861,6 +880,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/VoiceNoteDetailResponse'
 
+  # ── Post-Showing Debrief ────────────────────────────────────────────────────
+  /tour-stops/{stopId}/debrief:
+    post:
+      tags: [debrief]
+      operationId: uploadDebrief
+      summary: Upload or skip a post-showing voice debrief for a stop
+      parameters:
+        - name: stopId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: Audio file (omit to skip debrief)
+                durationSeconds:
+                  type: integer
+      responses:
+        '201':
+          description: Debrief created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebriefVoiceNoteResponse'
+        '401':
+          description: Unauthorized
+    get:
+      tags: [debrief]
+      operationId: getDebrief
+      summary: Get the debrief for a stop (poll for processing status)
+      parameters:
+        - name: stopId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Debrief record (may be null if no debrief submitted yet)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebriefVoiceNoteNullableResponse'
+        '401':
+          description: Unauthorized
+
   # ── Admin AI Config ─────────────────────────────────────────────────────────
   /admin/ai/config:
     get:
@@ -1171,6 +1243,12 @@ components:
           type: [string, 'null']
         notes:
           type: [string, 'null']
+        preferenceProfile:
+          type: [string, 'null']
+          description: JSON blob storing the AI-generated buyer preference profile
+        preferenceProfileUpdatedAt:
+          type: [string, 'null']
+          format: date-time
         createdAt:
           type: string
           format: date-time
@@ -1277,6 +1355,31 @@ components:
           type: [array, 'null']
           items:
             type: string
+        predictedFitScore:
+          type: [integer, 'null']
+          description: AI-predicted fit score (0-100) for unvisited stops
+        fitScore:
+          type: [integer, 'null']
+          description: AI-computed property fit score (0-100) from post-showing debrief
+        fitScorePositives:
+          type: [array, 'null']
+          items:
+            type: string
+        fitScoreNegatives:
+          type: [array, 'null']
+          items:
+            type: string
+        fitScoreVerdict:
+          type: [string, 'null']
+        debriefTranscript:
+          type: [string, 'null']
+          description: Transcribed text from the post-showing voice debrief
+        debriefSummary:
+          type: [string, 'null']
+          description: AI-generated summary from the post-showing debrief
+        debriefStatus:
+          type: [string, 'null']
+          description: Processing status of the debrief (pending, transcribing, scoring, completed, failed)
         comments:
           type: array
           description: Typed notes and transcribed voice notes for this stop
@@ -1336,6 +1439,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BuyerDetailTour'
+        preferenceProfile:
+          type: object
+          nullable: true
+          description: AI-generated buyer preference profile (parsed from buyer.preferenceProfile JSON)
+          additionalProperties: true
 
     # ── Tour schemas ──────────────────────────────────────────────────────────
     Tour:
@@ -1578,6 +1686,9 @@ components:
           type: [array, 'null']
           items:
             type: string
+        predictedFitScore:
+          type: [integer, 'null']
+          description: AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile
         createdAt:
           type: string
           format: date-time
@@ -1615,6 +1726,10 @@ components:
         propertySummary:
           oneOf:
             - $ref: '#/components/schemas/PropertySummary'
+            - type: 'null'
+        debrief:
+          oneOf:
+            - $ref: '#/components/schemas/DebriefVoiceNote'
             - type: 'null'
 
     TourStopWithAddress:
@@ -2097,6 +2212,75 @@ components:
       properties:
         summary:
           $ref: '#/components/schemas/TourSummary'
+
+    # ── Debrief schemas ────────────────────────────────────────────────────────
+    DebriefVoiceNote:
+      type: object
+      required: [id, tourStopId, processingStatus, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        tourStopId:
+          type: string
+        buyerId:
+          type: [string, 'null']
+        fileUrl:
+          type: [string, 'null']
+        durationSeconds:
+          type: [integer, 'null']
+        transcript:
+          type: [string, 'null']
+        aiSummary:
+          type: [string, 'null']
+        fitScore:
+          type: [integer, 'null']
+          description: AI-computed fit score 0-100
+        fitScorePositives:
+          type: [array, 'null']
+          items:
+            type: string
+        fitScoreNegatives:
+          type: [array, 'null']
+          items:
+            type: string
+        fitScoreVerdict:
+          type: [string, 'null']
+        processingStatus:
+          type: string
+          enum: [pending, transcribing, scoring, completed, failed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DebriefVoiceNoteResponse:
+      type: object
+      required: [debrief]
+      properties:
+        debrief:
+          $ref: '#/components/schemas/DebriefVoiceNote'
+
+    DebriefVoiceNoteNullableResponse:
+      type: object
+      required: [debrief]
+      properties:
+        debrief:
+          oneOf:
+            - $ref: '#/components/schemas/DebriefVoiceNote'
+            - type: 'null'
+
+    PreferenceProfileResponse:
+      type: object
+      required: [preferenceProfile, updatedStops]
+      properties:
+        preferenceProfile:
+          type: object
+          additionalProperties: true
+        updatedStops:
+          type: integer
+          description: Number of unvisited stops whose predicted score was updated
 
     # ── AI Config schemas ─────────────────────────────────────────────────────
     AiFeatureConfig:

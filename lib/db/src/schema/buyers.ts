@@ -10,6 +10,8 @@ export const buyersTable = pgTable("buyers", {
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
   notes: text("notes"),
+  preferenceProfile: text("preference_profile"),
+  preferenceProfileUpdatedAt: timestamp("preference_profile_updated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

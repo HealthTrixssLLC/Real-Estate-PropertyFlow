@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ActionTray } from "@/components/ActionTray";
 import type { ActionButton } from "@/components/ActionTray";
+import { DebriefSheet } from "@/components/DebriefSheet";
 import { StatusChip } from "@/components/StatusChip";
 import { StopProgressBar } from "@/components/StopProgressBar";
 import Colors from "@/constants/colors";
@@ -53,6 +54,34 @@ function haversineMinutes(
   const distMiles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.max(1, Math.round(distMiles / 30 * 60));
 }
+
+function FitScoreBadge({ score, predicted }: { score: number; predicted?: boolean }) {
+  const scheme = useColorScheme() ?? "light";
+  const C = Colors[scheme];
+  const bg = score >= 75 ? C.green : score >= 50 ? C.amber : C.coral;
+  return (
+    <View style={[fitScoreStyles.pill, { backgroundColor: bg + "22", borderColor: bg + "44" }]}>
+      <Text style={[fitScoreStyles.label, { color: bg }]}>
+        {predicted ? `~${score}` : `${score}`}
+      </Text>
+      <Text style={[fitScoreStyles.sub, { color: bg }]}>{predicted ? " pred." : "/100"}</Text>
+    </View>
+  );
+}
+
+const fitScoreStyles = StyleSheet.create({
+  pill: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    marginLeft: 6,
+  },
+  label: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  sub: { fontSize: 9, fontFamily: "Inter_500Medium" },
+});
 
 function StopCard({
   stop,
@@ -261,11 +290,21 @@ export default function ActiveTourScreen() {
   const visitedCount = stops.filter((s) => s.visited).length;
   const skippedCount = stops.filter((s) => s.skipped).length;
 
+  // Debrief sheet state
+  const [debriefStopId, setDebriefStopId] = useState<string | null>(null);
+
   const { mutate: arriveAtStop, isPending: isArriving } = useMarkStopArrived({
     mutation: { onSuccess: () => refetch() },
   });
   const { mutate: completeStop, isPending: isCompleting } = useMarkStopCompleted({
-    mutation: { onSuccess: () => refetch() },
+    mutation: {
+      onSuccess: (_, variables) => {
+        refetch();
+        // Prompt for debrief after completing a stop
+        const completedStopId = variables.stopId;
+        setDebriefStopId(completedStopId);
+      },
+    },
   });
 
   const { mutate: updateTour } = useUpdateTour({
@@ -279,7 +318,7 @@ export default function ActiveTourScreen() {
     updateTour(
       {
         tourId,
-        data: { buyerId: buyerId },
+        data: { buyerId: buyerId ?? undefined },
       },
       {
         onSuccess: () => {
@@ -617,6 +656,9 @@ export default function ActiveTourScreen() {
                       · Skipped
                     </Text>
                   )}
+                  {!s.visited && !s.skipped && s.predictedFitScore != null && (
+                    <FitScoreBadge score={s.predictedFitScore} predicted />
+                  )}
                 </View>
               </View>
               <View style={styles.stopRowRight}>
@@ -641,6 +683,16 @@ export default function ActiveTourScreen() {
       </ScrollView>
 
       {actionButtons.length > 0 && <ActionTray buttons={actionButtons} />}
+
+      {debriefStopId && (
+        <DebriefSheet
+          stopId={debriefStopId}
+          onClose={() => {
+            setDebriefStopId(null);
+            refetch();
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -697,132 +749,130 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   stopCardText: {
-    fontSize: 17,
-    fontWeight: "600",
     flex: 1,
-    lineHeight: 22,
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 24,
+  },
+  restrictionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: "rgba(245,166,35,0.12)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  restrictionText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "#F5A623",
   },
   tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 4,
-    marginTop: 8,
+    gap: 6,
+    marginTop: 10,
   },
   tagPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   tagText: {
     fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+  etaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+  },
+  etaText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "#6B7280",
   },
   stopCardFooter: {
     flexDirection: "row",
-    gap: 6,
-    marginTop: 8,
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
     flexWrap: "wrap",
   },
   visitedBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: Semantic.fillTertiary as unknown as string,
+    backgroundColor: "rgba(52,199,89,0.15)",
+    borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
   },
   visitedText: {
     fontSize: 11,
-    fontWeight: "600",
-    color: Semantic.systemGreen as unknown as string,
+    fontFamily: "Inter_600SemiBold",
+    color: "#34C759",
   },
   flagBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
   },
   flagText: {
     fontSize: 11,
     fontWeight: "600",
     color: Semantic.systemOrange as unknown as string,
   },
-  restrictionBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 8,
-    backgroundColor: Semantic.fillTertiary as unknown as string,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  restrictionText: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: Semantic.systemOrange as unknown as string,
-    flex: 1,
-  },
-  etaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 6,
-  },
-  etaText: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.65)",
-    flex: 1,
-  },
   completedBanner: {
     borderRadius: 12,
     padding: 24,
+    marginBottom: 16,
     alignItems: "center",
     gap: 8,
-    marginBottom: 16,
-    backgroundColor: Semantic.surface as unknown as string,
   },
   completedTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    marginTop: 4,
   },
   completedSub: {
     fontSize: 14,
   },
   allStopsTitle: {
-    ...Typography.sectionHeader,
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+    marginBottom: 10,
     marginTop: 4,
-    marginBottom: 6,
-  },
-  stopsGroup: {
-    backgroundColor: Semantic.groupedSurface as unknown as string,
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 24,
   },
   stopRow: {
     flexDirection: "row",
     alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 8,
     gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    minHeight: 60,
   },
   stopRowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Semantic.opaqueSeparator as unknown as string,
   },
   stopNum: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
   },
   stopNumText: {
-    fontSize: 13,
-    fontWeight: "bold",
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
   },
   stopRowContent: {
     flex: 1,
@@ -830,17 +880,23 @@ const styles = StyleSheet.create({
   },
   stopRowAddr: {
     fontSize: 14,
-    fontWeight: "500",
-    lineHeight: 19,
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 18,
   },
   stopRowSubAddr: {
-    fontSize: 12,
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   stopRowMeta: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: 4,
     marginTop: 2,
+  },
+  skippedLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   stopRowRight: {
     flexDirection: "row",
@@ -848,54 +904,27 @@ const styles = StyleSheet.create({
     gap: 4,
     flexShrink: 0,
   },
-  skippedLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  pickerContainer: {
-    flex: 1,
-    backgroundColor: Semantic.background as unknown as string,
-  },
   pickerHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 14,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Semantic.opaqueSeparator as unknown as string,
     backgroundColor: Semantic.surface as unknown as string,
   },
-  pickerClose: { minWidth: 70 },
-  pickerCloseText: {
-    fontSize: 16,
-  },
-  pickerTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  pickerList: {
-    padding: 16,
-  },
-  pickerGroup: {
-    backgroundColor: Semantic.groupedSurface as unknown as string,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
+  pickerClose: { width: 64 },
+  pickerCloseText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  pickerTitle: { flex: 1, fontSize: 15, fontFamily: "Inter_700Bold", textAlign: "center" },
+  pickerList: { padding: 16, gap: 10 },
   pickerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  pickerRowDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
-  },
-  pickerRowText: {
-    fontSize: 15,
-  },
+  pickerRowText: { fontSize: 15, fontFamily: "Inter_500Medium" },
 });

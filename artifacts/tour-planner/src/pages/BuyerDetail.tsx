@@ -1,7 +1,9 @@
 import { useState } from "react"
 import { useRoute, useLocation } from "wouter"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   useGetBuyerDetail,
+  useGeneratePreferenceProfile,
   getGetBuyerDetailQueryKey,
 } from "@workspace/api-client-react"
 import type { BuyerDetailStop, BuyerDetailTour } from "@workspace/api-client-react"
@@ -20,6 +22,12 @@ import {
   Calendar,
   Home,
   Tag,
+  Brain,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Loader2,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -41,6 +49,25 @@ function StarDisplay({ value, max = 5 }: { value: number | null | undefined; max
         />
       ))}
       <span className="ml-1 text-xs text-muted-foreground">{value}/{max}</span>
+    </span>
+  )
+}
+
+function FitScoreBadge({ score, predicted = false }: { score: number; predicted?: boolean }) {
+  const color =
+    score >= 75 ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+    : score >= 50 ? "text-amber-700 bg-amber-50 border-amber-200"
+    : "text-red-700 bg-red-50 border-red-200"
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 text-[11px] font-bold border rounded-md px-1.5 py-0.5",
+        color
+      )}
+      title={predicted ? "AI predicted fit score" : "AI fit score from debrief"}
+    >
+      {predicted ? <TrendingUp className="h-2.5 w-2.5" /> : <Brain className="h-2.5 w-2.5" />}
+      {predicted ? `~${score}` : score}
     </span>
   )
 }
@@ -67,6 +94,100 @@ function VisitStatusBadge({ stop }: { stop: BuyerDetailStop }) {
   )
 }
 
+function DebriefSection({ stop }: { stop: BuyerDetailStop }) {
+  if (!stop.debriefStatus) return null
+
+  const isPending = ["pending", "transcribing", "scoring"].includes(stop.debriefStatus)
+  const isFailed = stop.debriefStatus === "failed"
+
+  if (isFailed) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
+        <p className="text-xs font-semibold text-red-700 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          Debrief processing failed
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+        <Mic className="h-3 w-3" />
+        Post-Showing Debrief
+      </p>
+
+      {isPending ? (
+        <div className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 flex items-center gap-2">
+          <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+          <span className="text-xs text-muted-foreground capitalize">
+            {stop.debriefStatus === "transcribing" ? "Transcribing audio…" : stop.debriefStatus === "scoring" ? "AI scoring in progress…" : "Processing debrief…"}
+          </span>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border/50 bg-background space-y-2.5 p-3">
+          {stop.fitScore != null && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Fit Score</span>
+              <FitScoreBadge score={stop.fitScore} />
+              {stop.fitScoreVerdict && (
+                <span className="text-xs text-foreground italic">{stop.fitScoreVerdict}</span>
+              )}
+            </div>
+          )}
+
+          {stop.fitScorePositives && stop.fitScorePositives.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                Positives
+              </p>
+              <ul className="space-y-0.5">
+                {stop.fitScorePositives.map((p, i) => (
+                  <li key={i} className="text-xs text-foreground flex items-start gap-1.5">
+                    <span className="text-emerald-500 mt-0.5">+</span>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {stop.fitScoreNegatives && stop.fitScoreNegatives.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-red-700 flex items-center gap-1">
+                <AlertTriangle className="h-2.5 w-2.5" />
+                Concerns
+              </p>
+              <ul className="space-y-0.5">
+                {stop.fitScoreNegatives.map((n, i) => (
+                  <li key={i} className="text-xs text-foreground flex items-start gap-1.5">
+                    <span className="text-red-400 mt-0.5">−</span>
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {stop.debriefSummary && (
+            <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/30 pt-2">
+              {stop.debriefSummary}
+            </p>
+          )}
+
+          {stop.debriefTranscript && !stop.debriefSummary && (
+            <p className="text-xs text-muted-foreground leading-relaxed italic">
+              "{stop.debriefTranscript}"
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StopCard({ stop }: { stop: BuyerDetailStop }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -77,6 +198,7 @@ function StopCard({ stop }: { stop: BuyerDetailStop }) {
   const hasFlags = stop.followUpFlag || stop.revisitFlag
   const hasTags = stop.quickTags && stop.quickTags.length > 0
   const hasComments = stop.comments && stop.comments.length > 0
+  const hasDebrief = !!stop.debriefStatus
 
   return (
     <div className="border border-border/60 rounded-xl overflow-hidden bg-background">
@@ -110,6 +232,12 @@ function StopCard({ stop }: { stop: BuyerDetailStop }) {
                 <Star className="h-3 w-3 fill-amber-400" />
                 {stop.overallFitRating}/5
               </span>
+            )}
+            {stop.fitScore != null && (
+              <FitScoreBadge score={stop.fitScore} />
+            )}
+            {!stop.visited && !stop.skipped && stop.predictedFitScore != null && (
+              <FitScoreBadge score={stop.predictedFitScore} predicted />
             )}
             {hasFlags && (
               <span className="flex items-center gap-1">
@@ -185,6 +313,8 @@ function StopCard({ stop }: { stop: BuyerDetailStop }) {
             </div>
           )}
 
+          {hasDebrief && <DebriefSection stop={stop} />}
+
           {stop.skipped && stop.skipReason && (
             <div className="text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Skip reason:</span>{" "}
@@ -217,7 +347,7 @@ function StopCard({ stop }: { stop: BuyerDetailStop }) {
             </div>
           )}
 
-          {!hasRatings && !hasFlags && !hasTags && !hasComments && (
+          {!hasRatings && !hasFlags && !hasTags && !hasComments && !hasDebrief && (
             <p className="text-xs text-muted-foreground italic">No detailed data recorded for this stop.</p>
           )}
         </div>
@@ -281,6 +411,156 @@ function TourSection({ tour }: { tour: BuyerDetailTour }) {
   )
 }
 
+type PreferenceProfileData = {
+  summary?: string;
+  themes?: Array<{ name: string; weight: number; positive: boolean }>;
+  topPositives?: string[];
+  topConcerns?: string[];
+}
+
+function PreferenceProfileCard({
+  profile,
+  buyerId,
+  onRefreshed,
+}: {
+  profile: Record<string, unknown> | null | undefined;
+  buyerId: string;
+  onRefreshed: () => void;
+}) {
+  const queryClient = useQueryClient()
+  const { mutate: generate, isPending } = useGeneratePreferenceProfile({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getGetBuyerDetailQueryKey(buyerId) })
+        onRefreshed()
+      },
+    },
+  })
+
+  const typed = profile as PreferenceProfileData | null | undefined
+
+  return (
+    <Card className="border border-border/50 shadow-md shadow-black/5">
+      <CardContent className="pt-5 pb-4 px-5 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+              <Brain className="h-4 w-4 text-violet-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Buyer Preference Profile</h3>
+              <p className="text-xs text-muted-foreground">AI-generated from showings & debriefs</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant={profile ? "outline" : "default"}
+            className="shrink-0 text-xs h-7"
+            onClick={() => generate({ buyerId })}
+            disabled={isPending}
+          >
+            {isPending ? (
+              <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Generating…</>
+            ) : profile ? (
+              <><RefreshCcw className="h-3 w-3 mr-1.5" />Refresh</>
+            ) : (
+              <><Brain className="h-3 w-3 mr-1.5" />Generate</>
+            )}
+          </Button>
+        </div>
+
+        {!profile && !isPending && (
+          <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2.5">
+            No profile yet. After completing showings with voice debriefs, click "Generate" to build an AI buyer preference profile and get predicted fit scores on upcoming stops.
+          </p>
+        )}
+
+        {isPending && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2.5">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600" />
+            Analyzing showings and building preference profile…
+          </div>
+        )}
+
+        {typed && !isPending && (
+          <div className="space-y-3">
+            {typed.summary && (
+              <p className="text-sm text-foreground leading-relaxed">{typed.summary}</p>
+            )}
+
+            {typed.topPositives && typed.topPositives.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="h-2.5 w-2.5" />
+                  Top Likes
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {typed.topPositives.map((p, i) => (
+                    <span key={i} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2.5 py-0.5 font-medium">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {typed.topConcerns && typed.topConcerns.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-red-700 flex items-center gap-1">
+                  <AlertTriangle className="h-2.5 w-2.5" />
+                  Deal-Breakers / Concerns
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {typed.topConcerns.map((c, i) => (
+                    <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 font-medium">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {typed.themes && typed.themes.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="h-2.5 w-2.5" />
+                  Preference Themes
+                </p>
+                <div className="space-y-1">
+                  {typed.themes.slice(0, 6).map((t, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div
+                        className={cn(
+                          "text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shrink-0",
+                          t.positive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                        )}
+                      >
+                        {t.positive ? "+" : "−"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-foreground truncate">{t.name}</span>
+                          <span className="text-[10px] text-muted-foreground shrink-0">{t.weight}%</span>
+                        </div>
+                        <div className="h-1 rounded-full bg-muted mt-0.5 overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full", t.positive ? "bg-emerald-500" : "bg-red-400")}
+                            style={{ width: `${t.weight}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function BuyerDetail() {
   const [, params] = useRoute("/buyers/:id")
   const [, navigate] = useLocation()
@@ -292,6 +572,7 @@ export default function BuyerDetail() {
 
   const buyer = data?.buyer
   const tours = data?.tours ?? []
+  const preferenceProfile = data?.preferenceProfile as Record<string, unknown> | null | undefined
 
   if (isLoading) {
     return (
@@ -308,6 +589,11 @@ export default function BuyerDetail() {
       <div className="p-12 text-center text-muted-foreground">Buyer not found.</div>
     )
   }
+
+  const totalDebriefs = tours.reduce(
+    (acc, t) => acc + t.stops.filter((s) => !!s.fitScore).length,
+    0
+  )
 
   return (
     <div className="space-y-6 pb-10">
@@ -336,6 +622,7 @@ export default function BuyerDetail() {
               <p className="font-semibold text-foreground">{buyer.name}</p>
               <p className="text-xs text-muted-foreground">
                 {tours.length} tour{tours.length !== 1 ? "s" : ""} · {tours.reduce((a, t) => a + t.stops.length, 0)} total stops
+                {totalDebriefs > 0 && ` · ${totalDebriefs} AI-scored`}
               </p>
             </div>
           </div>
@@ -369,6 +656,12 @@ export default function BuyerDetail() {
           )}
         </CardContent>
       </Card>
+
+      <PreferenceProfileCard
+        profile={preferenceProfile}
+        buyerId={buyerId}
+        onRefreshed={() => {}}
+      />
 
       {tours.length === 0 ? (
         <Card className="border border-border/50 shadow-sm">

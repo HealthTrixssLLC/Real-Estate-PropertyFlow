@@ -15,6 +15,13 @@ export interface Buyer {
   phone?: string | null;
   /** @nullable */
   notes?: string | null;
+  /**
+   * JSON blob storing the AI-generated buyer preference profile
+   * @nullable
+   */
+  preferenceProfile?: string | null;
+  /** @nullable */
+  preferenceProfileUpdatedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

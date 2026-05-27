@@ -31,6 +31,8 @@ import type {
   CreatePropertyBody,
   CreateShowingRequestBody,
   CreateTourRequest,
+  DebriefVoiceNoteNullableResponse,
+  DebriefVoiceNoteResponse,
   ErrorEnvelope,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
@@ -41,6 +43,7 @@ import type {
   MobileTokenExchangeSuccess,
   OptimizeRouteRequest,
   OptimizeRouteResponse,
+  PreferenceProfileResponse,
   PropertyListResponse,
   PropertyResponse,
   PropertySummaryResponse,
@@ -65,6 +68,7 @@ import type {
   UpdateShowingRequestBody,
   UpdateTourRequest,
   UpdateTourStopRequest,
+  UploadDebriefBody,
   UploadVoiceNoteBody,
   UpsertRestrictionNoteBody,
   VoiceNoteDetailResponse,
@@ -1095,6 +1099,93 @@ export const useDeleteBuyer = <
   TContext
 > => {
   return useMutation(getDeleteBuyerMutationOptions(options));
+};
+
+/**
+ * @summary Generate or refresh AI buyer preference profile from all completed debriefs
+ */
+export const getGeneratePreferenceProfileUrl = (buyerId: string) => {
+  return `/api/buyers/${buyerId}/preference-profile`;
+};
+
+export const generatePreferenceProfile = async (
+  buyerId: string,
+  options?: RequestInit,
+): Promise<PreferenceProfileResponse> => {
+  return customFetch<PreferenceProfileResponse>(
+    getGeneratePreferenceProfileUrl(buyerId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getGeneratePreferenceProfileMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePreferenceProfile>>,
+    TError,
+    { buyerId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generatePreferenceProfile>>,
+  TError,
+  { buyerId: string },
+  TContext
+> => {
+  const mutationKey = ["generatePreferenceProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generatePreferenceProfile>>,
+    { buyerId: string }
+  > = (props) => {
+    const { buyerId } = props ?? {};
+
+    return generatePreferenceProfile(buyerId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GeneratePreferenceProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generatePreferenceProfile>>
+>;
+
+export type GeneratePreferenceProfileMutationError = ErrorType<void>;
+
+/**
+ * @summary Generate or refresh AI buyer preference profile from all completed debriefs
+ */
+export const useGeneratePreferenceProfile = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePreferenceProfile>>,
+    TError,
+    { buyerId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generatePreferenceProfile>>,
+  TError,
+  { buyerId: string },
+  TContext
+> => {
+  return useMutation(getGeneratePreferenceProfileMutationOptions(options));
 };
 
 /**
@@ -4208,6 +4299,193 @@ export function useGetVoiceNote<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetVoiceNoteQueryOptions(voiceNoteId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Upload or skip a post-showing voice debrief for a stop
+ */
+export const getUploadDebriefUrl = (stopId: string) => {
+  return `/api/tour-stops/${stopId}/debrief`;
+};
+
+export const uploadDebrief = async (
+  stopId: string,
+  uploadDebriefBody: UploadDebriefBody,
+  options?: RequestInit,
+): Promise<DebriefVoiceNoteResponse> => {
+  const formData = new FormData();
+  if (uploadDebriefBody.audio !== undefined) {
+    formData.append(`audio`, uploadDebriefBody.audio);
+  }
+  if (uploadDebriefBody.durationSeconds !== undefined) {
+    formData.append(
+      `durationSeconds`,
+      uploadDebriefBody.durationSeconds.toString(),
+    );
+  }
+
+  return customFetch<DebriefVoiceNoteResponse>(getUploadDebriefUrl(stopId), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getUploadDebriefMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadDebrief>>,
+    TError,
+    { stopId: string; data: BodyType<UploadDebriefBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadDebrief>>,
+  TError,
+  { stopId: string; data: BodyType<UploadDebriefBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadDebrief"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadDebrief>>,
+    { stopId: string; data: BodyType<UploadDebriefBody> }
+  > = (props) => {
+    const { stopId, data } = props ?? {};
+
+    return uploadDebrief(stopId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadDebriefMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadDebrief>>
+>;
+export type UploadDebriefMutationBody = BodyType<UploadDebriefBody>;
+export type UploadDebriefMutationError = ErrorType<void>;
+
+/**
+ * @summary Upload or skip a post-showing voice debrief for a stop
+ */
+export const useUploadDebrief = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadDebrief>>,
+    TError,
+    { stopId: string; data: BodyType<UploadDebriefBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadDebrief>>,
+  TError,
+  { stopId: string; data: BodyType<UploadDebriefBody> },
+  TContext
+> => {
+  return useMutation(getUploadDebriefMutationOptions(options));
+};
+
+/**
+ * @summary Get the debrief for a stop (poll for processing status)
+ */
+export const getGetDebriefUrl = (stopId: string) => {
+  return `/api/tour-stops/${stopId}/debrief`;
+};
+
+export const getDebrief = async (
+  stopId: string,
+  options?: RequestInit,
+): Promise<DebriefVoiceNoteNullableResponse> => {
+  return customFetch<DebriefVoiceNoteNullableResponse>(
+    getGetDebriefUrl(stopId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetDebriefQueryKey = (stopId: string) => {
+  return [`/api/tour-stops/${stopId}/debrief`] as const;
+};
+
+export const getGetDebriefQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDebrief>>,
+  TError = ErrorType<void>,
+>(
+  stopId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDebrief>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetDebriefQueryKey(stopId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getDebrief>>> = ({
+    signal,
+  }) => getDebrief(stopId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!stopId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDebrief>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDebriefQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDebrief>>
+>;
+export type GetDebriefQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the debrief for a stop (poll for processing status)
+ */
+
+export function useGetDebrief<
+  TData = Awaited<ReturnType<typeof getDebrief>>,
+  TError = ErrorType<void>,
+>(
+  stopId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDebrief>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDebriefQueryOptions(stopId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

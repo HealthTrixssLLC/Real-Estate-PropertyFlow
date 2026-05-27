@@ -39,6 +39,11 @@ export interface TourStop {
   revisitFlag: boolean;
   /** @nullable */
   quickTags?: string[] | null;
+  /**
+   * AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile
+   * @nullable
+   */
+  predictedFitScore?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

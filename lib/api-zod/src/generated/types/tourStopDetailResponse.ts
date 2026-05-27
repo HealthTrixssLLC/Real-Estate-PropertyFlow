@@ -5,6 +5,7 @@
  * TourFlow Real Estate Tour Manager API
  * OpenAPI spec version: 0.1.0
  */
+import type { DebriefVoiceNote } from "./debriefVoiceNote";
 import type { Property } from "./property";
 import type { PropertySummary } from "./propertySummary";
 import type { RestrictionNote } from "./restrictionNote";
@@ -19,4 +20,5 @@ export interface TourStopDetailResponse {
   restrictionNote?: RestrictionNote | null;
   voiceNotes?: VoiceNote[];
   propertySummary?: PropertySummary | null;
+  debrief?: DebriefVoiceNote | null;
 }
