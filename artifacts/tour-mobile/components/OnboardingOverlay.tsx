@@ -4,8 +4,6 @@ import { SymbolView } from "expo-symbols";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
-  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -20,7 +18,6 @@ import Colors from "@/constants/colors";
 
 const ONBOARDING_KEY = "tourflow_onboarding_complete_v1";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface OnboardingCard {
   id: string;
@@ -77,7 +74,6 @@ export function OnboardingOverlay() {
   const C = Colors[scheme];
   const insets = useSafeAreaInsets();
   const isIOS = Platform.OS === "ios";
-  const listRef = useRef<FlatList<OnboardingCard>>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -112,9 +108,7 @@ export function OnboardingOverlay() {
 
   const goNext = () => {
     if (currentIndex < CARDS.length - 1) {
-      const next = currentIndex + 1;
-      listRef.current?.scrollToIndex({ index: next, animated: true });
-      setCurrentIndex(next);
+      setCurrentIndex(currentIndex + 1);
     } else {
       dismiss();
     }
@@ -145,37 +139,26 @@ export function OnboardingOverlay() {
             <Text style={[styles.skipText, { color: C.textSecondary }]}>Skip</Text>
           </Pressable>
 
-          <FlatList
-            ref={listRef}
-            data={CARDS}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            scrollEnabled={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={[styles.card, { width: SCREEN_WIDTH - 48 }]}>
-                <View
-                  style={[
-                    styles.iconCircle,
-                    { backgroundColor: item.accent + "18" },
-                  ]}
-                >
-                  {isIOS ? (
-                    <SymbolView name={item.sfIcon as any} tintColor={item.accent} size={48} />
-                  ) : (
-                    <Feather name={item.featherIcon as any} size={48} color={item.accent} />
-                  )}
-                </View>
-                <Text style={[styles.cardTitle, { color: C.text }]}>
-                  {item.title}
-                </Text>
-                <Text style={[styles.cardDesc, { color: C.textSecondary }]}>
-                  {item.description}
-                </Text>
-              </View>
-            )}
-          />
+          <View style={styles.card}>
+            <View
+              style={[
+                styles.iconCircle,
+                { backgroundColor: CARDS[currentIndex].accent + "18" },
+              ]}
+            >
+              {isIOS ? (
+                <SymbolView name={CARDS[currentIndex].sfIcon as any} tintColor={CARDS[currentIndex].accent} size={48} />
+              ) : (
+                <Feather name={CARDS[currentIndex].featherIcon as any} size={48} color={CARDS[currentIndex].accent} />
+              )}
+            </View>
+            <Text style={[styles.cardTitle, { color: C.text }]}>
+              {CARDS[currentIndex].title}
+            </Text>
+            <Text style={[styles.cardDesc, { color: C.textSecondary }]}>
+              {CARDS[currentIndex].description}
+            </Text>
+          </View>
 
           <View style={styles.dots}>
             {CARDS.map((_, i) => (

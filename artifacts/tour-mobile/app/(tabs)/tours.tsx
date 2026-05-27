@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -61,12 +60,7 @@ export default function ToursScreen() {
         <Text style={[styles.title, { color: C.text }]}>Tours</Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScroll}
-        style={[styles.filterBar, { borderBottomColor: C.border }]}
-      >
+      <View style={[styles.filterBar, { borderBottomColor: C.border }]}>
         {FILTER_TABS.map((tab) => {
           const active = filter === tab.key;
           const count = counts[tab.key];
@@ -88,6 +82,7 @@ export default function ToursScreen() {
                   styles.filterLabel,
                   { color: active ? "#FFFFFF" : C.textSecondary },
                 ]}
+                numberOfLines={1}
               >
                 {tab.label}
               </Text>
@@ -111,7 +106,7 @@ export default function ToursScreen() {
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       {isLoading ? (
         <View style={styles.loader}>
@@ -174,25 +169,25 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   filterBar: {
+    flexDirection: "row",
     borderBottomWidth: StyleSheet.hairlineWidth,
     marginBottom: 4,
-  },
-  filterScroll: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 10,
-    gap: 8,
-    flexDirection: "row",
-  },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 100,
     gap: 6,
   },
+  filterChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+    borderRadius: 100,
+    gap: 4,
+  },
   filterLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
   filterBadge: {
