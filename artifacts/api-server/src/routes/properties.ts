@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
-import { and, eq, or, ilike, isNull } from "drizzle-orm";
+import { and, eq, or, ilike, isNull, isNotNull } from "drizzle-orm";
 import { db, propertiesTable } from "@workspace/db";
 import { CreatePropertyBody, UpdatePropertyBody } from "@workspace/api-zod";
 import { idParams, parseParams, parseBody } from "../lib/validate";
@@ -132,7 +132,7 @@ router.put("/properties/:propertyId", async (req: Request, res: Response) => {
   const isAdmin = user.role === "admin";
   try {
     const [existing] = await db
-      .select({ id: propertiesTable.id, lat: propertiesTable.lat, lng: propertiesTable.lng })
+      .select({ id: propertiesTable.id })
       .from(propertiesTable)
       .where(
         isAdmin
@@ -144,7 +144,7 @@ router.put("/properties/:propertyId", async (req: Request, res: Response) => {
       return;
     }
     let { lat, lng, placeId, formattedAddress } = body;
-    if (formattedAddress && (lat == null || lng == null) && (existing.lat == null || existing.lng == null)) {
+    if (formattedAddress && (lat == null || lng == null)) {
       const geo = await geocodeAddress(formattedAddress);
       if (geo) {
         lat = geo.lat;
@@ -201,16 +201,15 @@ router.delete("/properties/:propertyId", async (req: Request, res: Response) => 
 });
 
 export async function geocodeMissingProperties(): Promise<{ processed: number; succeeded: number; failed: number }> {
-  const missing = await db
+  const toGeocode = await db
     .select({ id: propertiesTable.id, formattedAddress: propertiesTable.formattedAddress })
     .from(propertiesTable)
     .where(
       and(
         or(isNull(propertiesTable.lat), isNull(propertiesTable.lng)),
+        isNotNull(propertiesTable.formattedAddress),
       )
     );
-
-  const toGeocode = missing.filter(p => p.formattedAddress && p.formattedAddress.trim().length > 0);
   let succeeded = 0;
   let failed = 0;
 
