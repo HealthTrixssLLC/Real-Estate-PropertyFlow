@@ -63,7 +63,7 @@ export default function TodayScreen() {
       style={{ backgroundColor: C.background }}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: topPad + 16, paddingBottom: isWeb ? 34 : insets.bottom + 16 },
+        { paddingTop: isWeb ? 67 : insets.top + 24, paddingBottom: isWeb ? 34 : insets.bottom + 16 },
       ]}
       data={nonCompletedTours}
       keyExtractor={(item) => item.id}
@@ -116,9 +116,9 @@ export default function TodayScreen() {
                   </Text>
                 </View>
                 {isIOS ? (
-                  <SymbolView name="arrow.right.circle.fill" tintColor="#FFF" size={32} />
+                  <SymbolView name="arrow.right.circle.fill" tintColor="#FFF" size={26} />
                 ) : (
-                  <Feather name="arrow-right-circle" size={32} color="#FFF" />
+                  <Feather name="arrow-right-circle" size={26} color="#FFF" />
                 )}
               </View>
               <Text style={styles.resumeStops}>
@@ -181,14 +181,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 20,
+    marginBottom: 14,
   },
   greetingText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
   name: {
-    fontSize: 26,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
     marginTop: 2,
   },
@@ -200,9 +200,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   resumeCard: {
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
   },
   resumeContent: {
     flexDirection: "row",
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   resumeTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: "Inter_700Bold",
     color: "#FFF",
   },

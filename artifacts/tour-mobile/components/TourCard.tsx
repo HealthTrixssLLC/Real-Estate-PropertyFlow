@@ -135,11 +135,11 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    marginBottom: 8,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 1,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 2,
     flexDirection: "row",
     overflow: "hidden",
@@ -147,13 +147,13 @@ const styles = StyleSheet.create({
   },
   accentBar: {
     width: 4,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
   },
   body: {
     flex: 1,
-    padding: 14,
-    paddingLeft: 14,
+    padding: 11,
+    paddingLeft: 11,
   },
   activeBadge: {
     alignSelf: "flex-start",
@@ -176,20 +176,20 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     flex: 1,
   },
   buyer: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   meta: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 8,
   },
   metaItem: {
     flexDirection: "row",
