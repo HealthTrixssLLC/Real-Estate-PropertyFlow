@@ -116,18 +116,19 @@ router.post("/admin/ai/config/test-google-maps", requireRole("admin"), async (re
   }
 
   try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway,+Mountain+View,+CA&key=${encodeURIComponent(key)}`;
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=123+Main+St&key=${encodeURIComponent(key)}`;
     const response = await fetch(url);
     const data = await response.json() as { status: string; error_message?: string };
     if (data.status === "OK" || data.status === "ZERO_RESULTS") {
       sendValidated(res, AiTestResponseSchema, {
         success: true,
-        result: "Google Maps API key is valid and the Geocoding API is reachable.",
+        result: "Google Maps API key is valid and the Places API is reachable.",
       });
     } else {
+      const consoleLink = "https://console.cloud.google.com/apis/library";
       sendValidated(res, AiTestResponseSchema, {
         success: false,
-        error: data.error_message ?? `Google Maps API returned status: ${data.status}`,
+        error: `${data.error_message ?? `Google Maps API returned status: ${data.status}`} — Make sure the Places API (and optionally the Geocoding API) are enabled for this key in the Google Cloud Console: ${consoleLink}`,
       });
     }
   } catch (err) {
