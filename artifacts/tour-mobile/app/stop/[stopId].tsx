@@ -34,6 +34,8 @@ import { StarRating } from "@/components/StarRating";
 import { StatusChip } from "@/components/StatusChip";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import Colors from "@/constants/colors";
+import { Semantic } from "@/constants/semantic";
+import { Typography } from "@/constants/typography";
 
 type RatingField = "overallFitRating" | "buyerInterest" | "kitchenRating" | "primarySuiteRating" | "backyardRating" | "roadNoiseRating";
 
@@ -145,7 +147,9 @@ export default function StopDetailScreen() {
       );
       return;
     }
-    addNote({ stopId, data: { note: text } });
+    addNote({ stopId, data: { note: text } }, {
+      onSuccess: () => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+    });
   };
 
   const handleVoiceComplete = async (uri: string, durationSeconds: number) => {
@@ -171,18 +175,21 @@ export default function StopDetailScreen() {
 
   const handleRatingChange = (field: RatingField, val: number) => {
     if (!stopId) return;
+    void Haptics.selectionAsync();
     const patch: UpdateTourStopRequest = { [field]: val };
     updateStop({ stopId, data: patch });
   };
 
   const handleToggleFlag = (field: "followUpFlag" | "revisitFlag") => {
     if (!stopId || !stop) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const patch: UpdateTourStopRequest = { [field]: !stop[field] };
     updateStop({ stopId, data: patch });
   };
 
   const handleToggleTag = (tag: string) => {
     if (!stopId || !stop) return;
+    void Haptics.selectionAsync();
     const current = stop.quickTags ?? [];
     const next = current.includes(tag)
       ? current.filter((t) => t !== tag)
@@ -190,11 +197,9 @@ export default function StopDetailScreen() {
     updateStop({ stopId, data: { quickTags: next } });
   };
 
-  const topPad = isWeb ? 67 : 0;
-
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: C.background }]}>
+      <View style={[styles.center, { backgroundColor: Semantic.grouped }]}>
         <ActivityIndicator color={C.accent} />
       </View>
     );
@@ -202,7 +207,7 @@ export default function StopDetailScreen() {
 
   if (!stop) {
     return (
-      <View style={[styles.center, { backgroundColor: C.background }]}>
+      <View style={[styles.center, { backgroundColor: Semantic.grouped }]}>
         <Text style={{ color: C.textSecondary }}>Stop not found.</Text>
       </View>
     );
@@ -211,7 +216,7 @@ export default function StopDetailScreen() {
   const currentTags = stop.quickTags ?? [];
 
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
+    <View style={[styles.container, { backgroundColor: Semantic.grouped }]}>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={isIOS ? "padding" : "height"}
@@ -219,9 +224,10 @@ export default function StopDetailScreen() {
     >
       <ScrollView
         ref={scrollRef}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           styles.content,
-          { paddingTop: topPad + 16, paddingBottom: isWeb ? 34 : insets.bottom + 80 },
+          { paddingBottom: isWeb ? 34 : insets.bottom + 80 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -254,8 +260,8 @@ export default function StopDetailScreen() {
 
         {showingRequest && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: C.text }]}>Listing Agent</Text>
-            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+            <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Listing Agent</Text>
+            <View style={[styles.card, { backgroundColor: Semantic.groupedSurface }]}>
               {showingRequest.listingAgentName && (
                 <InfoRow
                   label="Agent"
@@ -327,7 +333,7 @@ export default function StopDetailScreen() {
               style={styles.sectionHeader}
               testID="restrictions-toggle"
             >
-              <Text style={[styles.sectionTitle, { color: C.text }]}>Restrictions</Text>
+              <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Restrictions</Text>
               <View style={styles.sectionHeaderRight}>
                 {!restrictionsExpanded && (
                   <Text style={[styles.sectionHint, { color: C.textTertiary }]}>Tap to expand</Text>
@@ -348,7 +354,7 @@ export default function StopDetailScreen() {
               </View>
             </Pressable>
             {restrictionsExpanded && (
-              <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+              <View style={[styles.card, { backgroundColor: Semantic.groupedSurface }]}>
                 {restrictionNote.gateCode && (
                   <InfoRow label="Gate Code" value={restrictionNote.gateCode} sfIcon="lock" featherIcon="lock" C={C} isIOS={isIOS} />
                 )}
@@ -386,8 +392,8 @@ export default function StopDetailScreen() {
         )}
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: C.text }]}>Ratings</Text>
-          <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+          <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Ratings</Text>
+          <View style={[styles.card, { backgroundColor: Semantic.groupedSurface }]}>
             {(
               [
                 ["Overall Fit", "overallFitRating", stop.overallFitRating],
@@ -411,7 +417,7 @@ export default function StopDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: C.text }]}>Flags</Text>
+          <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Flags</Text>
           <View style={styles.flagsRow}>
             <Pressable
               testID="follow-up-flag-btn"
@@ -460,7 +466,7 @@ export default function StopDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: C.text }]}>Quick Tags</Text>
+          <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Quick Tags</Text>
           <View style={styles.tagWrap}>
             {QUICK_TAG_OPTIONS.map((tag) => {
               const active = currentTags.includes(tag);
@@ -491,14 +497,14 @@ export default function StopDetailScreen() {
           style={styles.section}
           onLayout={(e) => { voiceY.current = e.nativeEvent.layout.y; }}
         >
-          <Text style={[styles.sectionTitle, { color: C.text }]}>Notes</Text>
+          <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Notes</Text>
           {voiceNotes.length > 0 && (
-            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginBottom: 12 }]}>
+            <View style={[styles.card, { backgroundColor: Semantic.groupedSurface, marginBottom: 12 }]}>
               {voiceNotes.map((vn, i) => {
                 const isTypedOnly = !vn.fileUrl || vn.fileUrl === "";
                 const isPendingTranscription = !isTypedOnly && vn.transcriptionStatus !== "completed" && vn.transcriptionStatus !== "failed";
                 return (
-                  <View key={vn.id} style={[styles.voiceRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}>
+                  <View key={vn.id} style={[styles.voiceRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Semantic.opaqueSeparator as unknown as string }]}>
                     {isTypedOnly ? (
                       isIOS ? (
                         <SymbolView name="text.bubble" tintColor={C.textSecondary} size={16} />
@@ -553,8 +559,8 @@ export default function StopDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: C.text }]}>Add Text Note</Text>
-          <View style={[styles.noteInput, { backgroundColor: C.card, borderColor: C.border }]}>
+          <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>Add Text Note</Text>
+          <View style={[styles.noteInput, { backgroundColor: Semantic.groupedSurface }]}>
             <TextInput
               testID="note-input"
               value={noteText}
@@ -588,8 +594,8 @@ export default function StopDetailScreen() {
 
         {summary && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: C.text }]}>AI Summary</Text>
-            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+            <Text style={[styles.sectionTitle, { color: C.textSecondary }]}>AI Summary</Text>
+            <View style={[styles.card, { backgroundColor: Semantic.groupedSurface }]}>
               <Text style={[styles.summaryText, { color: C.text }]}>{summary.summaryText}</Text>
               {summary.positives && summary.positives.length > 0 && (
                 <View style={styles.summaryList}>
@@ -755,7 +761,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  content: { paddingHorizontal: 20 },
+  content: { paddingHorizontal: 20, paddingTop: 16 },
   propertyCard: {
     borderRadius: 18,
     padding: 20,
@@ -786,7 +792,7 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: "row",
   },
-  section: { marginBottom: 20 },
+  section: { marginBottom: 24 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -802,12 +808,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
+    ...Typography.sectionHeader,
+    paddingBottom: 6,
   },
   card: {
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 12,
     overflow: "hidden",
   },
   infoRow: {
@@ -817,7 +822,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
     gap: 8,
   },
   infoLeft: {
@@ -853,7 +858,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
   },
   ratingLabel: {
     fontSize: 14,
@@ -913,8 +918,7 @@ const styles = StyleSheet.create({
   noteInput: {
     flexDirection: "row",
     alignItems: "flex-end",
-    borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 12,
     gap: 8,
   },

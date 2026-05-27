@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { useListTours } from "@workspace/api-client-react";
 import { SymbolView } from "expo-symbols";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -14,18 +16,23 @@ import {
   useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "expo-router";
 
 import { TourCard } from "@/components/TourCard";
 import Colors from "@/constants/colors";
+import { Semantic } from "@/constants/semantic";
+import { Typography } from "@/constants/typography";
 
 type FilterTab = "upcoming" | "active" | "completed" | "all";
 
-const FILTER_TABS: { key: FilterTab; label: string; count?: (n: number) => string }[] = [
-  { key: "upcoming", label: "Upcoming" },
-  { key: "active", label: "Active" },
-  { key: "completed", label: "Completed" },
-  { key: "all", label: "All" },
-];
+const FILTER_LABELS: Record<FilterTab, string> = {
+  upcoming: "Upcoming",
+  active: "Active",
+  completed: "Completed",
+  all: "All Tours",
+};
+
+const FILTER_ORDER: FilterTab[] = ["upcoming", "active", "completed", "all"];
 
 export default function ToursScreen() {
   const scheme = useColorScheme() ?? "light";
@@ -33,6 +40,7 @@ export default function ToursScreen() {
   const insets = useSafeAreaInsets();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const navigation = useNavigation();
 
   const [filter, setFilter] = useState<FilterTab>("upcoming");
   const { data, isLoading, refetch, isRefetching } = useListTours();
@@ -52,55 +60,81 @@ export default function ToursScreen() {
     return t.status === filter;
   });
 
+  const showFilterSheet = useCallback(() => {
+    const options = FILTER_ORDER.map((k) => {
+      const n = counts[k];
+      return `${FILTER_LABELS[k]}${n > 0 ? ` (${n})` : ""}`;
+    });
+
+    if (isIOS) {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Cancel", ...options],
+          cancelButtonIndex: 0,
+          title: "Filter Tours",
+        },
+        (idx) => {
+          if (idx >= 1 && idx <= FILTER_ORDER.length) {
+            setFilter(FILTER_ORDER[idx - 1]);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        "Filter Tours",
+        undefined,
+        [
+          ...FILTER_ORDER.map((k) => ({
+            text: `${FILTER_LABELS[k]}${counts[k] > 0 ? ` (${counts[k]})` : ""}`,
+            onPress: () => setFilter(k),
+          })),
+          { text: "Cancel", style: "cancel" as const },
+        ]
+      );
+    }
+  }, [counts, isIOS]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={showFilterSheet}
+          hitSlop={8}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginRight: 4 }]}
+          testID="tours-filter-btn"
+        >
+          {isIOS ? (
+            <SymbolView
+              name="line.3.horizontal.decrease.circle"
+              tintColor={C.accent}
+              size={24}
+            />
+          ) : (
+            <Feather name="filter" size={22} color={C.accent} />
+          )}
+        </Pressable>
+      ),
+    });
+  }, [navigation, showFilterSheet, C.accent, isIOS]);
+
+  const isFiltered = filter !== "upcoming";
+
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
-      <View style={[styles.filterBar, { borderBottomColor: C.border }]}>
-        {FILTER_TABS.map((tab) => {
-          const active = filter === tab.key;
-          const count = counts[tab.key];
-          return (
-            <Pressable
-              key={tab.key}
-              testID={`filter-${tab.key}`}
-              onPress={() => setFilter(tab.key)}
-              style={({ pressed }) => [
-                styles.filterChip,
-                active
-                  ? { backgroundColor: C.accent }
-                  : { backgroundColor: C.surfaceAlt },
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterLabel,
-                  { color: active ? "#FFFFFF" : C.textSecondary },
-                ]}
-                numberOfLines={1}
-              >
-                {tab.label}
-              </Text>
-              {count > 0 && (
-                <View
-                  style={[
-                    styles.filterBadge,
-                    { backgroundColor: active ? "rgba(255,255,255,0.25)" : C.border },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.filterBadgeText,
-                      { color: active ? "#FFF" : C.textSecondary },
-                    ]}
-                  >
-                    {count}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          );
-        })}
-      </View>
+    <View style={styles.container}>
+      {isFiltered && (
+        <View style={[styles.filterBanner, { backgroundColor: C.accent + "15", borderBottomColor: C.accent + "40" }]}>
+          <Text style={[styles.filterBannerText, { color: C.accent }]}>
+            Showing: {FILTER_LABELS[filter]}
+          </Text>
+          <Pressable onPress={() => setFilter("upcoming")} hitSlop={6}>
+            {isIOS ? (
+              <SymbolView name="xmark.circle.fill" tintColor={C.accent} size={16} />
+            ) : (
+              <Feather name="x-circle" size={16} color={C.accent} />
+            )}
+          </Pressable>
+        </View>
+      )}
 
       {isLoading ? (
         <View style={styles.loader}>
@@ -126,7 +160,7 @@ export default function ToursScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               {isIOS ? (
-                <SymbolView name="house.lodge" tintColor={C.textTertiary} size={48} />
+                <SymbolView name="house.lodge" tintColor={Semantic.labelTertiary as string} size={48} />
               ) : (
                 <Feather name="home" size={48} color={C.textTertiary} />
               )}
@@ -155,39 +189,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  filterBar: {
+  filterBanner: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    marginBottom: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 6,
   },
-  filterChip: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 7,
-    borderRadius: 100,
-    gap: 4,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  filterBadge: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  filterBadgeText: {
-    fontSize: 10,
-    fontWeight: "bold",
+  filterBannerText: {
+    ...Typography.footnote,
+    fontWeight: "500",
   },
   loader: {
     flex: 1,
@@ -203,11 +215,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    ...Typography.headline,
   },
   emptyText: {
-    fontSize: 14,
+    ...Typography.subheadline,
     textAlign: "center",
     maxWidth: 240,
   },

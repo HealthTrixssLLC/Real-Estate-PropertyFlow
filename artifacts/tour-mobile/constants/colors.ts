@@ -1,3 +1,6 @@
+export { Semantic } from "./semantic";
+export { Typography } from "./typography";
+
 const teal = "#2DB8A0";
 const tealLight = "#3DD9BF";
 const amber = "#FF9500";

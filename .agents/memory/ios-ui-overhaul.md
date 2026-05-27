@@ -1,30 +1,48 @@
 ---
 name: iOS Native UI Overhaul
-description: Key decisions and constraints from the iOS native UI overhaul of tour-mobile app
+description: Durable decisions and constraints from the iOS native UI overhaul of tour-mobile
 ---
 
 ## System Font
-All `fontFamily: "Inter_*"` replaced with `fontWeight` equivalents via sed sweep across 19 files in `app/` and `components/`. Root `_layout.tsx` no longer loads Inter fonts at all — SplashScreen.hideAsync() called in a simple `useEffect([])`.
+Replaced all `fontFamily: "Inter_*"` with `fontWeight` equivalents. Root `_layout.tsx` no longer loads fonts at all — SplashScreen.hideAsync() fires in a plain `useEffect([])`.
 
-**Why:** System SF Pro looks dramatically more native; eliminates font loading race conditions.
+**Why:** System SF Pro is more native; eliminates font loading race conditions and startup lag.
 
-## Color System
-`constants/colors.ts` updated to iOS semantic palette:
-- Light: bg `#F2F2F7`, surface `#FFFFFF`, surfaceAlt `#EFEFF4`, text `#000000`, secondary `#6B6B72`, tertiary `#AEAEB2`, border `#C6C6C8`
-- Dark: bg `#000000`, surface `#1C1C1E`, surfaceAlt `#2C2C2E`, text `#FFFFFF`, secondary `#8E8E93`, border `#38383A`
+## Semantic Color Tokens
+`constants/semantic.ts` — PlatformColor-based adaptive tokens (systemBackground, label, separator, etc.). `constants/colors.ts` re-exports `Semantic` and `Typography` for convenience.
+
+**How to apply:** Use `Semantic.*` for structural UI (backgrounds, text, borders). Use `Colors[scheme].*` only for brand/custom colors (teal, chip colors, etc.). Cast with `as unknown as string` when using PlatformColor values inside `StyleSheet.create()`.
+
+## Typography Scale
+`constants/typography.ts` — iOS Human Interface Guidelines type scale (largeTitle through caption2 + `sectionHeader` preset). Spread into StyleSheet: `...Typography.headline`.
 
 ## Native Navigation Headers
-`(tabs)/_layout.tsx` now has `headerShown: false` ONLY on the `index` (Today) tab. All other tabs (Tours, Buyers, Notes, Settings) show native navigation bars with `headerTransparent: true` on iOS.
+`(tabs)/_layout.tsx`: `headerShown: false` ONLY on the Today (`index`) tab. All list tabs use native nav bars with `headerTransparent: true` on iOS and teal tint.
 
-**Key constraint:** `headerLargeTitle` is NOT in the `TabsProps` type in this version of Expo Router — causes TS2353. Removed from layout file. Use `useNavigation().setOptions()` within screen components instead if needed per-screen.
+**Key constraint:** `headerLargeTitle` and `headerBlurEffect` are NOT in Expo Router's `TabsProps` type in the installed version — causes TS2353. Removed. Use `navigation.setOptions()` inside screen components for per-screen header customization.
 
-**How to apply:** Any future tab that needs a large title should use `navigation.setOptions({ headerLargeTitle: true })` inside the screen component via useEffect.
+## Filter ActionSheet Pattern (Tours)
+Replaced custom pill-button filter bar with `ActionSheetIOS.showActionSheetWithOptions` triggered from a `line.3.horizontal.decrease.circle` SF Symbol in `headerRight`. Non-iOS falls back to `Alert.alert`. An active-filter banner row (dismissable) shows below the nav bar when filter is not default.
 
-## TourCard Native Cell
-`TourCard.tsx` redesigned as flat list cell: 10px status dot (left), title/meta/chip (body), chevron (right). No card border radius or shadow. `borderBottomWidth: StyleSheet.hairlineWidth` as separator.
+**How to apply:** For any list screen that needs sorting/filtering, put the trigger in `navigation.setOptions({ headerRight })` and use `ActionSheetIOS` on iOS.
 
-## Buyers + Button
-Moved from custom header View to `useNavigation().setOptions({ headerRight: ... })` via `useCallback`+`useEffect` inside `buyers.tsx`.
+## iOS Inset-Grouped Sections (Stop Detail)
+- Container background: `Semantic.grouped` (systemGroupedBackground)
+- Card background: `Semantic.groupedSurface` (secondarySystemGroupedBackground), `borderRadius: 12`, no `borderWidth`
+- Section headers: `Typography.sectionHeader` (uppercase 13pt + tracking) + `C.textSecondary` color
+- Row separators: `Semantic.opaqueSeparator` (use `as unknown as string` in StyleSheet.create)
+- `contentInsetAdjustmentBehavior="automatic"` on all list ScrollViews/FlatLists
 
-## Today Screen (index.tsx)
-Converted from FlatList to ScrollView for dashboard layout. Tour cards wrapped in `<View style={styles.group}>` with `borderRadius: 12, overflow: 'hidden'` for iOS grouped appearance.
+## Haptics Pattern
+- Selection toggle (flag, tag): `Haptics.selectionAsync()`
+- Rating change: `Haptics.selectionAsync()`
+- Flag toggle: `Haptics.impactAsync(ImpactFeedbackStyle.Light)`
+- FAB / heavy CTA: `Haptics.impactAsync(ImpactFeedbackStyle.Medium)`
+- Save success: `Haptics.notificationAsync(NotificationFeedbackType.Success)`
+- expo-haptics is already installed; import as `import * as Haptics from "expo-haptics"`
+
+## Pre-existing TypeScript Errors (Do Not Fix in This Task)
+These files have pre-existing TS errors unrelated to the UI overhaul:
+- `app/buyers/[buyerId].tsx` — missing exports from @workspace/api-client-react
+- `app/stop/[stopId].tsx` — `useGetTour` query missing `queryKey` option
+- `app/tour/[tourId].tsx` — similar api-client-react type issues
