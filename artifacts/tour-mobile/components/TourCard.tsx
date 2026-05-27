@@ -14,6 +14,14 @@ interface TourCardProps {
   isActive?: boolean;
 }
 
+const STATUS_ACCENT: Record<string, string> = {
+  active: "#2DB8A0",
+  published: "#2A73C8",
+  draft: "#A0ADB8",
+  completed: "#27C06B",
+  cancelled: "#E85D4A",
+};
+
 export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
   const scheme = useColorScheme() ?? "light";
   const C = Colors[scheme];
@@ -25,6 +33,8 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
     month: "short",
     day: "numeric",
   });
+
+  const accentColor = STATUS_ACCENT[tour.status] ?? C.accent;
 
   const handlePress = () => {
     router.push(`/tour/${tour.id}`);
@@ -38,19 +48,21 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
         styles.card,
         {
           backgroundColor: C.card,
-          borderColor: isActive ? C.accent : C.border,
-          borderWidth: isActive ? 1.5 : 1,
+          borderColor: C.border,
           shadowColor: C.shadow,
         },
-        pressed && { opacity: 0.85 },
+        pressed && { opacity: 0.88 },
       ]}
     >
-      {isActive && (
-        <View style={[styles.activeBadge, { backgroundColor: C.accent }]}>
-          <Text style={styles.activeBadgeText}>IN PROGRESS</Text>
-        </View>
-      )}
-      <View style={styles.header}>
+      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+
+      <View style={styles.body}>
+        {isActive && (
+          <View style={[styles.activeBadge, { backgroundColor: C.accent }]}>
+            <Text style={styles.activeBadgeText}>IN PROGRESS</Text>
+          </View>
+        )}
+
         <View style={styles.titleRow}>
           <Text style={[styles.title, { color: C.text }]} numberOfLines={1}>
             {tour.title}
@@ -61,58 +73,61 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
             <Feather name="chevron-right" size={16} color={C.textTertiary} />
           )}
         </View>
+
         {buyerName && (
-          <Text style={[styles.buyer, { color: C.textSecondary }]}>{buyerName}</Text>
-        )}
-      </View>
-
-      <View style={styles.meta}>
-        <View style={styles.metaItem}>
-          {isIOS ? (
-            <SymbolView name="calendar" tintColor={C.textTertiary} size={13} />
-          ) : (
-            <Feather name="calendar" size={13} color={C.textTertiary} />
-          )}
-          <Text style={[styles.metaText, { color: C.textSecondary }]}>{dateStr}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          {isIOS ? (
-            <SymbolView name="house" tintColor={C.textTertiary} size={13} />
-          ) : (
-            <Feather name="home" size={13} color={C.textTertiary} />
-          )}
-          <Text style={[styles.metaText, { color: C.textSecondary }]}>
-            {tour.stopCount ?? 0} stops
+          <Text style={[styles.buyer, { color: C.textSecondary }]} numberOfLines={1}>
+            {buyerName}
           </Text>
-        </View>
-        {(tour.approvedCount ?? 0) > 0 && (
-          <View style={styles.metaItem}>
-            {isIOS ? (
-              <SymbolView name="checkmark.circle" tintColor="#27C06B" size={13} />
-            ) : (
-              <Feather name="check-circle" size={13} color="#27C06B" />
-            )}
-            <Text style={[styles.metaText, { color: "#27C06B" }]}>
-              {tour.approvedCount} approved
-            </Text>
-          </View>
         )}
-        {(tour.pendingShowingsCount ?? 0) > 0 && (
-          <View style={styles.metaItem}>
-            {isIOS ? (
-              <SymbolView name="clock.badge.exclamationmark" tintColor="#F5A623" size={13} />
-            ) : (
-              <Feather name="alert-circle" size={13} color="#F5A623" />
-            )}
-            <Text style={[styles.metaText, { color: "#F5A623" }]}>
-              {tour.pendingShowingsCount} pending
-            </Text>
-          </View>
-        )}
-      </View>
 
-      <View style={styles.footer}>
-        <StatusChip status={tour.status} small />
+        <View style={styles.meta}>
+          <View style={styles.metaItem}>
+            {isIOS ? (
+              <SymbolView name="calendar" tintColor={C.textTertiary} size={13} />
+            ) : (
+              <Feather name="calendar" size={13} color={C.textTertiary} />
+            )}
+            <Text style={[styles.metaText, { color: C.textSecondary }]}>{dateStr}</Text>
+          </View>
+          <View style={styles.metaItem}>
+            {isIOS ? (
+              <SymbolView name="house" tintColor={C.textTertiary} size={13} />
+            ) : (
+              <Feather name="home" size={13} color={C.textTertiary} />
+            )}
+            <Text style={[styles.metaText, { color: C.textSecondary }]}>
+              {tour.stopCount ?? 0} stop{(tour.stopCount ?? 0) !== 1 ? "s" : ""}
+            </Text>
+          </View>
+          {(tour.approvedCount ?? 0) > 0 && (
+            <View style={styles.metaItem}>
+              {isIOS ? (
+                <SymbolView name="checkmark.circle" tintColor="#27C06B" size={13} />
+              ) : (
+                <Feather name="check-circle" size={13} color="#27C06B" />
+              )}
+              <Text style={[styles.metaText, { color: "#27C06B" }]}>
+                {tour.approvedCount} approved
+              </Text>
+            </View>
+          )}
+          {(tour.pendingShowingsCount ?? 0) > 0 && (
+            <View style={styles.metaItem}>
+              {isIOS ? (
+                <SymbolView name="clock.badge.exclamationmark" tintColor="#F5A623" size={13} />
+              ) : (
+                <Feather name="alert-circle" size={13} color="#F5A623" />
+              )}
+              <Text style={[styles.metaText, { color: "#F5A623" }]}>
+                {tour.pendingShowingsCount} pending
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.footer}>
+          <StatusChip status={tour.status} small />
+        </View>
       </View>
     </Pressable>
   );
@@ -121,12 +136,24 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
-    padding: 16,
     marginBottom: 12,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 1,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 2,
+    flexDirection: "row",
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  accentBar: {
+    width: 4,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  body: {
+    flex: 1,
+    padding: 14,
+    paddingLeft: 14,
   },
   activeBadge: {
     alignSelf: "flex-start",
@@ -141,14 +168,12 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     letterSpacing: 0.8,
   },
-  header: {
-    marginBottom: 10,
-  },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
+    marginBottom: 2,
   },
   title: {
     fontSize: 16,
@@ -158,12 +183,12 @@ const styles = StyleSheet.create({
   buyer: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    marginTop: 2,
+    marginBottom: 10,
   },
   meta: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 10,
     marginBottom: 12,
   },
   metaItem: {

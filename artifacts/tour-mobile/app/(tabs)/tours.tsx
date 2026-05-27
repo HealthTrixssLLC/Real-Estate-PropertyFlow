@@ -8,6 +8,7 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -20,7 +21,7 @@ import Colors from "@/constants/colors";
 
 type FilterTab = "upcoming" | "active" | "completed" | "all";
 
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
+const FILTER_TABS: { key: FilterTab; label: string; count?: (n: number) => string }[] = [
   { key: "upcoming", label: "Upcoming" },
   { key: "active", label: "Active" },
   { key: "completed", label: "Completed" },
@@ -39,6 +40,13 @@ export default function ToursScreen() {
 
   const all = data?.tours ?? [];
 
+  const counts: Record<FilterTab, number> = {
+    upcoming: all.filter((t) => t.status === "draft" || t.status === "published").length,
+    active: all.filter((t) => t.status === "active").length,
+    completed: all.filter((t) => t.status === "completed").length,
+    all: all.length,
+  };
+
   const filtered = all.filter((t) => {
     if (filter === "all") return true;
     if (filter === "upcoming") return t.status === "draft" || t.status === "published";
@@ -53,28 +61,57 @@ export default function ToursScreen() {
         <Text style={[styles.title, { color: C.text }]}>Tours</Text>
       </View>
 
-      <View style={[styles.filterRow, { borderBottomColor: C.border }]}>
-        {FILTER_TABS.map((tab) => (
-          <Pressable
-            key={tab.key}
-            testID={`filter-${tab.key}`}
-            onPress={() => setFilter(tab.key)}
-            style={[
-              styles.filterTab,
-              filter === tab.key && { borderBottomColor: C.accent, borderBottomWidth: 2 },
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterLabel,
-                { color: filter === tab.key ? C.accent : C.textSecondary },
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterScroll}
+        style={[styles.filterBar, { borderBottomColor: C.border }]}
+      >
+        {FILTER_TABS.map((tab) => {
+          const active = filter === tab.key;
+          const count = counts[tab.key];
+          return (
+            <Pressable
+              key={tab.key}
+              testID={`filter-${tab.key}`}
+              onPress={() => setFilter(tab.key)}
+              style={({ pressed }) => [
+                styles.filterChip,
+                active
+                  ? { backgroundColor: C.accent }
+                  : { backgroundColor: C.surfaceAlt },
+                pressed && { opacity: 0.8 },
               ]}
             >
-              {tab.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+              <Text
+                style={[
+                  styles.filterLabel,
+                  { color: active ? "#FFFFFF" : C.textSecondary },
+                ]}
+              >
+                {tab.label}
+              </Text>
+              {count > 0 && (
+                <View
+                  style={[
+                    styles.filterBadge,
+                    { backgroundColor: active ? "rgba(255,255,255,0.25)" : C.border },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterBadgeText,
+                      { color: active ? "#FFF" : C.textSecondary },
+                    ]}
+                  >
+                    {count}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       {isLoading ? (
         <View style={styles.loader}>
@@ -88,7 +125,6 @@ export default function ToursScreen() {
             styles.list,
             { paddingBottom: isWeb ? 34 : insets.bottom + 16 },
           ]}
-          scrollEnabled={filtered.length > 0}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -106,7 +142,13 @@ export default function ToursScreen() {
               )}
               <Text style={[styles.emptyTitle, { color: C.text }]}>No tours found</Text>
               <Text style={[styles.emptyText, { color: C.textSecondary }]}>
-                Create tours from the web app
+                {filter === "upcoming"
+                  ? "No upcoming tours scheduled"
+                  : filter === "active"
+                  ? "No tours are currently active"
+                  : filter === "completed"
+                  ? "No completed tours yet"
+                  : "Create tours from the web app"}
               </Text>
             </View>
           }
@@ -131,20 +173,39 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: "Inter_700Bold",
   },
-  filterRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    paddingHorizontal: 20,
+  filterBar: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
     marginBottom: 4,
   },
-  filterTab: {
+  filterScroll: {
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    paddingHorizontal: 4,
-    marginRight: 20,
+    gap: 8,
+    flexDirection: "row",
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 100,
+    gap: 6,
   },
   filterLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  filterBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
   },
   loader: {
     flex: 1,
@@ -168,5 +229,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
+    maxWidth: 240,
   },
 });

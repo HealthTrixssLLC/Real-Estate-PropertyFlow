@@ -68,7 +68,7 @@ function StopCard({
   const C = Colors[scheme];
   const isIOS = Platform.OS === "ios";
   const isCurrent = label === "current";
-  const address = stop.formattedAddress || stop.propertyNickname || `Stop #${index + 1}`;
+  const address = stop.propertyNickname || stop.formattedAddress || `Stop ${index + 1}`;
   const hasRestriction = RESTRICTED_STATUSES.has(stop.approvedStatus);
 
   const etaMinutes: number | null =
@@ -180,7 +180,7 @@ function StopCard({
           <Text style={styles.etaText} numberOfLines={1}>
             {etaMinutes != null
               ? `~${etaMinutes} min to next stop`
-              : `Next: ${nextStop.formattedAddress || nextStop.propertyNickname || `Stop #${index + 2}`}`}
+              : `Next: ${nextStop.propertyNickname || nextStop.formattedAddress || `Stop ${index + 2}`}`}
           </Text>
         </View>
       )}
@@ -483,7 +483,13 @@ export default function ActiveTourScreen() {
 
         <Text style={[styles.allStopsTitle, { color: C.text }]}>All Stops</Text>
         {stops.map((s, i) => {
-          const addr = s.formattedAddress || s.propertyNickname || `Stop #${i + 1}`;
+          const primaryLabel = s.propertyNickname ?? s.formattedAddress ?? `Stop ${i + 1}`;
+          const secondaryLabel =
+            s.propertyNickname && s.formattedAddress && s.propertyNickname !== s.formattedAddress
+              ? s.formattedAddress
+              : null;
+          const numBg = s.skipped ? C.surfaceAlt : s.visited ? C.green : C.accent;
+          const numColor = s.skipped ? C.textTertiary : "#FFF";
           return (
             <Pressable
               key={s.id}
@@ -492,27 +498,43 @@ export default function ActiveTourScreen() {
               style={({ pressed }) => [
                 styles.stopRow,
                 { backgroundColor: C.surface, borderColor: C.border },
-                pressed && { opacity: 0.8 },
+                s.skipped && { opacity: 0.55 },
+                pressed && { opacity: 0.7 },
               ]}
             >
-              <View style={[styles.stopNum, { backgroundColor: s.skipped ? C.surfaceAlt : s.visited ? C.green : C.accent }]}>
-                <Text style={styles.stopNumText}>{i + 1}</Text>
+              <View style={[styles.stopNum, { backgroundColor: numBg }]}>
+                <Text style={[styles.stopNumText, { color: numColor }]}>{s.sequence + 1}</Text>
               </View>
               <View style={styles.stopRowContent}>
-                <Text style={[styles.stopRowAddr, { color: C.text }]} numberOfLines={1}>
-                  {addr}
+                <Text
+                  style={[styles.stopRowAddr, { color: s.skipped ? C.textSecondary : C.text }]}
+                  numberOfLines={2}
+                >
+                  {primaryLabel}
                 </Text>
-                <StatusChip status={s.approvedStatus} small />
+                {secondaryLabel && (
+                  <Text
+                    style={[styles.stopRowSubAddr, { color: C.textTertiary }]}
+                    numberOfLines={1}
+                  >
+                    {secondaryLabel}
+                  </Text>
+                )}
+                <View style={styles.stopRowMeta}>
+                  <StatusChip status={s.approvedStatus} small />
+                  {s.skipped && (
+                    <Text style={[styles.skippedLabel, { color: C.textTertiary }]}>
+                      · Skipped
+                    </Text>
+                  )}
+                </View>
               </View>
               <View style={styles.stopRowRight}>
-                {s.skipped && (
-                  <Text style={[styles.skippedLabel, { color: C.textTertiary }]}>Skipped</Text>
-                )}
                 {s.visited && !s.skipped && (
                   isIOS ? (
-                    <SymbolView name="checkmark.circle.fill" tintColor={C.green} size={18} />
+                    <SymbolView name="checkmark.circle.fill" tintColor={C.green} size={20} />
                   ) : (
-                    <Feather name="check-circle" size={18} color={C.green} />
+                    <Feather name="check-circle" size={20} color={C.green} />
                   )
                 )}
                 {isIOS ? (
@@ -687,36 +709,49 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     marginBottom: 8,
+    minHeight: 60,
   },
   stopNum: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   stopNumText: {
-    color: "#FFF",
     fontSize: 13,
     fontFamily: "Inter_700Bold",
   },
   stopRowContent: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   stopRowAddr: {
     fontSize: 14,
     fontFamily: "Inter_500Medium",
+    lineHeight: 19,
+  },
+  stopRowSubAddr: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  stopRowMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
   },
   stopRowRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    flexShrink: 0,
   },
   skippedLabel: {
     fontSize: 11,

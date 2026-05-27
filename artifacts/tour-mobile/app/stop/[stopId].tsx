@@ -229,10 +229,10 @@ export default function StopDetailScreen() {
         {property && (
           <View style={[styles.propertyCard, { backgroundColor: C.primary }]}>
             <Text style={styles.propertyAddress} numberOfLines={2}>
-              {property.formattedAddress}
+              {property.nickname ?? property.formattedAddress}
             </Text>
-            {property.nickname && (
-              <Text style={styles.propertyNickname}>{property.nickname}</Text>
+            {property.nickname && property.formattedAddress && (
+              <Text style={styles.propertyNickname} numberOfLines={2}>{property.formattedAddress}</Text>
             )}
             <View style={styles.propertyStats}>
               {property.listPrice && (

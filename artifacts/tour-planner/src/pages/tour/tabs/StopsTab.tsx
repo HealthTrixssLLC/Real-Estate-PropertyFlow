@@ -318,7 +318,7 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
                           )}
                           <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1 truncate">
                             <MapPin className="h-3.5 w-3.5" />
-                            Stop {stop.sequence} · {stop.visited ? "Visited" : "Pending"}
+                            Stop {stop.sequence + 1} · {stop.visited ? "Visited" : stop.skipped ? "Skipped" : "Pending"}
                           </div>
                         </div>
 
