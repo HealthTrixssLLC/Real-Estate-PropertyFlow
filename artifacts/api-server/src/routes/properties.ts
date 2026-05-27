@@ -86,10 +86,15 @@ router.get("/properties/:propertyId", async (req: Request, res: Response) => {
   const params = parseParams(idParams.propertyId, req, res);
   if (!params) return;
   try {
+    const isAdmin = user.role === "admin";
     const [property] = await db
       .select()
       .from(propertiesTable)
-      .where(and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id)));
+      .where(
+        isAdmin
+          ? eq(propertiesTable.id, params.propertyId)
+          : and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id))
+      );
     if (!property) {
       res.status(404).json({ error: "Property not found" });
       return;
@@ -111,11 +116,16 @@ router.put("/properties/:propertyId", async (req: Request, res: Response) => {
   if (!params) return;
   const body = parseBody(UpdatePropertyBody, req, res);
   if (!body) return;
+  const isAdmin = user.role === "admin";
   try {
     const [existing] = await db
       .select({ id: propertiesTable.id })
       .from(propertiesTable)
-      .where(and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id)));
+      .where(
+        isAdmin
+          ? eq(propertiesTable.id, params.propertyId)
+          : and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id))
+      );
     if (!existing) {
       res.status(404).json({ error: "Property not found" });
       return;
@@ -140,11 +150,16 @@ router.delete("/properties/:propertyId", async (req: Request, res: Response) => 
   const user = (req as Express.AuthedRequest).user;
   const params = parseParams(idParams.propertyId, req, res);
   if (!params) return;
+  const isAdmin = user.role === "admin";
   try {
     const [existing] = await db
       .select({ id: propertiesTable.id })
       .from(propertiesTable)
-      .where(and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id)));
+      .where(
+        isAdmin
+          ? eq(propertiesTable.id, params.propertyId)
+          : and(eq(propertiesTable.id, params.propertyId), eq(propertiesTable.agentId, user.id))
+      );
     if (!existing) {
       res.status(404).json({ error: "Property not found" });
       return;
