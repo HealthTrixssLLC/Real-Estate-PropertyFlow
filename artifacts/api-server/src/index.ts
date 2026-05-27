@@ -4,6 +4,8 @@ import { loadAiConfigFromDb } from "./lib/aiConfig";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./lib/auth";
+import { geocodeMissingProperties } from "./routes/properties";
+import { isGeocodeAvailable } from "./lib/geocode";
 
 const rawPort = process.env["PORT"];
 
@@ -49,6 +51,20 @@ async function seedAdminUser() {
   logger.info("Admin user seeded");
 }
 
+async function batchGeocodeOnStartup() {
+  if (!isGeocodeAvailable()) {
+    logger.info("Skipping startup batch geocode: no Google Maps API key configured");
+    return;
+  }
+  logger.info("Starting background batch geocode for properties missing coordinates");
+  try {
+    const result = await geocodeMissingProperties();
+    logger.info(result, "Startup batch geocode complete");
+  } catch (err) {
+    logger.warn({ err }, "Startup batch geocode failed");
+  }
+}
+
 loadAiConfigFromDb().then(async () => {
   await seedAdminUser();
 
@@ -59,5 +75,6 @@ loadAiConfigFromDb().then(async () => {
     }
 
     logger.info({ port }, "Server listening");
+    void batchGeocodeOnStartup();
   });
 });

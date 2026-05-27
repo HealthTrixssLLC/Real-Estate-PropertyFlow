@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { SaveAiConfigBody, TestAiConfigBody, TestGoogleMapsConfigBody } from "@workspace/api-zod";
 import { requireRole, requireAuth } from "../middlewares/authMiddleware";
 import { aiConfig, updateAiConfig, getAiConfigResponse } from "../lib/aiConfig";
+import { geocodeMissingProperties } from "./properties";
 import {
   generateText,
   azureOpenAiProvider,
@@ -136,6 +137,15 @@ router.post("/admin/ai/config/test-google-maps", requireRole("admin"), async (re
       success: false,
       error: err instanceof Error ? err.message : String(err),
     });
+  }
+});
+
+router.post("/admin/properties/geocode-missing", requireRole("admin"), async (_req: Request, res: Response) => {
+  try {
+    const result = await geocodeMissingProperties();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 

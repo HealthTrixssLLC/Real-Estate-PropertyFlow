@@ -1,10 +1,12 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
-import { and, eq, or, ilike } from "drizzle-orm";
+import { and, eq, or, ilike, isNull } from "drizzle-orm";
 import { db, propertiesTable } from "@workspace/db";
 import { CreatePropertyBody, UpdatePropertyBody } from "@workspace/api-zod";
 import { idParams, parseParams, parseBody } from "../lib/validate";
 import { sendValidated, PropertyResponseSchema, PropertyListResponseSchema } from "../lib/responseSchemas";
+import { geocodeAddress } from "../lib/geocode";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -66,9 +68,20 @@ router.post("/properties", async (req: Request, res: Response) => {
   const body = parseBody(CreatePropertyBody, req, res);
   if (!body) return;
   try {
+    let { lat, lng, placeId, formattedAddress } = body;
+    if (formattedAddress && (lat == null || lng == null)) {
+      const geo = await geocodeAddress(formattedAddress);
+      if (geo) {
+        lat = geo.lat;
+        lng = geo.lng;
+        if (!placeId && geo.placeId) placeId = geo.placeId;
+      } else {
+        logger.warn({ formattedAddress }, "Geocoding failed for new property; saving without coordinates");
+      }
+    }
     const [property] = await db
       .insert(propertiesTable)
-      .values({ id: randomUUID(), agentId: user.id, ...body })
+      .values({ id: randomUUID(), agentId: user.id, ...body, lat, lng, placeId })
       .returning();
     sendValidated(res, PropertyResponseSchema, { property }, 201);
   } catch (err) {
@@ -119,7 +132,7 @@ router.put("/properties/:propertyId", async (req: Request, res: Response) => {
   const isAdmin = user.role === "admin";
   try {
     const [existing] = await db
-      .select({ id: propertiesTable.id })
+      .select({ id: propertiesTable.id, lat: propertiesTable.lat, lng: propertiesTable.lng })
       .from(propertiesTable)
       .where(
         isAdmin
@@ -130,9 +143,24 @@ router.put("/properties/:propertyId", async (req: Request, res: Response) => {
       res.status(404).json({ error: "Property not found" });
       return;
     }
+    let { lat, lng, placeId, formattedAddress } = body;
+    if (formattedAddress && (lat == null || lng == null) && (existing.lat == null || existing.lng == null)) {
+      const geo = await geocodeAddress(formattedAddress);
+      if (geo) {
+        lat = geo.lat;
+        lng = geo.lng;
+        if (!placeId && geo.placeId) placeId = geo.placeId;
+      } else {
+        logger.warn({ formattedAddress }, "Geocoding failed for updated property; saving without coordinates");
+      }
+    }
+    const updatePayload = { ...body, updatedAt: new Date() } as Record<string, unknown>;
+    if (lat != null) updatePayload.lat = lat;
+    if (lng != null) updatePayload.lng = lng;
+    if (placeId != null) updatePayload.placeId = placeId;
     const [property] = await db
       .update(propertiesTable)
-      .set({ ...body, updatedAt: new Date() })
+      .set(updatePayload)
       .where(eq(propertiesTable.id, params.propertyId))
       .returning();
     sendValidated(res, PropertyResponseSchema, { property });
@@ -171,5 +199,40 @@ router.delete("/properties/:propertyId", async (req: Request, res: Response) => 
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+export async function geocodeMissingProperties(): Promise<{ processed: number; succeeded: number; failed: number }> {
+  const missing = await db
+    .select({ id: propertiesTable.id, formattedAddress: propertiesTable.formattedAddress })
+    .from(propertiesTable)
+    .where(
+      and(
+        or(isNull(propertiesTable.lat), isNull(propertiesTable.lng)),
+      )
+    );
+
+  const toGeocode = missing.filter(p => p.formattedAddress && p.formattedAddress.trim().length > 0);
+  let succeeded = 0;
+  let failed = 0;
+
+  for (const prop of toGeocode) {
+    try {
+      const geo = await geocodeAddress(prop.formattedAddress!);
+      if (geo) {
+        await db
+          .update(propertiesTable)
+          .set({ lat: geo.lat, lng: geo.lng, placeId: geo.placeId ?? undefined, updatedAt: new Date() })
+          .where(eq(propertiesTable.id, prop.id));
+        succeeded++;
+      } else {
+        failed++;
+      }
+    } catch {
+      failed++;
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  return { processed: toGeocode.length, succeeded, failed };
+}
 
 export default router;
