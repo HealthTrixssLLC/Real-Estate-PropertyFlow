@@ -293,6 +293,62 @@ export const VoiceNoteDetailResponseSchema = z.object({
 export const PropertySummaryResponseSchema = z.object({ summary: PropertySummarySchema });
 export const TourSummaryResponseSchema = z.object({ summary: TourSummarySchema });
 
+export const BuyerDetailStopCommentSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  isVoiceNote: z.boolean().optional(),
+  transcriptionStatus: z.string().nullable().optional(),
+  createdAt: z.date(),
+});
+
+export const BuyerDetailStopSchema = z.object({
+  id: z.string(),
+  tourId: z.string(),
+  propertyId: z.string(),
+  sequence: z.number(),
+  formattedAddress: z.string(),
+  propertyNickname: z.string().nullable().optional(),
+  listPrice: z.number().nullable().optional(),
+  beds: z.number().nullable().optional(),
+  baths: z.number().nullable().optional(),
+  squareFeet: z.number().nullable().optional(),
+  approvedStatus: z.string(),
+  showingStatus: z.string().nullable().optional(),
+  skipped: z.boolean(),
+  skipReason: z.string().nullable().optional(),
+  skipNotes: z.string().nullable().optional(),
+  visited: z.boolean(),
+  arrivalTime: z.date().nullable().optional(),
+  departureTime: z.date().nullable().optional(),
+  overallFitRating: z.number().nullable().optional(),
+  buyerInterest: z.number().nullable().optional(),
+  kitchenRating: z.number().nullable().optional(),
+  primarySuiteRating: z.number().nullable().optional(),
+  backyardRating: z.number().nullable().optional(),
+  roadNoiseRating: z.number().nullable().optional(),
+  followUpFlag: z.boolean(),
+  revisitFlag: z.boolean(),
+  quickTags: z.array(z.string()).nullable().optional(),
+  comments: z.array(BuyerDetailStopCommentSchema),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const BuyerDetailTourSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  date: z.string(),
+  status: z.enum(["draft", "active", "published", "completed", "cancelled"]),
+  stops: z.array(BuyerDetailStopSchema),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const BuyerDetailResponseSchema = z.object({
+  buyer: BuyerSchema,
+  tours: z.array(BuyerDetailTourSchema),
+});
+
 export const BuyerResponseSchema = z.object({ buyer: BuyerSchema });
 export const BuyerListResponseSchema = z.object({ buyers: z.array(BuyerSchema) });
 export const PropertyResponseSchema = z.object({ property: PropertySchema });

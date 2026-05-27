@@ -10,6 +10,7 @@ import Login from "@/pages/Login"
 import Dashboard from "@/pages/Dashboard"
 import Properties from "@/pages/Properties"
 import Buyers from "@/pages/Buyers"
+import BuyerDetail from "@/pages/BuyerDetail"
 import AdminAI from "@/pages/AdminAI"
 import AdminUsers from "@/pages/AdminUsers"
 import TourDetail from "@/pages/tour/TourDetail"
@@ -34,6 +35,7 @@ function ProtectedRoutes() {
           <Route path="/" component={Dashboard} />
           <Route path="/properties" component={Properties} />
           <Route path="/buyers" component={Buyers} />
+          <Route path="/buyers/:id" component={BuyerDetail} />
           <Route path="/admin/ai">
             <RoleGuard roles={["admin"]}>
               <AdminAI />

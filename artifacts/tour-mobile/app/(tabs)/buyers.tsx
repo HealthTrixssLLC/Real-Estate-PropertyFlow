@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import type { Buyer } from "@workspace/api-client-react";
 import { SymbolView } from "expo-symbols";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -218,7 +219,14 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
   const isIOS = Platform.OS === "ios";
 
   return (
-    <View style={[styles.buyerRow, { backgroundColor: C.surface, borderColor: C.border }]}>
+    <Pressable
+      onPress={() => router.push(`/buyers/${buyer.id}`)}
+      style={({ pressed }) => [
+        styles.buyerRow,
+        { backgroundColor: C.surface, borderColor: C.border },
+        pressed && { opacity: 0.85 },
+      ]}
+    >
       <View style={[styles.buyerAvatar, { backgroundColor: C.accent + "20" }]}>
         <Text style={[styles.buyerInitial, { color: C.accent }]}>
           {buyer.name.charAt(0).toUpperCase()}
@@ -244,7 +252,7 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
       </View>
       <View style={styles.buyerActions}>
         <Pressable
-          onPress={onEdit}
+          onPress={(e) => { e.stopPropagation?.(); onEdit(); }}
           style={({ pressed }) => [styles.actionBtn, { backgroundColor: C.surfaceAlt }, pressed && { opacity: 0.7 }]}
         >
           {isIOS ? (
@@ -254,7 +262,7 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
           )}
         </Pressable>
         <Pressable
-          onPress={onDelete}
+          onPress={(e) => { e.stopPropagation?.(); onDelete(); }}
           style={({ pressed }) => [styles.actionBtn, { backgroundColor: "#FDECEC" }, pressed && { opacity: 0.7 }]}
         >
           {isIOS ? (
@@ -263,8 +271,13 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
             <Feather name="trash-2" size={16} color="#E85D4A" />
           )}
         </Pressable>
+        {isIOS ? (
+          <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
+        ) : (
+          <Feather name="chevron-right" size={14} color={C.textTertiary} />
+        )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 

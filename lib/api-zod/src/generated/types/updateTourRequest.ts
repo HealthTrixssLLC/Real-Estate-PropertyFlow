@@ -8,7 +8,7 @@
 import type { UpdateTourRequestStatus } from "./updateTourRequestStatus";
 
 export interface UpdateTourRequest {
-  buyerId?: string | null;
+  buyerId?: string;
   title?: string;
   date?: string;
   startTime?: string;

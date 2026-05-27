@@ -240,6 +240,23 @@ paths:
         '204':
           description: Buyer deleted
 
+  /buyers/{buyerId}/detail:
+    get:
+      tags: [buyers]
+      operationId: getBuyerDetail
+      summary: Get full buyer 360° detail — all tours, stops, ratings, notes
+      parameters:
+        - $ref: '#/components/parameters/BuyerIdParam'
+      responses:
+        '200':
+          description: Buyer detail found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuyerDetailResponse'
+        '404':
+          description: Buyer not found
+
   # ── Standalone Properties ────────────────────────────────────────────────────
   /properties:
     get:
@@ -1197,6 +1214,128 @@ components:
           type: string
         notes:
           type: string
+
+    BuyerDetailStop:
+      type: object
+      required: [id, tourId, propertyId, sequence, approvedStatus, skipped, visited, followUpFlag, revisitFlag, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        tourId:
+          type: string
+        propertyId:
+          type: string
+        sequence:
+          type: integer
+        formattedAddress:
+          type: string
+        propertyNickname:
+          type: [string, 'null']
+        listPrice:
+          type: [integer, 'null']
+        beds:
+          type: [integer, 'null']
+        baths:
+          type: [number, 'null']
+        squareFeet:
+          type: [integer, 'null']
+        approvedStatus:
+          type: string
+        showingStatus:
+          type: [string, 'null']
+        skipped:
+          type: boolean
+        skipReason:
+          type: [string, 'null']
+        skipNotes:
+          type: [string, 'null']
+        visited:
+          type: boolean
+        arrivalTime:
+          type: [string, 'null']
+          format: date-time
+        departureTime:
+          type: [string, 'null']
+          format: date-time
+        overallFitRating:
+          type: [integer, 'null']
+        buyerInterest:
+          type: [integer, 'null']
+        kitchenRating:
+          type: [integer, 'null']
+        primarySuiteRating:
+          type: [integer, 'null']
+        backyardRating:
+          type: [integer, 'null']
+        roadNoiseRating:
+          type: [integer, 'null']
+        followUpFlag:
+          type: boolean
+        revisitFlag:
+          type: boolean
+        quickTags:
+          type: [array, 'null']
+          items:
+            type: string
+        comments:
+          type: array
+          description: Typed notes and transcribed voice notes for this stop
+          items:
+            type: object
+            required: [id, text, createdAt]
+            properties:
+              id:
+                type: string
+              text:
+                type: string
+              isVoiceNote:
+                type: boolean
+              transcriptionStatus:
+                type: [string, 'null']
+              createdAt:
+                type: string
+                format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    BuyerDetailTour:
+      type: object
+      required: [id, title, date, status, stops, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        date:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, published, completed, cancelled]
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuyerDetailStop'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    BuyerDetailResponse:
+      type: object
+      required: [buyer, tours]
+      properties:
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+        tours:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuyerDetailTour'
 
     # ── Tour schemas ──────────────────────────────────────────────────────────
     Tour:

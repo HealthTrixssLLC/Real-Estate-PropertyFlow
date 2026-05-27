@@ -24,6 +24,7 @@ import type {
   AiTestResponse,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
+  BuyerDetailResponse,
   BuyerListResponse,
   BuyerResponse,
   CreateBuyerRequest,
@@ -34,6 +35,7 @@ import type {
   HandleBrowserLoginCallbackParams,
   HealthStatus,
   ListPropertiesParams,
+  ListToursParams,
   LogoutSuccess,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
@@ -1096,6 +1098,93 @@ export const useDeleteBuyer = <
 };
 
 /**
+ * @summary Get full buyer 360° detail — all tours, stops, ratings, notes
+ */
+export const getGetBuyerDetailUrl = (buyerId: string) => {
+  return `/api/buyers/${buyerId}/detail`;
+};
+
+export const getBuyerDetail = async (
+  buyerId: string,
+  options?: RequestInit,
+): Promise<BuyerDetailResponse> => {
+  return customFetch<BuyerDetailResponse>(getGetBuyerDetailUrl(buyerId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBuyerDetailQueryKey = (buyerId: string) => {
+  return [`/api/buyers/${buyerId}/detail`] as const;
+};
+
+export const getGetBuyerDetailQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBuyerDetail>>,
+  TError = ErrorType<void>,
+>(
+  buyerId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBuyerDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBuyerDetailQueryKey(buyerId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBuyerDetail>>> = ({
+    signal,
+  }) => getBuyerDetail(buyerId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!buyerId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBuyerDetail>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBuyerDetailQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBuyerDetail>>
+>;
+export type GetBuyerDetailQueryError = ErrorType<void>;
+
+/**
+ * @summary Get full buyer 360° detail — all tours, stops, ratings, notes
+ */
+
+export function useGetBuyerDetail<
+  TData = Awaited<ReturnType<typeof getBuyerDetail>>,
+  TError = ErrorType<void>,
+>(
+  buyerId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBuyerDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBuyerDetailQueryOptions(buyerId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary List all properties
  */
 export const getListPropertiesUrl = (params?: ListPropertiesParams) => {
@@ -1536,13 +1625,24 @@ export const useDeleteProperty = <
 /**
  * @summary List all tours for the current agent
  */
-export const getListToursUrl = (params?: { status?: "cancelled" }) => {
-  const qs = params?.status ? `?status=${params.status}` : "";
-  return `/api/tours${qs}`;
+export const getListToursUrl = (params?: ListToursParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/tours?${stringifiedParams}`
+    : `/api/tours`;
 };
 
 export const listTours = async (
-  params?: { status?: "cancelled" },
+  params?: ListToursParams,
   options?: RequestInit,
 ): Promise<TourListResponse> => {
   return customFetch<TourListResponse>(getListToursUrl(params), {
@@ -1551,17 +1651,24 @@ export const listTours = async (
   });
 };
 
-export const getListToursQueryKey = (params?: { status?: "cancelled" }) => {
-  return [`/api/tours`, params] as const;
+export const getListToursQueryKey = (params?: ListToursParams) => {
+  return [`/api/tours`, ...(params ? [params] : [])] as const;
 };
 
 export const getListToursQueryOptions = <
   TData = Awaited<ReturnType<typeof listTours>>,
   TError = ErrorType<unknown>,
->(params?: { status?: "cancelled" }, options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listTours>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListToursParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTours>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
   const queryKey = queryOptions?.queryKey ?? getListToursQueryKey(params);
@@ -1589,10 +1696,17 @@ export type ListToursQueryError = ErrorType<unknown>;
 export function useListTours<
   TData = Awaited<ReturnType<typeof listTours>>,
   TError = ErrorType<unknown>,
->(params?: { status?: "cancelled" }, options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listTours>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+>(
+  params?: ListToursParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTours>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListToursQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
@@ -2285,6 +2399,174 @@ export const useSkipTourStop = <
 };
 
 /**
+ * @summary Archive a tour (sets status to cancelled)
+ */
+export const getArchiveTourUrl = (tourId: string) => {
+  return `/api/tours/${tourId}/archive`;
+};
+
+export const archiveTour = async (
+  tourId: string,
+  options?: RequestInit,
+): Promise<TourResponse> => {
+  return customFetch<TourResponse>(getArchiveTourUrl(tourId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getArchiveTourMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof archiveTour>>,
+    TError,
+    { tourId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof archiveTour>>,
+  TError,
+  { tourId: string },
+  TContext
+> => {
+  const mutationKey = ["archiveTour"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof archiveTour>>,
+    { tourId: string }
+  > = (props) => {
+    const { tourId } = props ?? {};
+
+    return archiveTour(tourId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ArchiveTourMutationResult = NonNullable<
+  Awaited<ReturnType<typeof archiveTour>>
+>;
+
+export type ArchiveTourMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Archive a tour (sets status to cancelled)
+ */
+export const useArchiveTour = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof archiveTour>>,
+    TError,
+    { tourId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof archiveTour>>,
+  TError,
+  { tourId: string },
+  TContext
+> => {
+  return useMutation(getArchiveTourMutationOptions(options));
+};
+
+/**
+ * @summary Restore an archived tour (sets status back to draft)
+ */
+export const getRestoreTourUrl = (tourId: string) => {
+  return `/api/tours/${tourId}/restore`;
+};
+
+export const restoreTour = async (
+  tourId: string,
+  options?: RequestInit,
+): Promise<TourResponse> => {
+  return customFetch<TourResponse>(getRestoreTourUrl(tourId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRestoreTourMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreTour>>,
+    TError,
+    { tourId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreTour>>,
+  TError,
+  { tourId: string },
+  TContext
+> => {
+  const mutationKey = ["restoreTour"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreTour>>,
+    { tourId: string }
+  > = (props) => {
+    const { tourId } = props ?? {};
+
+    return restoreTour(tourId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreTourMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restoreTour>>
+>;
+
+export type RestoreTourMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Restore an archived tour (sets status back to draft)
+ */
+export const useRestoreTour = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreTour>>,
+    TError,
+    { tourId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restoreTour>>,
+  TError,
+  { tourId: string },
+  TContext
+> => {
+  return useMutation(getRestoreTourMutationOptions(options));
+};
+
+/**
  * @summary Publish a tour to mobile
  */
 export const getPublishTourUrl = (tourId: string) => {
@@ -2366,164 +2648,6 @@ export const usePublishTour = <
   TContext
 > => {
   return useMutation(getPublishTourMutationOptions(options));
-};
-
-/**
- * @summary Archive a tour (sets status to cancelled)
- */
-export const getArchiveTourUrl = (tourId: string) => {
-  return `/api/tours/${tourId}/archive`;
-};
-
-export const archiveTour = async (
-  tourId: string,
-  options?: RequestInit,
-): Promise<TourResponse> => {
-  return customFetch<TourResponse>(getArchiveTourUrl(tourId), {
-    ...options,
-    method: "POST",
-  });
-};
-
-export const getArchiveTourMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof archiveTour>>,
-    TError,
-    { tourId: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof archiveTour>>,
-  TError,
-  { tourId: string },
-  TContext
-> => {
-  const mutationKey = ["archiveTour"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof archiveTour>>,
-    { tourId: string }
-  > = (props) => {
-    const { tourId } = props ?? {};
-    return archiveTour(tourId, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type ArchiveTourMutationResult = NonNullable<
-  Awaited<ReturnType<typeof archiveTour>>
->;
-export type ArchiveTourMutationError = ErrorType<unknown>;
-
-export const useArchiveTour = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof archiveTour>>,
-    TError,
-    { tourId: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof archiveTour>>,
-  TError,
-  { tourId: string },
-  TContext
-> => {
-  return useMutation(getArchiveTourMutationOptions(options));
-};
-
-/**
- * @summary Restore an archived tour (sets status back to draft)
- */
-export const getRestoreTourUrl = (tourId: string) => {
-  return `/api/tours/${tourId}/restore`;
-};
-
-export const restoreTour = async (
-  tourId: string,
-  options?: RequestInit,
-): Promise<TourResponse> => {
-  return customFetch<TourResponse>(getRestoreTourUrl(tourId), {
-    ...options,
-    method: "POST",
-  });
-};
-
-export const getRestoreTourMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof restoreTour>>,
-    TError,
-    { tourId: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof restoreTour>>,
-  TError,
-  { tourId: string },
-  TContext
-> => {
-  const mutationKey = ["restoreTour"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof restoreTour>>,
-    { tourId: string }
-  > = (props) => {
-    const { tourId } = props ?? {};
-    return restoreTour(tourId, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type RestoreTourMutationResult = NonNullable<
-  Awaited<ReturnType<typeof restoreTour>>
->;
-export type RestoreTourMutationError = ErrorType<unknown>;
-
-export const useRestoreTour = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof restoreTour>>,
-    TError,
-    { tourId: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof restoreTour>>,
-  TError,
-  { tourId: string },
-  TContext
-> => {
-  return useMutation(getRestoreTourMutationOptions(options));
 };
 
 /**

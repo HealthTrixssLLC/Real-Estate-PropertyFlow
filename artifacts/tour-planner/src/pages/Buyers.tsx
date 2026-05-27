@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useLocation } from "wouter"
 import {
   useListBuyers,
   useCreateBuyer,
@@ -7,7 +8,7 @@ import {
   getListBuyersQueryKey,
 } from "@workspace/api-client-react"
 import type { Buyer } from "@workspace/api-client-react"
-import { Plus, Users, Pencil, Trash2, AlertTriangle, Loader2, Mail, Phone, FileText } from "lucide-react"
+import { Plus, Users, Pencil, Trash2, AlertTriangle, Loader2, Mail, Phone, FileText, Eye } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -150,6 +151,7 @@ export default function Buyers() {
   const { toast } = useToast()
   const { data, isLoading } = useListBuyers()
   const deleteBuyer = useDeleteBuyer()
+  const [, navigate] = useLocation()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Buyer | null>(null)
@@ -216,7 +218,11 @@ export default function Buyers() {
               </thead>
               <tbody className="divide-y divide-border/50">
                 {data.buyers.map(buyer => (
-                  <tr key={buyer.id} className="hover:bg-muted/30 transition-colors group">
+                  <tr
+                    key={buyer.id}
+                    className="hover:bg-muted/30 transition-colors group cursor-pointer"
+                    onClick={() => navigate(`/buyers/${buyer.id}`)}
+                  >
                     <td className="px-6 py-4">
                       <div className="font-semibold text-foreground">{buyer.name}</div>
                     </td>
@@ -225,13 +231,25 @@ export default function Buyers() {
                         {buyer.email && (
                           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                             <Mail className="h-3 w-3 shrink-0" />
-                            <a href={`mailto:${buyer.email}`} className="hover:text-foreground transition-colors">{buyer.email}</a>
+                            <a
+                              href={`mailto:${buyer.email}`}
+                              className="hover:text-foreground transition-colors"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {buyer.email}
+                            </a>
                           </div>
                         )}
                         {buyer.phone && (
                           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                             <Phone className="h-3 w-3 shrink-0" />
-                            <a href={`tel:${buyer.phone}`} className="hover:text-foreground transition-colors">{buyer.phone}</a>
+                            <a
+                              href={`tel:${buyer.phone}`}
+                              className="hover:text-foreground transition-colors"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {buyer.phone}
+                            </a>
                           </div>
                         )}
                         {!buyer.email && !buyer.phone && <span className="text-muted-foreground text-xs">—</span>}
@@ -253,7 +271,16 @@ export default function Buyers() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => openEdit(buyer)}
+                          onClick={e => { e.stopPropagation(); navigate(`/buyers/${buyer.id}`) }}
+                          title="View buyer detail"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={e => { e.stopPropagation(); openEdit(buyer) }}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -261,7 +288,7 @@ export default function Buyers() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                          onClick={() => setDeleteTarget(buyer)}
+                          onClick={e => { e.stopPropagation(); setDeleteTarget(buyer) }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

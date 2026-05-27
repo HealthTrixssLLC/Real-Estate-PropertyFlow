@@ -176,6 +176,92 @@ export interface UpdateBuyerRequest {
   notes?: string;
 }
 
+export type BuyerDetailStopCommentsItem = {
+  id: string;
+  text: string;
+  isVoiceNote?: boolean;
+  /** @nullable */
+  transcriptionStatus?: string | null;
+  createdAt: string;
+};
+
+export interface BuyerDetailStop {
+  id: string;
+  tourId: string;
+  propertyId: string;
+  sequence: number;
+  formattedAddress?: string;
+  /** @nullable */
+  propertyNickname?: string | null;
+  /** @nullable */
+  listPrice?: number | null;
+  /** @nullable */
+  beds?: number | null;
+  /** @nullable */
+  baths?: number | null;
+  /** @nullable */
+  squareFeet?: number | null;
+  approvedStatus: string;
+  /** @nullable */
+  showingStatus?: string | null;
+  skipped: boolean;
+  /** @nullable */
+  skipReason?: string | null;
+  /** @nullable */
+  skipNotes?: string | null;
+  visited: boolean;
+  /** @nullable */
+  arrivalTime?: string | null;
+  /** @nullable */
+  departureTime?: string | null;
+  /** @nullable */
+  overallFitRating?: number | null;
+  /** @nullable */
+  buyerInterest?: number | null;
+  /** @nullable */
+  kitchenRating?: number | null;
+  /** @nullable */
+  primarySuiteRating?: number | null;
+  /** @nullable */
+  backyardRating?: number | null;
+  /** @nullable */
+  roadNoiseRating?: number | null;
+  followUpFlag: boolean;
+  revisitFlag: boolean;
+  /** @nullable */
+  quickTags?: string[] | null;
+  /** Typed notes and transcribed voice notes for this stop */
+  comments?: BuyerDetailStopCommentsItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BuyerDetailTourStatus =
+  (typeof BuyerDetailTourStatus)[keyof typeof BuyerDetailTourStatus];
+
+export const BuyerDetailTourStatus = {
+  draft: "draft",
+  active: "active",
+  published: "published",
+  completed: "completed",
+  cancelled: "cancelled",
+} as const;
+
+export interface BuyerDetailTour {
+  id: string;
+  title: string;
+  date: string;
+  status: BuyerDetailTourStatus;
+  stops: BuyerDetailStop[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BuyerDetailResponse {
+  buyer: Buyer;
+  tours: BuyerDetailTour[];
+}
+
 export type TourStatus = (typeof TourStatus)[keyof typeof TourStatus];
 
 export const TourStatus = {
@@ -866,6 +952,20 @@ export type ListPropertiesParams = {
    */
   q?: string;
 };
+
+export type ListToursParams = {
+  /**
+   * Filter by tour status. Defaults to returning all non-cancelled tours. Pass 'cancelled' to get archived tours.
+   */
+  status?: ListToursStatus;
+};
+
+export type ListToursStatus =
+  (typeof ListToursStatus)[keyof typeof ListToursStatus];
+
+export const ListToursStatus = {
+  cancelled: "cancelled",
+} as const;
 
 export type UploadVoiceNoteBody = {
   tourStopId: string;

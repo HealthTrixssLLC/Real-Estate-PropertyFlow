@@ -180,6 +180,86 @@ export const DeleteBuyerParams = zod.object({
 });
 
 /**
+ * @summary Get full buyer 360° detail — all tours, stops, ratings, notes
+ */
+export const GetBuyerDetailParams = zod.object({
+  buyerId: zod.coerce.string(),
+});
+
+export const GetBuyerDetailResponse = zod.object({
+  buyer: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    email: zod.string().nullish(),
+    phone: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  tours: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      date: zod.string(),
+      status: zod.enum([
+        "draft",
+        "active",
+        "published",
+        "completed",
+        "cancelled",
+      ]),
+      stops: zod.array(
+        zod.object({
+          id: zod.string(),
+          tourId: zod.string(),
+          propertyId: zod.string(),
+          sequence: zod.number(),
+          formattedAddress: zod.string().optional(),
+          propertyNickname: zod.string().nullish(),
+          listPrice: zod.number().nullish(),
+          beds: zod.number().nullish(),
+          baths: zod.number().nullish(),
+          squareFeet: zod.number().nullish(),
+          approvedStatus: zod.string(),
+          showingStatus: zod.string().nullish(),
+          skipped: zod.boolean(),
+          skipReason: zod.string().nullish(),
+          skipNotes: zod.string().nullish(),
+          visited: zod.boolean(),
+          arrivalTime: zod.coerce.date().nullish(),
+          departureTime: zod.coerce.date().nullish(),
+          overallFitRating: zod.number().nullish(),
+          buyerInterest: zod.number().nullish(),
+          kitchenRating: zod.number().nullish(),
+          primarySuiteRating: zod.number().nullish(),
+          backyardRating: zod.number().nullish(),
+          roadNoiseRating: zod.number().nullish(),
+          followUpFlag: zod.boolean(),
+          revisitFlag: zod.boolean(),
+          quickTags: zod.array(zod.string()).nullish(),
+          comments: zod
+            .array(
+              zod.object({
+                id: zod.string(),
+                text: zod.string(),
+                isVoiceNote: zod.boolean().optional(),
+                transcriptionStatus: zod.string().nullish(),
+                createdAt: zod.coerce.date(),
+              }),
+            )
+            .optional()
+            .describe("Typed notes and transcribed voice notes for this stop"),
+          createdAt: zod.coerce.date(),
+          updatedAt: zod.coerce.date(),
+        }),
+      ),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
  * @summary List all properties
  */
 export const ListPropertiesQueryParams = zod.object({
@@ -326,6 +406,15 @@ export const DeletePropertyParams = zod.object({
 /**
  * @summary List all tours for the current agent
  */
+export const ListToursQueryParams = zod.object({
+  status: zod
+    .enum(["cancelled"])
+    .optional()
+    .describe(
+      "Filter by tour status. Defaults to returning all non-cancelled tours. Pass 'cancelled' to get archived tours.",
+    ),
+});
+
 export const ListToursResponse = zod.object({
   tours: zod.array(
     zod.object({
@@ -534,7 +623,7 @@ export const UpdateTourParams = zod.object({
 });
 
 export const UpdateTourBody = zod.object({
-  buyerId: zod.string().nullable().optional(),
+  buyerId: zod.string().optional(),
   title: zod.string().optional(),
   date: zod.string().optional(),
   startTime: zod.string().optional(),
@@ -763,6 +852,116 @@ export const SkipTourStopResponse = zod.object({
       zod.null(),
     ])
     .optional(),
+});
+
+/**
+ * @summary Archive a tour (sets status to cancelled)
+ */
+export const ArchiveTourParams = zod.object({
+  tourId: zod.coerce.string(),
+});
+
+export const ArchiveTourResponse = zod.object({
+  tour: zod.object({
+    id: zod.string(),
+    agentId: zod.string(),
+    buyerId: zod.string().nullish(),
+    title: zod.string(),
+    date: zod.string(),
+    startTime: zod.string().nullish(),
+    startAddress: zod.string().nullish(),
+    startLat: zod.number().nullish(),
+    startLng: zod.number().nullish(),
+    endAddress: zod.string().nullish(),
+    endLat: zod.number().nullish(),
+    endLng: zod.number().nullish(),
+    buyerNotes: zod.string().nullish(),
+    geographicArea: zod.string().nullish(),
+    tags: zod.array(zod.string()).nullish(),
+    status: zod.enum([
+      "draft",
+      "active",
+      "published",
+      "completed",
+      "cancelled",
+    ]),
+    publishedAt: zod.coerce.date().nullish(),
+    stopCount: zod
+      .number()
+      .optional()
+      .describe("Total number of stops on this tour"),
+    approvedCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with approved showing status"),
+    pendingShowingsCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with pending or requested showing status"),
+    buyerName: zod
+      .string()
+      .nullish()
+      .describe("Name of the buyer associated with this tour"),
+    lat: zod.number().nullish().describe("Latitude of the tour start address"),
+    lng: zod.number().nullish().describe("Longitude of the tour start address"),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Restore an archived tour (sets status back to draft)
+ */
+export const RestoreTourParams = zod.object({
+  tourId: zod.coerce.string(),
+});
+
+export const RestoreTourResponse = zod.object({
+  tour: zod.object({
+    id: zod.string(),
+    agentId: zod.string(),
+    buyerId: zod.string().nullish(),
+    title: zod.string(),
+    date: zod.string(),
+    startTime: zod.string().nullish(),
+    startAddress: zod.string().nullish(),
+    startLat: zod.number().nullish(),
+    startLng: zod.number().nullish(),
+    endAddress: zod.string().nullish(),
+    endLat: zod.number().nullish(),
+    endLng: zod.number().nullish(),
+    buyerNotes: zod.string().nullish(),
+    geographicArea: zod.string().nullish(),
+    tags: zod.array(zod.string()).nullish(),
+    status: zod.enum([
+      "draft",
+      "active",
+      "published",
+      "completed",
+      "cancelled",
+    ]),
+    publishedAt: zod.coerce.date().nullish(),
+    stopCount: zod
+      .number()
+      .optional()
+      .describe("Total number of stops on this tour"),
+    approvedCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with approved showing status"),
+    pendingShowingsCount: zod
+      .number()
+      .optional()
+      .describe("Number of stops with pending or requested showing status"),
+    buyerName: zod
+      .string()
+      .nullish()
+      .describe("Name of the buyer associated with this tour"),
+    lat: zod.number().nullish().describe("Latitude of the tour start address"),
+    lng: zod.number().nullish().describe("Longitude of the tour start address"),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
 });
 
 /**
