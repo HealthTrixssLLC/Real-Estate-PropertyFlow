@@ -52,14 +52,8 @@ export default function ToursScreen() {
     return t.status === filter;
   });
 
-  const topPad = isWeb ? 67 : insets.top;
-
   return (
     <View style={[styles.container, { backgroundColor: C.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
-        <Text style={[styles.title, { color: C.text }]}>Tours</Text>
-      </View>
-
       <View style={[styles.filterBar, { borderBottomColor: C.border }]}>
         {FILTER_TABS.map((tab) => {
           const active = filter === tab.key;
@@ -116,9 +110,10 @@ export default function ToursScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
+          contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={[
             styles.list,
-            { paddingBottom: isWeb ? 34 : insets.bottom + 16 },
+            { paddingBottom: isWeb ? 34 : insets.bottom + 80 },
           ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -160,14 +155,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-  },
   filterBar: {
     flexDirection: "row",
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -188,7 +175,7 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   filterBadge: {
     minWidth: 18,
@@ -200,7 +187,7 @@ const styles = StyleSheet.create({
   },
   filterBadgeText: {
     fontSize: 10,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   loader: {
     flex: 1,
@@ -208,8 +195,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   list: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 0,
   },
   empty: {
     alignItems: "center",
@@ -218,11 +204,10 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   emptyText: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     textAlign: "center",
     maxWidth: 240,
   },

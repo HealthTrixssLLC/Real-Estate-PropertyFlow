@@ -307,12 +307,11 @@ const styles = StyleSheet.create({
   },
   bannerTitle: {
     fontSize: 26,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     color: "#FFF",
   },
   bannerBuyer: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.75)",
     marginBottom: 4,
   },
@@ -328,12 +327,11 @@ const styles = StyleSheet.create({
   },
   statNum: {
     fontSize: 28,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     color: "#FFF",
   },
   statLabel: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.65)",
   },
   statDivider: {
@@ -345,7 +343,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     marginBottom: 10,
   },
   stopRow: {
@@ -367,12 +365,12 @@ const styles = StyleSheet.create({
   stopRankText: {
     color: "#FFF",
     fontSize: 13,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   stopContent: { flex: 1 },
   stopAddr: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   stopMeta: {
     flexDirection: "row",
@@ -381,11 +379,9 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
   },
   skipReason: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
     marginTop: 2,
     textTransform: "capitalize",
   },
@@ -397,7 +393,6 @@ const styles = StyleSheet.create({
   },
   notesStatText: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.65)",
     backgroundColor: "rgba(0,0,0,0.2)",
     paddingHorizontal: 8,
@@ -416,11 +411,10 @@ const styles = StyleSheet.create({
   actionRowContent: { flex: 1 },
   actionRowLabel: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   actionRowSub: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
   generateBtn: {
@@ -435,7 +429,7 @@ const styles = StyleSheet.create({
   generateBtnLabel: {
     color: "#FFF",
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   doneBtn: {
     paddingVertical: 14,
@@ -445,7 +439,7 @@ const styles = StyleSheet.create({
   },
   doneBtnLabel: {
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   transcriptionBadge: {
     flexDirection: "row",
@@ -460,7 +454,6 @@ const styles = StyleSheet.create({
   },
   transcriptionText: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.85)",
   },
 });

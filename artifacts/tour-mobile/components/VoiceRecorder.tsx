@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   headerLabel: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   },
   btnLabel: {
     color: "#FFF",
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     fontSize: 14,
   },
 });

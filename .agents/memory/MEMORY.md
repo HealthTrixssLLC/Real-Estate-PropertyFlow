@@ -1,0 +1,1 @@
+- [iOS native UI overhaul](ios-ui-overhaul.md) — Inter removed (system SF Pro), iOS system palette, native nav headers on tabs; headerLargeTitle not typed in Expo Router Tabs options.

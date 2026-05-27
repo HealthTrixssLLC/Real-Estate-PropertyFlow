@@ -57,7 +57,6 @@ function StarDisplay({ value }: { value: number | null | undefined }) {
 
 const starStyles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 2 },
-  label: { fontSize: 11, fontFamily: "Inter_400Regular", marginLeft: 2 },
 });
 
 type ChipStatus = React.ComponentProps<typeof StatusChip>["status"];
@@ -95,7 +94,7 @@ const badge = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
 });
 
@@ -324,7 +323,7 @@ const stopStyles = StyleSheet.create({
   },
   seqText: {
     fontSize: 12,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   headerContent: {
     flex: 1,
@@ -332,11 +331,10 @@ const stopStyles = StyleSheet.create({
   },
   address: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   subAddr: {
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
   },
   metaRow: {
     flexDirection: "row",
@@ -352,7 +350,6 @@ const stopStyles = StyleSheet.create({
   },
   ratingPillText: {
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
   },
   detail: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -367,14 +364,14 @@ const stopStyles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
   },
   section: {
     gap: 6,
   },
   sectionTitle: {
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -385,7 +382,6 @@ const stopStyles = StyleSheet.create({
   },
   ratingLabel: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
   },
   flagsRow: {
     flexDirection: "row",
@@ -403,7 +399,7 @@ const stopStyles = StyleSheet.create({
   },
   flagLabel: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   tagsWrap: {
     flexDirection: "row",
@@ -418,11 +414,10 @@ const stopStyles = StyleSheet.create({
   },
   tagText: {
     fontSize: 12,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
   },
   skipText: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     textTransform: "capitalize",
   },
   comment: {
@@ -436,12 +431,10 @@ const stopStyles = StyleSheet.create({
   commentText: {
     flex: 1,
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     lineHeight: 18,
   },
   emptyDetail: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
     fontStyle: "italic",
   },
 });
@@ -548,7 +541,7 @@ const tourStyles = StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     flex: 1,
   },
   meta: {
@@ -563,14 +556,12 @@ const tourStyles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
   },
   stops: {
     padding: 10,
   },
   emptyStops: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
@@ -717,17 +708,16 @@ const screenStyles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 26,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     color: "#FFFFFF",
   },
   buyerName: {
     fontSize: 22,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     color: "#FFFFFF",
   },
   buyerMeta: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.65)",
     marginBottom: 4,
   },
@@ -738,7 +728,6 @@ const screenStyles = StyleSheet.create({
   },
   contactText: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.8)",
   },
   notesCard: {
@@ -755,13 +744,12 @@ const screenStyles = StyleSheet.create({
   },
   noteTitle: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   notesText: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     lineHeight: 20,
   },
   emptyCard: {
@@ -773,17 +761,16 @@ const screenStyles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   emptyText: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     textAlign: "center",
     maxWidth: 220,
   },
   sectionHeader: {
     fontSize: 17,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     marginBottom: 12,
   },
 });

@@ -169,12 +169,11 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: 30,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     marginBottom: 6,
   },
   tagline: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
     textAlign: "center",
   },
   card: {
@@ -188,7 +187,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
   },
   inputWrap: {
     flexDirection: "row",
@@ -204,7 +203,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
   },
   eyeBtn: {
     padding: 4,
@@ -220,7 +218,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#DC2626",
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     flex: 1,
   },
   signInBtn: {
@@ -233,6 +230,6 @@ const styles = StyleSheet.create({
   signInBtnText: {
     color: "#FFF",
     fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
 });

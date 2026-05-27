@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
   },
   buyerName: {
     fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
   },
   progressSection: { marginBottom: 16 },
   stopCard: {
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
   },
   stopCardLabel: {
     fontSize: 10,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -692,11 +692,11 @@ const styles = StyleSheet.create({
   },
   stopCardNum: {
     fontSize: 16,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   stopCardText: {
     fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     flex: 1,
     lineHeight: 22,
   },
@@ -713,7 +713,6 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
   },
   stopCardFooter: {
     flexDirection: "row",
@@ -730,7 +729,7 @@ const styles = StyleSheet.create({
   },
   visitedText: {
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     color: "#27C06B",
   },
   flagBadge: {
@@ -743,7 +742,7 @@ const styles = StyleSheet.create({
   },
   flagText: {
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     color: "#F5A623",
   },
   restrictionBanner: {
@@ -758,7 +757,7 @@ const styles = StyleSheet.create({
   },
   restrictionText: {
     fontSize: 11,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
     color: "#F5A623",
     flex: 1,
   },
@@ -770,7 +769,6 @@ const styles = StyleSheet.create({
   },
   etaText: {
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.65)",
     flex: 1,
   },
@@ -783,15 +781,14 @@ const styles = StyleSheet.create({
   },
   completedTitle: {
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   completedSub: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
   },
   allStopsTitle: {
     fontSize: 16,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     marginTop: 4,
     marginBottom: 10,
   },
@@ -816,7 +813,7 @@ const styles = StyleSheet.create({
   },
   stopNumText: {
     fontSize: 13,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   stopRowContent: {
     flex: 1,
@@ -824,12 +821,11 @@ const styles = StyleSheet.create({
   },
   stopRowAddr: {
     fontSize: 14,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
     lineHeight: 19,
   },
   stopRowSubAddr: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
   },
   stopRowMeta: {
     flexDirection: "row",
@@ -845,7 +841,7 @@ const styles = StyleSheet.create({
   },
   skippedLabel: {
     fontSize: 11,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
   },
   pickerHeader: {
     flexDirection: "row",
@@ -859,11 +855,10 @@ const styles = StyleSheet.create({
   pickerClose: { minWidth: 70 },
   pickerCloseText: {
     fontSize: 16,
-    fontFamily: "Inter_400Regular",
   },
   pickerTitle: {
     fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     textAlign: "center",
   },
   pickerList: {
@@ -881,6 +876,5 @@ const styles = StyleSheet.create({
   },
   pickerRowText: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
   },
 });

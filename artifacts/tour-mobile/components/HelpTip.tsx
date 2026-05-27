@@ -111,12 +111,11 @@ const styles = StyleSheet.create({
   },
   tooltipTitle: {
     fontSize: 16,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     flex: 1,
   },
   tooltipDesc: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     lineHeight: 20,
   },
   closeBtn: {
@@ -129,6 +128,6 @@ const styles = StyleSheet.create({
   closeBtnText: {
     color: "#FFF",
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
 });

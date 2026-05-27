@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
   },
   card: {
     alignItems: "center",
@@ -244,13 +244,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 22,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     textAlign: "center",
     marginBottom: 12,
   },
   cardDesc: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 22,
   },
@@ -275,6 +274,6 @@ const styles = StyleSheet.create({
   nextText: {
     color: "#FFF",
     fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
 });

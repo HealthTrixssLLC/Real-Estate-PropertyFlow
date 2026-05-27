@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     letterSpacing: 0.2,
   },
   small: {

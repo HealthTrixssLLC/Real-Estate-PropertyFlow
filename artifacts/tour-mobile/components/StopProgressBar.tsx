@@ -56,7 +56,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
   },
   track: {
     height: 6,

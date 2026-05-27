@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     marginBottom: 20,
   },
   profileCard: {
@@ -184,25 +184,24 @@ const styles = StyleSheet.create({
   avatarInitial: {
     color: "#FFF",
     fontSize: 22,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   profileName: {
     fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   profileEmail: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
   profileRole: {
     fontSize: 12,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
     marginTop: 3,
   },
   sectionTitle: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 8,
@@ -229,7 +228,6 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
   },
   rowRight: {
     flexDirection: "row",
@@ -239,6 +237,5 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
   },
 });

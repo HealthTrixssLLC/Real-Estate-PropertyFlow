@@ -763,13 +763,12 @@ const styles = StyleSheet.create({
   },
   propertyAddress: {
     fontSize: 18,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     color: "#FFF",
     marginBottom: 4,
   },
   propertyNickname: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.7)",
     marginBottom: 12,
   },
@@ -781,7 +780,7 @@ const styles = StyleSheet.create({
   },
   propStat: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     color: "rgba(255,255,255,0.85)",
   },
   statusRow: {
@@ -801,11 +800,10 @@ const styles = StyleSheet.create({
   },
   sectionHint: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
   },
   sectionTitle: {
     fontSize: 16,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   card: {
     borderRadius: 14,
@@ -830,11 +828,10 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
   },
   infoValue: {
     fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
     flex: 1,
     textAlign: "right",
   },
@@ -847,7 +844,6 @@ const styles = StyleSheet.create({
   },
   freeTextContent: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     lineHeight: 18,
   },
   ratingRow: {
@@ -861,7 +857,6 @@ const styles = StyleSheet.create({
   },
   ratingLabel: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
   },
   flagsRow: {
     flexDirection: "row",
@@ -878,7 +873,7 @@ const styles = StyleSheet.create({
   },
   flagLabel: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   tagWrap: {
     flexDirection: "row",
@@ -893,7 +888,7 @@ const styles = StyleSheet.create({
   },
   tagLabel: {
     fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
   },
   voiceRow: {
     flexDirection: "row",
@@ -904,17 +899,15 @@ const styles = StyleSheet.create({
   voiceContent: { flex: 1 },
   voiceTime: {
     fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
   },
   voiceTranscript: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
     marginTop: 2,
     lineHeight: 16,
   },
   voiceStatus: {
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
   noteInput: {
@@ -928,7 +921,6 @@ const styles = StyleSheet.create({
   noteTextField: {
     flex: 1,
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     minHeight: 44,
     maxHeight: 120,
   },
@@ -942,7 +934,6 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     lineHeight: 20,
     padding: 14,
   },
@@ -953,12 +944,11 @@ const styles = StyleSheet.create({
   },
   summaryListTitle: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     marginBottom: 4,
   },
   summaryListItem: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     lineHeight: 18,
   },
   skippedBanner: {
@@ -971,11 +961,10 @@ const styles = StyleSheet.create({
   },
   skippedTitle: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   skippedReason: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     textTransform: "capitalize",
     marginTop: 2,
   },
@@ -990,6 +979,6 @@ const styles = StyleSheet.create({
   },
   removeStopLabel: {
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
 });

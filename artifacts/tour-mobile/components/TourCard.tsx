@@ -14,12 +14,12 @@ interface TourCardProps {
   isActive?: boolean;
 }
 
-const STATUS_ACCENT: Record<string, string> = {
+const STATUS_DOT: Record<string, string> = {
   active: "#2DB8A0",
-  published: "#2A73C8",
-  draft: "#A0ADB8",
-  completed: "#27C06B",
-  cancelled: "#E85D4A",
+  published: "#007AFF",
+  draft: "#AEAEB2",
+  completed: "#34C759",
+  cancelled: "#FF3B30",
 };
 
 export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
@@ -34,45 +34,30 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
     day: "numeric",
   });
 
-  const accentColor = STATUS_ACCENT[tour.status] ?? C.accent;
-
-  const handlePress = () => {
-    router.push(`/tour/${tour.id}`);
-  };
+  const dotColor = STATUS_DOT[tour.status] ?? C.accent;
 
   return (
     <Pressable
       testID="tour-card"
-      onPress={handlePress}
+      onPress={() => router.push(`/tour/${tour.id}`)}
       style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: C.card,
-          borderColor: C.border,
-          shadowColor: C.shadow,
-        },
-        pressed && { opacity: 0.88 },
+        styles.cell,
+        { backgroundColor: C.surface, borderBottomColor: C.border },
+        pressed && { backgroundColor: C.surfaceAlt },
       ]}
     >
-      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+      <View style={[styles.dot, { backgroundColor: dotColor }]} />
 
       <View style={styles.body}>
         {isActive && (
-          <View style={[styles.activeBadge, { backgroundColor: C.accent }]}>
-            <Text style={styles.activeBadgeText}>IN PROGRESS</Text>
+          <View style={[styles.activeBadge, { backgroundColor: C.accent + "20" }]}>
+            <Text style={[styles.activeBadgeText, { color: C.accent }]}>IN PROGRESS</Text>
           </View>
         )}
 
-        <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: C.text }]} numberOfLines={1}>
-            {tour.title}
-          </Text>
-          {isIOS ? (
-            <SymbolView name="chevron.right" tintColor={C.textTertiary} size={16} />
-          ) : (
-            <Feather name="chevron-right" size={16} color={C.textTertiary} />
-          )}
-        </View>
+        <Text style={[styles.title, { color: C.text }]} numberOfLines={1}>
+          {tour.title}
+        </Text>
 
         {buyerName && (
           <Text style={[styles.buyer, { color: C.textSecondary }]} numberOfLines={1}>
@@ -83,17 +68,17 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
         <View style={styles.meta}>
           <View style={styles.metaItem}>
             {isIOS ? (
-              <SymbolView name="calendar" tintColor={C.textTertiary} size={13} />
+              <SymbolView name="calendar" tintColor={C.textTertiary} size={12} />
             ) : (
-              <Feather name="calendar" size={13} color={C.textTertiary} />
+              <Feather name="calendar" size={12} color={C.textTertiary} />
             )}
             <Text style={[styles.metaText, { color: C.textSecondary }]}>{dateStr}</Text>
           </View>
           <View style={styles.metaItem}>
             {isIOS ? (
-              <SymbolView name="house" tintColor={C.textTertiary} size={13} />
+              <SymbolView name="house" tintColor={C.textTertiary} size={12} />
             ) : (
-              <Feather name="home" size={13} color={C.textTertiary} />
+              <Feather name="home" size={12} color={C.textTertiary} />
             )}
             <Text style={[styles.metaText, { color: C.textSecondary }]}>
               {tour.stopCount ?? 0} stop{(tour.stopCount ?? 0) !== 1 ? "s" : ""}
@@ -102,11 +87,11 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
           {(tour.approvedCount ?? 0) > 0 && (
             <View style={styles.metaItem}>
               {isIOS ? (
-                <SymbolView name="checkmark.circle" tintColor="#27C06B" size={13} />
+                <SymbolView name="checkmark.circle" tintColor={C.green} size={12} />
               ) : (
-                <Feather name="check-circle" size={13} color="#27C06B" />
+                <Feather name="check-circle" size={12} color={C.green} />
               )}
-              <Text style={[styles.metaText, { color: "#27C06B" }]}>
+              <Text style={[styles.metaText, { color: C.green }]}>
                 {tour.approvedCount} approved
               </Text>
             </View>
@@ -114,95 +99,89 @@ export function TourCard({ tour, buyerName, isActive }: TourCardProps) {
           {(tour.pendingShowingsCount ?? 0) > 0 && (
             <View style={styles.metaItem}>
               {isIOS ? (
-                <SymbolView name="clock.badge.exclamationmark" tintColor="#F5A623" size={13} />
+                <SymbolView name="clock.badge.exclamationmark" tintColor={C.amber} size={12} />
               ) : (
-                <Feather name="alert-circle" size={13} color="#F5A623" />
+                <Feather name="alert-circle" size={12} color={C.amber} />
               )}
-              <Text style={[styles.metaText, { color: "#F5A623" }]}>
+              <Text style={[styles.metaText, { color: C.amber }]}>
                 {tour.pendingShowingsCount} pending
               </Text>
             </View>
           )}
         </View>
 
-        <View style={styles.footer}>
-          <StatusChip status={tour.status} small />
-        </View>
+        <StatusChip status={tour.status} small />
+      </View>
+
+      <View style={styles.chevron}>
+        {isIOS ? (
+          <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
+        ) : (
+          <Feather name="chevron-right" size={14} color={C.textTertiary} />
+        )}
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 12,
-    marginBottom: 8,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
-    elevation: 2,
+  cell: {
     flexDirection: "row",
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingLeft: 16,
+    paddingRight: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  accentBar: {
-    width: 4,
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 12,
+    flexShrink: 0,
+    marginTop: 2,
+    alignSelf: "flex-start",
   },
   body: {
     flex: 1,
-    padding: 11,
-    paddingLeft: 11,
+    gap: 3,
   },
   activeBadge: {
     alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginBottom: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 3,
   },
   activeBadgeText: {
     fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    letterSpacing: 0.8,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    marginBottom: 2,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   title: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
   },
   buyer: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 8,
+    fontSize: 13,
   },
   meta: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 8,
+    marginTop: 2,
+    marginBottom: 4,
   },
   metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
   },
   metaText: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
   },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  chevron: {
+    marginLeft: 8,
+    flexShrink: 0,
   },
 });

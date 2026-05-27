@@ -186,12 +186,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
   },
   reasons: {
     gap: 8,
@@ -207,7 +206,7 @@ const styles = StyleSheet.create({
   },
   reasonLabel: {
     fontSize: 15,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
     flex: 1,
   },
   notesSection: {
@@ -216,14 +215,13 @@ const styles = StyleSheet.create({
   },
   notesLabel: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   notesInput: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 14,
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     minHeight: 80,
   },
   actions: {
@@ -238,7 +236,7 @@ const styles = StyleSheet.create({
   },
   cancelLabel: {
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   confirmBtn: {
     flex: 2,
@@ -249,6 +247,6 @@ const styles = StyleSheet.create({
   confirmLabel: {
     color: "#FFF",
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
 });

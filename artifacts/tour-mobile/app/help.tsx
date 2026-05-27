@@ -151,9 +151,9 @@ export default function HelpScreen() {
       <View style={styles.introCard}>
         <Text style={[styles.introText, { color: C.textSecondary }]}>
           TourFlow workflow in 3 steps:{"\n"}
-          <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold" }}>1.</Text> Plan your tour on the web app{"\n"}
-          <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold" }}>2.</Text> Execute stops on your phone{"\n"}
-          <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold" }}>3.</Text> Review the AI summary with your client
+          <Text style={{ color: C.text, fontWeight: "600" }}>1.</Text> Plan your tour on the web app{"\n"}
+          <Text style={{ color: C.text, fontWeight: "600" }}>2.</Text> Execute stops on your phone{"\n"}
+          <Text style={{ color: C.text, fontWeight: "600" }}>3.</Text> Review the AI summary with your client
         </Text>
       </View>
 
@@ -232,16 +232,14 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
   },
   title: {
     fontSize: 28,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     marginBottom: 20,
   },
   introCard: {
@@ -252,7 +250,6 @@ const styles = StyleSheet.create({
   },
   introText: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     lineHeight: 22,
   },
   section: {
@@ -282,7 +279,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     flex: 1,
   },
   sectionBody: {
@@ -306,12 +303,11 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     marginBottom: 2,
   },
   itemDesc: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     lineHeight: 18,
   },
 });

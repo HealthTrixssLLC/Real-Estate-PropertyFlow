@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   },
   trayLabel: {
     fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
@@ -144,6 +144,6 @@ const styles = StyleSheet.create({
   },
   btnLabel: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
 });

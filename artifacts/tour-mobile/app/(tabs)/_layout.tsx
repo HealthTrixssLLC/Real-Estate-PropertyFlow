@@ -48,10 +48,15 @@ function ClassicTabLayout() {
       screenOptions={{
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.tabIconDefault,
-        headerShown: false,
+        headerTintColor: C.accent,
+        headerStyle: {
+          backgroundColor: isIOS ? "transparent" : isDark ? "#1C1C1E" : "#FFFFFF",
+        },
+        headerTransparent: isIOS,
+        headerShadowVisible: false,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : isDark ? "#0A1220" : "#FFFFFF",
+          backgroundColor: isIOS ? "transparent" : isDark ? "#1C1C1E" : "#FFFFFF",
           borderTopWidth: isWeb ? 1 : StyleSheet.hairlineWidth,
           borderTopColor: C.border,
           elevation: 0,
@@ -68,7 +73,7 @@ function ClassicTabLayout() {
             <View
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: isDark ? "#0A1220" : "#FFFFFF" },
+                { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" },
               ]}
             />
           ) : null,
@@ -78,6 +83,7 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: "Today",
+          headerShown: false,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="calendar" tintColor={color} size={24} />

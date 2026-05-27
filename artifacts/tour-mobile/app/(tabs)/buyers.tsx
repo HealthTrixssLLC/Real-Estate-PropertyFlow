@@ -8,8 +8,8 @@ import {
 } from "@workspace/api-client-react";
 import type { Buyer } from "@workspace/api-client-react";
 import { SymbolView } from "expo-symbols";
-import { router } from "expo-router";
-import React, { useState } from "react";
+import { router, useNavigation } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -223,8 +223,8 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
       onPress={() => router.push(`/buyers/${buyer.id}`)}
       style={({ pressed }) => [
         styles.buyerRow,
-        { backgroundColor: C.surface, borderColor: C.border },
-        pressed && { opacity: 0.85 },
+        { backgroundColor: C.surface, borderBottomColor: C.border },
+        pressed && { backgroundColor: C.surfaceAlt },
       ]}
     >
       <View style={[styles.buyerAvatar, { backgroundColor: C.accent + "20" }]}>
@@ -245,7 +245,7 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
           </Text>
         )}
         {buyer.notes && (
-          <Text style={[styles.buyerNotes, { color: C.textTertiary }]} numberOfLines={2}>
+          <Text style={[styles.buyerNotes, { color: C.textTertiary }]} numberOfLines={1}>
             {buyer.notes}
           </Text>
         )}
@@ -256,9 +256,9 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
           style={({ pressed }) => [styles.actionBtn, { backgroundColor: C.surfaceAlt }, pressed && { opacity: 0.7 }]}
         >
           {isIOS ? (
-            <SymbolView name="pencil" tintColor={C.textSecondary} size={16} />
+            <SymbolView name="pencil" tintColor={C.textSecondary} size={15} />
           ) : (
-            <Feather name="edit-2" size={16} color={C.textSecondary} />
+            <Feather name="edit-2" size={15} color={C.textSecondary} />
           )}
         </Pressable>
         <Pressable
@@ -266,9 +266,9 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
           style={({ pressed }) => [styles.actionBtn, { backgroundColor: "#FDECEC" }, pressed && { opacity: 0.7 }]}
         >
           {isIOS ? (
-            <SymbolView name="trash" tintColor="#E85D4A" size={16} />
+            <SymbolView name="trash" tintColor="#FF3B30" size={15} />
           ) : (
-            <Feather name="trash-2" size={16} color="#E85D4A" />
+            <Feather name="trash-2" size={15} color="#FF3B30" />
           )}
         </Pressable>
         {isIOS ? (
@@ -288,6 +288,7 @@ export default function BuyersScreen() {
   const isWeb = Platform.OS === "web";
   const isIOS = Platform.OS === "ios";
   const queryClient = useQueryClient();
+  const navigation = useNavigation();
 
   const { data, isLoading, refetch, isRefetching } = useListBuyers();
   const deleteBuyer = useDeleteBuyer();
@@ -297,10 +298,28 @@ export default function BuyersScreen() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListBuyersQueryKey() });
 
-  const openAdd = () => {
+  const openAdd = useCallback(() => {
     setEditing(null);
     setFormOpen(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={openAdd}
+          hitSlop={8}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginRight: 4 }]}
+        >
+          {isIOS ? (
+            <SymbolView name="plus" tintColor={C.accent} size={22} />
+          ) : (
+            <Feather name="plus" size={22} color={C.accent} />
+          )}
+        </Pressable>
+      ),
+    });
+  }, [navigation, openAdd, C.accent, isIOS]);
 
   const openEdit = (b: Buyer) => {
     setEditing(b);
@@ -329,29 +348,10 @@ export default function BuyersScreen() {
     );
   };
 
-  const topPad = isWeb ? 67 : insets.top;
   const buyers = data?.buyers ?? [];
 
   return (
     <View style={[styles.container, { backgroundColor: C.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
-        <Text style={[styles.title, { color: C.text }]}>Buyers</Text>
-        <Pressable
-          onPress={openAdd}
-          style={({ pressed }) => [
-            styles.addButton,
-            { backgroundColor: C.accent },
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          {isIOS ? (
-            <SymbolView name="plus" tintColor="#FFFFFF" size={18} />
-          ) : (
-            <Feather name="plus" size={18} color="#FFFFFF" />
-          )}
-        </Pressable>
-      </View>
-
       {isLoading ? (
         <View style={styles.loader}>
           <ActivityIndicator color={C.accent} />
@@ -360,9 +360,10 @@ export default function BuyersScreen() {
         <FlatList
           data={buyers}
           keyExtractor={(item) => item.id}
+          contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={[
             styles.list,
-            { paddingBottom: isWeb ? 34 : insets.bottom + 16 },
+            { paddingBottom: isWeb ? 34 : insets.bottom + 80 },
           ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -407,32 +408,13 @@ export default function BuyersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-  },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   loader: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
   list: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 0,
   },
   empty: {
     alignItems: "center",
@@ -441,22 +423,21 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   emptyText: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     textAlign: "center",
     maxWidth: 240,
   },
   buyerRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 10,
+    paddingVertical: 11,
+    paddingLeft: 16,
+    paddingRight: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   buyerAvatar: {
     width: 40,
@@ -468,7 +449,7 @@ const styles = StyleSheet.create({
   },
   buyerInitial: {
     fontSize: 17,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "bold",
   },
   buyerInfo: {
     flex: 1,
@@ -476,15 +457,13 @@ const styles = StyleSheet.create({
   },
   buyerName: {
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   buyerDetail: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
   },
   buyerNotes: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
   buyerActions: {
@@ -511,16 +490,15 @@ const styles = StyleSheet.create({
   modalCancel: { minWidth: 60 },
   modalCancelText: {
     fontSize: 16,
-    fontFamily: "Inter_400Regular",
   },
   modalTitle: {
     fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   modalSave: { minWidth: 60, alignItems: "flex-end" },
   modalSaveText: {
     fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   formScroll: {
     padding: 16,
@@ -537,14 +515,13 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 12,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "500",
     marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   fieldInput: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
     padding: 0,
   },
   notesInput: {
@@ -557,7 +534,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
     color: "#E85D4A",
     textAlign: "center",
     marginTop: 4,
