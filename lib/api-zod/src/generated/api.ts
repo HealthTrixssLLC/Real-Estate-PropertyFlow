@@ -534,7 +534,7 @@ export const UpdateTourParams = zod.object({
 });
 
 export const UpdateTourBody = zod.object({
-  buyerId: zod.string().optional(),
+  buyerId: zod.string().nullable().optional(),
   title: zod.string().optional(),
   date: zod.string().optional(),
   startTime: zod.string().optional(),

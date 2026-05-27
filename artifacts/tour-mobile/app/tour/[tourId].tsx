@@ -3,6 +3,8 @@ import {
   useGetTour,
   useMarkStopArrived,
   useMarkStopCompleted,
+  useUpdateTour,
+  useListBuyers,
   getGetTourQueryKey,
 } from "@workspace/api-client-react";
 import type { TourStopWithAddress } from "@workspace/api-client-react";
@@ -10,10 +12,11 @@ import * as Haptics from "expo-haptics";
 import { Linking } from "react-native";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -265,6 +268,31 @@ export default function ActiveTourScreen() {
     mutation: { onSuccess: () => refetch() },
   });
 
+  const { mutate: updateTour } = useUpdateTour({
+    mutation: { onSuccess: () => refetch() },
+  });
+  const { data: buyersData } = useListBuyers();
+  const [buyerPickerOpen, setBuyerPickerOpen] = useState(false);
+
+  const handleAssignBuyer = (buyerId: string | null) => {
+    if (!tourId) return;
+    updateTour(
+      {
+        tourId,
+        data: { buyerId: buyerId },
+      },
+      {
+        onSuccess: () => {
+          refetch();
+          setBuyerPickerOpen(false);
+        },
+        onError: () => {
+          Alert.alert("Error", "Failed to update buyer. Please try again.");
+        },
+      }
+    );
+  };
+
   useEffect(() => {
     if (tour) {
       navigation.setOptions({ title: tour.title });
@@ -421,20 +449,82 @@ export default function ActiveTourScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {buyer && (
-          <View style={styles.buyerRow}>
-            <View style={[styles.buyerChip, { backgroundColor: C.surfaceAlt }]}>
-              {isIOS ? (
-                <SymbolView name="person.fill" tintColor={C.textSecondary} size={13} />
-              ) : (
-                <Feather name="user" size={13} color={C.textSecondary} />
-              )}
-              <Text style={[styles.buyerName, { color: C.textSecondary }]}>
-                {(buyer as { name: string }).name}
-              </Text>
-            </View>
+        <Pressable
+          onPress={() => setBuyerPickerOpen(true)}
+          style={({ pressed }) => [styles.buyerRow, pressed && { opacity: 0.7 }]}
+        >
+          <View style={[styles.buyerChip, { backgroundColor: C.surfaceAlt }]}>
+            {isIOS ? (
+              <SymbolView name="person.fill" tintColor={C.textSecondary} size={13} />
+            ) : (
+              <Feather name="user" size={13} color={C.textSecondary} />
+            )}
+            <Text style={[styles.buyerName, { color: C.textSecondary }]}>
+              {buyer ? (buyer as { name: string }).name : "Assign buyer…"}
+            </Text>
+            {isIOS ? (
+              <SymbolView name="chevron.down" tintColor={C.textTertiary} size={11} />
+            ) : (
+              <Feather name="chevron-down" size={11} color={C.textTertiary} />
+            )}
           </View>
-        )}
+        </Pressable>
+
+        <Modal
+          visible={buyerPickerOpen}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setBuyerPickerOpen(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: C.background }}>
+            <View style={[styles.pickerHeader, { borderBottomColor: C.border, backgroundColor: C.surface }]}>
+              <Pressable onPress={() => setBuyerPickerOpen(false)} style={styles.pickerClose}>
+                <Text style={[styles.pickerCloseText, { color: C.accent }]}>Cancel</Text>
+              </Pressable>
+              <Text style={[styles.pickerTitle, { color: C.text }]}>Assign Buyer</Text>
+              <View style={styles.pickerClose} />
+            </View>
+            <ScrollView contentContainerStyle={styles.pickerList}>
+              <Pressable
+                onPress={() => handleAssignBuyer(null)}
+                style={({ pressed }) => [
+                  styles.pickerRow,
+                  { backgroundColor: C.surface, borderColor: C.border },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Text style={[styles.pickerRowText, { color: C.textSecondary }]}>No buyer (unassign)</Text>
+                {!tour.buyerId && (
+                  isIOS ? (
+                    <SymbolView name="checkmark" tintColor={C.accent} size={16} />
+                  ) : (
+                    <Feather name="check" size={16} color={C.accent} />
+                  )
+                )}
+              </Pressable>
+              {(buyersData?.buyers ?? []).map((b) => (
+                <Pressable
+                  key={b.id}
+                  onPress={() => handleAssignBuyer(b.id)}
+                  style={({ pressed }) => [
+                    styles.pickerRow,
+                    { backgroundColor: C.surface, borderColor: C.border },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Text style={[styles.pickerRowText, { color: C.text }]}>{b.name}</Text>
+                  {tour.buyerId === b.id && (
+                    isIOS ? (
+                      <SymbolView name="checkmark" tintColor={C.accent} size={16} />
+                    ) : (
+                      <Feather name="check" size={16} color={C.accent} />
+                    )
+                  )}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
 
         <View style={styles.progressSection}>
           <StopProgressBar
@@ -756,5 +846,41 @@ const styles = StyleSheet.create({
   skippedLabel: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
+  },
+  pickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  pickerClose: { minWidth: 70 },
+  pickerCloseText: {
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+  },
+  pickerTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
+  pickerList: {
+    padding: 16,
+    gap: 8,
+  },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  pickerRowText: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
   },
 });

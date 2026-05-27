@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useUpdateTour, useListBuyers, getGetTourQueryKey } from "@workspace/api-client-react"
+import { useUpdateTour, getGetTourQueryKey } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 import {
@@ -12,9 +12,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import PlacesAutocomplete from "@/components/shared/PlacesAutocomplete"
 import type { PlaceResult } from "@/components/shared/PlacesAutocomplete"
+import BuyerSelect from "@/components/shared/BuyerSelect"
 
 interface Tour {
   id: string
@@ -42,7 +42,6 @@ interface AddressPlace {
 export default function EditTourDialog({ open, onOpenChange, tour }: EditTourDialogProps) {
   const queryClient = useQueryClient()
   const updateTour = useUpdateTour()
-  const { data: buyersData } = useListBuyers()
 
   const [title, setTitle] = useState(tour.title)
   const [date, setDate] = useState(tour.date)
@@ -145,19 +144,7 @@ export default function EditTourDialog({ open, onOpenChange, tour }: EditTourDia
 
           <div className="space-y-2">
             <Label>Client / Buyer</Label>
-            <Select value={buyerId} onValueChange={setBuyerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a buyer (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">No buyer</SelectItem>
-                {buyersData?.buyers.map(b => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <BuyerSelect value={buyerId} onValueChange={setBuyerId} />
           </div>
 
           <div className="space-y-2">

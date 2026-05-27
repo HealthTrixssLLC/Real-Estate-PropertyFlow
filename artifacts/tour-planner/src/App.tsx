@@ -9,6 +9,7 @@ import { RoleGuard } from "@/components/shared/RoleGuard"
 import Login from "@/pages/Login"
 import Dashboard from "@/pages/Dashboard"
 import Properties from "@/pages/Properties"
+import Buyers from "@/pages/Buyers"
 import AdminAI from "@/pages/AdminAI"
 import AdminUsers from "@/pages/AdminUsers"
 import TourDetail from "@/pages/tour/TourDetail"
@@ -32,6 +33,7 @@ function ProtectedRoutes() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/properties" component={Properties} />
+          <Route path="/buyers" component={Buyers} />
           <Route path="/admin/ai">
             <RoleGuard roles={["admin"]}>
               <AdminAI />

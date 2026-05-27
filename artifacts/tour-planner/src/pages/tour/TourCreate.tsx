@@ -1,16 +1,16 @@
 import { useState } from "react"
 import { useLocation, Link } from "wouter"
-import { useCreateTour, useListBuyers } from "@workspace/api-client-react"
+import { useCreateTour } from "@workspace/api-client-react"
 import { ChevronLeft, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import PlacesAutocomplete from "@/components/shared/PlacesAutocomplete"
 import type { PlaceResult } from "@/components/shared/PlacesAutocomplete"
+import BuyerSelect from "@/components/shared/BuyerSelect"
 
 interface AddressPlace {
   formatted: string
@@ -19,22 +19,23 @@ interface AddressPlace {
 }
 
 export default function TourCreate() {
-  const { data: buyersData } = useListBuyers()
   const createTour = useCreateTour()
   const { toast } = useToast()
   const [, setLocation] = useLocation()
   const [startAddr, setStartAddr] = useState<AddressPlace>({ formatted: "" })
   const [endAddr, setEndAddr] = useState<AddressPlace>({ formatted: "" })
+  const [buyerId, setBuyerId] = useState<string>("")
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     try {
+      const resolvedBuyerId = buyerId === "__none__" || !buyerId ? undefined : buyerId
       const res = await createTour.mutateAsync({
         data: {
           title: fd.get("title") as string,
           date: fd.get("date") as string,
-          buyerId: (fd.get("buyerId") as string) || undefined,
+          buyerId: resolvedBuyerId,
           startAddress: startAddr.formatted || undefined,
           startLat: startAddr.lat,
           startLng: startAddr.lng,
@@ -103,18 +104,7 @@ export default function TourCreate() {
 
             <div className="space-y-2">
               <Label>Client / Buyer</Label>
-              <Select name="buyerId">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a buyer (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {buyersData?.buyers.map(b => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BuyerSelect value={buyerId} onValueChange={setBuyerId} />
             </div>
 
             <div className="space-y-2">

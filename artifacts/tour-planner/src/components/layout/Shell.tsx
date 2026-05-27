@@ -1,6 +1,6 @@
 import React from "react"
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Building2, Settings, LogOut, Users, HelpCircle } from "lucide-react"
+import { LayoutDashboard, Building2, Settings, LogOut, Users, HelpCircle, UserRound } from "lucide-react"
 import { useGetCurrentAuthUser, UserRole } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/properties", label: "Properties", icon: Building2 },
+  { href: "/buyers", label: "Buyers", icon: UserRound },
   { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
   { href: "/admin/ai", label: "Config", icon: Settings, adminOnly: true },
   { href: "/help", label: "Help", icon: HelpCircle },
