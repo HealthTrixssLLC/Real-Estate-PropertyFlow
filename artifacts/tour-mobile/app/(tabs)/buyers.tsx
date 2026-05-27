@@ -305,6 +305,7 @@ export default function BuyersScreen() {
 
   useEffect(() => {
     navigation.setOptions({
+      headerLargeTitle: true,
       headerRight: () => (
         <Pressable
           onPress={openAdd}

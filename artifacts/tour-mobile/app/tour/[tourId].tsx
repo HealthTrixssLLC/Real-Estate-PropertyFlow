@@ -146,9 +146,9 @@ function StopCard({
       {hasRestriction && isCurrent && (
         <View style={styles.restrictionBanner}>
           {isIOS ? (
-            <SymbolView name="exclamationmark.triangle.fill" tintColor="#F5A623" size={12} />
+            <SymbolView name="exclamationmark.triangle.fill" tintColor={Semantic.systemOrange as unknown as string} size={12} />
           ) : (
-            <Feather name="alert-triangle" size={12} color="#F5A623" />
+            <Feather name="alert-triangle" size={12} color={Semantic.systemOrange as unknown as string} />
           )}
           <Text style={styles.restrictionText}>
             {stop.approvedStatus === "restricted"
@@ -196,9 +196,9 @@ function StopCard({
         {stop.followUpFlag && (
           <View style={[styles.flagBadge, { backgroundColor: isCurrent ? "rgba(245,166,35,0.2)" : C.surfaceAlt }]}>
             {isIOS ? (
-              <SymbolView name="bookmark.fill" tintColor="#F5A623" size={12} />
+              <SymbolView name="bookmark.fill" tintColor={Semantic.systemOrange as unknown as string} size={12} />
             ) : (
-              <Feather name="bookmark" size={12} color="#F5A623" />
+              <Feather name="bookmark" size={12} color={Semantic.systemOrange as unknown as string} />
             )}
             <Text style={styles.flagText}>Follow Up</Text>
           </View>
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   },
   visitedBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(39,192,107,0.15)",
+    backgroundColor: Semantic.fillTertiary as unknown as string,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   visitedText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#27C06B",
+    color: Semantic.systemGreen as unknown as string,
   },
   flagBadge: {
     flexDirection: "row",
@@ -745,14 +745,14 @@ const styles = StyleSheet.create({
   flagText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#F5A623",
+    color: Semantic.systemOrange as unknown as string,
   },
   restrictionBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginTop: 8,
-    backgroundColor: "rgba(245,166,35,0.12)",
+    backgroundColor: Semantic.fillTertiary as unknown as string,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 8,
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   restrictionText: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#F5A623",
+    color: Semantic.systemOrange as unknown as string,
     flex: 1,
   },
   etaRow: {

@@ -96,6 +96,7 @@ export default function ToursScreen() {
 
   useEffect(() => {
     navigation.setOptions({
+      headerLargeTitle: true,
       headerRight: () => (
         <Pressable
           onPress={showFilterSheet}

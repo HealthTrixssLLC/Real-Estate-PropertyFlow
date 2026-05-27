@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 24,
     minWidth: 200,
-    backgroundColor: "#007AFF",
+    backgroundColor: Semantic.systemBlue as unknown as string,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
