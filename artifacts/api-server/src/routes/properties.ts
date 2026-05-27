@@ -14,12 +14,17 @@ router.get("/properties", async (req: Request, res: Response) => {
     return;
   }
   const user = (req as Express.AuthedRequest).user;
+  const isAdmin = user.role === "admin";
   const includeArchived = req.query.includeArchived === "true";
   const q = typeof req.query.q === "string" ? req.query.q.trim() : undefined;
   try {
-    const baseFilter = includeArchived
-      ? eq(propertiesTable.agentId, user.id)
-      : and(eq(propertiesTable.agentId, user.id), eq(propertiesTable.archived, false));
+    const baseFilter = isAdmin
+      ? includeArchived
+        ? undefined
+        : eq(propertiesTable.archived, false)
+      : includeArchived
+        ? eq(propertiesTable.agentId, user.id)
+        : and(eq(propertiesTable.agentId, user.id), eq(propertiesTable.archived, false));
     const searchFilter = q
       ? or(
           ilike(propertiesTable.formattedAddress, `%${q}%`),
@@ -27,10 +32,16 @@ router.get("/properties", async (req: Request, res: Response) => {
           ilike(propertiesTable.mlsId, `%${q}%`),
         )
       : undefined;
+    const whereClause =
+      baseFilter && searchFilter
+        ? and(baseFilter, searchFilter)
+        : baseFilter
+          ? baseFilter
+          : searchFilter;
     const properties = await db
       .select()
       .from(propertiesTable)
-      .where(searchFilter ? and(baseFilter, searchFilter) : baseFilter)
+      .where(whereClause)
       .orderBy(propertiesTable.createdAt);
     sendValidated(res, PropertyListResponseSchema, { properties });
   } catch (err) {
