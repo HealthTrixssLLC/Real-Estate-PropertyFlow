@@ -50,6 +50,7 @@ import type {
   SkipStopResponse,
   SuccessResponse,
   TestAiConfigRequest,
+  TestGoogleMapsConfigRequest,
   TourDetailResponse,
   TourListResponse,
   TourReadinessResponse,
@@ -4176,6 +4177,93 @@ export const useTestAiConfig = <
   TContext
 > => {
   return useMutation(getTestAiConfigMutationOptions(options));
+};
+
+/**
+ * @summary Test Google Maps API key
+ */
+export const getTestGoogleMapsConfigUrl = () => {
+  return `/api/admin/ai/config/test-google-maps`;
+};
+
+export const testGoogleMapsConfig = async (
+  testGoogleMapsConfigRequest: TestGoogleMapsConfigRequest,
+  options?: RequestInit,
+): Promise<AiTestResponse> => {
+  return customFetch<AiTestResponse>(getTestGoogleMapsConfigUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(testGoogleMapsConfigRequest),
+  });
+};
+
+export const getTestGoogleMapsConfigMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testGoogleMapsConfig>>,
+    TError,
+    { data: BodyType<TestGoogleMapsConfigRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof testGoogleMapsConfig>>,
+  TError,
+  { data: BodyType<TestGoogleMapsConfigRequest> },
+  TContext
+> => {
+  const mutationKey = ["testGoogleMapsConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof testGoogleMapsConfig>>,
+    { data: BodyType<TestGoogleMapsConfigRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return testGoogleMapsConfig(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TestGoogleMapsConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof testGoogleMapsConfig>>
+>;
+export type TestGoogleMapsConfigMutationBody =
+  BodyType<TestGoogleMapsConfigRequest>;
+export type TestGoogleMapsConfigMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Test Google Maps API key
+ */
+export const useTestGoogleMapsConfig = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testGoogleMapsConfig>>,
+    TError,
+    { data: BodyType<TestGoogleMapsConfigRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof testGoogleMapsConfig>>,
+  TError,
+  { data: BodyType<TestGoogleMapsConfigRequest> },
+  TContext
+> => {
+  return useMutation(getTestGoogleMapsConfigMutationOptions(options));
 };
 
 /**

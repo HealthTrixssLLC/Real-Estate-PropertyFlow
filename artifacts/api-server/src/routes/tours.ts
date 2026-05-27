@@ -342,7 +342,7 @@ async function googleDistanceMatrix(
   origins: Array<{ lat: number; lng: number }>,
   destinations: Array<{ lat: number; lng: number }>,
 ): Promise<number[][]> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = aiConfig.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_MAPS_API_KEY not set");
 
   const originsStr = origins.map(o => `${o.lat},${o.lng}`).join("|");
@@ -589,7 +589,7 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
       )
       .orderBy(tourStopsTable.sequence);
 
-    if (remaining.length >= 2 && process.env.GOOGLE_MAPS_API_KEY) {
+    if (remaining.length >= 2 && (aiConfig.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY)) {
       const properties = await db
         .select()
         .from(propertiesTable)

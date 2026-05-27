@@ -1,9 +1,9 @@
-import { useGetAiConfig, useGetAiHealth, useSaveAiConfig, useTestAiConfig } from "@workspace/api-client-react"
+import { useGetAiConfig, useGetAiHealth, useSaveAiConfig, useTestAiConfig, useTestGoogleMapsConfig } from "@workspace/api-client-react"
 import {
   SaveAiConfigRequestTranscriptionProvider,
   SaveAiConfigRequestSummarizationProvider,
 } from "@workspace/api-client-react"
-import { Bot, CheckCircle2, XCircle, Loader2, Save, Activity, Settings2, Globe, Mic, Cpu } from "lucide-react"
+import { Bot, CheckCircle2, XCircle, Loader2, Save, Activity, Settings2, Globe, Mic, Cpu, MapPin, Eye, EyeOff } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -20,9 +20,13 @@ export default function AdminAI() {
   const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useGetAiHealth()
   const saveConfig = useSaveAiConfig()
   const testConfig = useTestAiConfig()
+  const testGoogleMaps = useTestGoogleMapsConfig()
   const { toast } = useToast()
   const [testResult, setTestResult] = useState<string | null>(null)
   const [healthRefreshing, setHealthRefreshing] = useState(false)
+  const [googleMapsTestResult, setGoogleMapsTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [showGoogleMapsKey, setShowGoogleMapsKey] = useState(false)
+  const [googleMapsKeyInput, setGoogleMapsKeyInput] = useState("")
 
   const c = configData?.config
 
@@ -71,6 +75,37 @@ export default function AdminAI() {
       refetch()
     } catch {
       toast({ title: "Failed to save endpoints", variant: "destructive" })
+    }
+  }
+
+  const handleSaveGoogleMaps = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!googleMapsKeyInput.trim()) return
+    try {
+      await saveConfig.mutateAsync({
+        data: { googleMapsApiKey: googleMapsKeyInput.trim() },
+      })
+      toast({ title: "Google Maps API key saved" })
+      setGoogleMapsKeyInput("")
+      refetch()
+    } catch {
+      toast({ title: "Failed to save Google Maps API key", variant: "destructive" })
+    }
+  }
+
+  const runGoogleMapsTest = async () => {
+    setGoogleMapsTestResult(null)
+    try {
+      const res = await testGoogleMaps.mutateAsync({ data: { apiKey: googleMapsKeyInput.trim() || undefined } })
+      if (res.success) {
+        setGoogleMapsTestResult({ ok: true, message: res.result ?? "Key is valid." })
+        toast({ title: "Google Maps test passed" })
+      } else {
+        setGoogleMapsTestResult({ ok: false, message: res.error ?? "Unknown error" })
+        toast({ title: "Google Maps test failed", description: res.error ?? undefined, variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Test request failed", variant: "destructive" })
     }
   }
 
@@ -275,6 +310,84 @@ export default function AdminAI() {
                   <Button type="submit" disabled={saveConfig.isPending} className="gap-2">
                     <Save className="h-4 w-4" />
                     {saveConfig.isPending ? "Saving..." : "Save Endpoints"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="border-b bg-muted/20 pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Google Maps
+              </CardTitle>
+              <CardDescription>Enter your Google Maps API key for address autocomplete and route optimization</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <form onSubmit={handleSaveGoogleMaps} className="space-y-4">
+                <div className="rounded-lg border p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">Maps &amp; Places API</span>
+                    {c?.googleMapsConfigured
+                      ? <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 ml-auto">Configured</Badge>
+                      : <Badge variant="outline" className="text-muted-foreground ml-auto">Not Set</Badge>
+                    }
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="google_maps_api_key" className="text-xs">API Key</Label>
+                    <div className="relative">
+                      <Input
+                        id="google_maps_api_key"
+                        type={showGoogleMapsKey ? "text" : "password"}
+                        placeholder={c?.googleMapsConfigured ? "Leave blank to keep current key" : "AIza..."}
+                        value={googleMapsKeyInput}
+                        onChange={(e) => setGoogleMapsKeyInput(e.target.value)}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGoogleMapsKey((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabIndex={-1}
+                      >
+                        {showGoogleMapsKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Requires the Geocoding API and Places API to be enabled in your Google Cloud project.</p>
+                  </div>
+                </div>
+
+                {googleMapsTestResult && (
+                  <div className={cn(
+                    "flex items-start gap-2 p-3 rounded-lg border text-sm",
+                    googleMapsTestResult.ok
+                      ? "bg-green-50 border-green-200 text-green-800"
+                      : "bg-destructive/10 border-destructive/20 text-destructive"
+                  )}>
+                    {googleMapsTestResult.ok
+                      ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                      : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    }
+                    <span>{googleMapsTestResult.message}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-2 border-t gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={runGoogleMapsTest}
+                    disabled={testGoogleMaps.isPending}
+                    className="gap-2"
+                  >
+                    {testGoogleMaps.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Test Key
+                  </Button>
+                  <Button type="submit" disabled={saveConfig.isPending || !googleMapsKeyInput.trim()} className="gap-2">
+                    <Save className="h-4 w-4" />
+                    {saveConfig.isPending ? "Saving..." : "Save Key"}
                   </Button>
                 </div>
               </form>

@@ -7,10 +7,12 @@
  */
 import type { AiHealthResponseProvidersAzureOpenai } from "./aiHealthResponseProvidersAzureOpenai";
 import type { AiHealthResponseProvidersAzureSpeech } from "./aiHealthResponseProvidersAzureSpeech";
+import type { AiHealthResponseProvidersAzureWhisper } from "./aiHealthResponseProvidersAzureWhisper";
 import type { AiHealthResponseProvidersOpenai } from "./aiHealthResponseProvidersOpenai";
 
 export type AiHealthResponseProviders = {
   azure_openai?: AiHealthResponseProvidersAzureOpenai;
+  azure_whisper?: AiHealthResponseProvidersAzureWhisper;
   azure_speech?: AiHealthResponseProvidersAzureSpeech;
   openai?: AiHealthResponseProvidersOpenai;
 };

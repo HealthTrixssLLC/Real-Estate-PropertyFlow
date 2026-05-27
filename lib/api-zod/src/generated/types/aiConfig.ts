@@ -13,6 +13,13 @@ export interface AiConfig {
   drafting?: AiFeatureConfig;
   patternAnalysis?: AiFeatureConfig;
   azureOpenAiConfigured?: boolean;
+  /** @nullable */
+  azureOpenAiBaseUrl?: string | null;
+  /** @nullable */
+  azureOpenAiModel?: string | null;
+  azureWhisperConfigured?: boolean;
+  azureWhisperDeployment?: string;
   azureSpeechConfigured?: boolean;
   openAiConfigured?: boolean;
+  googleMapsConfigured?: boolean;
 }

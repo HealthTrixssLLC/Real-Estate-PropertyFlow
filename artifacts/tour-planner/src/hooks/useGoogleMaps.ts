@@ -5,11 +5,33 @@ type LoadStatus = "idle" | "loading" | "ready" | "error"
 
 let loadPromise: Promise<void> | null = null
 let globalStatus: LoadStatus = "idle"
+let resolvedKey: string | null = null
+let keyFetchPromise: Promise<string | null> | null = null
 const statusListeners = new Set<(s: LoadStatus) => void>()
 
 function notifyListeners(s: LoadStatus) {
   globalStatus = s
   statusListeners.forEach(fn => fn(s))
+}
+
+async function fetchKeyFromBackend(): Promise<string | null> {
+  if (keyFetchPromise) return keyFetchPromise
+  keyFetchPromise = fetch("/api/config/maps-key")
+    .then(r => r.ok ? r.json() as Promise<{ key?: string | null }> : null)
+    .then(data => data?.key ?? null)
+    .catch(() => null)
+  return keyFetchPromise
+}
+
+async function resolveApiKey(): Promise<string | null> {
+  if (resolvedKey !== null) return resolvedKey
+  const envKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
+  if (envKey) {
+    resolvedKey = envKey
+    return resolvedKey
+  }
+  resolvedKey = await fetchKeyFromBackend()
+  return resolvedKey
 }
 
 async function loadGoogleMaps(apiKey: string): Promise<void> {
@@ -47,8 +69,8 @@ function installGlobalErrorHandlers(onError: () => void) {
 }
 
 export function useGoogleMaps() {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
   const [status, setStatus] = useState<LoadStatus>(globalStatus === "idle" ? "idle" : globalStatus)
+  const [hasApiKey, setHasApiKey] = useState(Boolean(resolvedKey))
 
   useEffect(() => {
     const listener = (s: LoadStatus) => setStatus(s)
@@ -59,11 +81,6 @@ export function useGoogleMaps() {
   }, [])
 
   useEffect(() => {
-    if (!apiKey) {
-      notifyListeners("error")
-      return
-    }
-
     if (globalStatus === "ready" || globalStatus === "error") {
       setStatus(globalStatus)
       return
@@ -79,7 +96,15 @@ export function useGoogleMaps() {
     })
 
     if (!loadPromise) {
-      loadPromise = loadGoogleMaps(apiKey)
+      loadPromise = resolveApiKey().then(key => {
+        if (!key) {
+          notifyListeners("error")
+          setHasApiKey(false)
+          return
+        }
+        setHasApiKey(true)
+        return loadGoogleMaps(key)
+      })
     }
 
     loadPromise
@@ -94,7 +119,7 @@ export function useGoogleMaps() {
       })
 
     return cleanupErrorHandlers
-  }, [apiKey])
+  }, [])
 
-  return { status, hasApiKey: Boolean(apiKey) }
+  return { status, hasApiKey }
 }

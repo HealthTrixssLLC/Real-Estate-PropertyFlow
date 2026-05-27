@@ -12,5 +12,6 @@ export type SaveAiConfigRequestTranscriptionProvider =
 export const SaveAiConfigRequestTranscriptionProvider = {
   azure_openai: "azure_openai",
   openai: "openai",
+  azure_whisper: "azure_whisper",
   azure_speech: "azure_speech",
 } as const;

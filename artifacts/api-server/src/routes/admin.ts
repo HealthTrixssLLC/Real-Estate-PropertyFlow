@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { SaveAiConfigBody, TestAiConfigBody } from "@workspace/api-zod";
-import { requireRole } from "../middlewares/authMiddleware";
+import { SaveAiConfigBody, TestAiConfigBody, TestGoogleMapsConfigBody } from "@workspace/api-zod";
+import { requireRole, requireAuth } from "../middlewares/authMiddleware";
 import { aiConfig, updateAiConfig, getAiConfigResponse } from "../lib/aiConfig";
 import {
   generateText,
@@ -20,6 +20,11 @@ import {
 export { aiConfig };
 
 const router: IRouter = Router();
+
+router.get("/config/maps-key", requireAuth, (_req: Request, res: Response) => {
+  const key = aiConfig.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY || null;
+  res.json({ key });
+});
 
 router.get("/admin/ai/config", requireRole("admin"), (_req: Request, res: Response) => {
   sendValidated(res, AiConfigResponseSchema, { config: getAiConfigResponse() });
@@ -42,6 +47,7 @@ router.post("/admin/ai/config", requireRole("admin"), (req: Request, res: Respon
     azureOpenAiModel?: string;
     azureOpenAiWhisperDeployment?: string;
     azureSpeechRegion?: string;
+    googleMapsApiKey?: string;
   };
 
   updateAiConfig({
@@ -51,6 +57,7 @@ router.post("/admin/ai/config", requireRole("admin"), (req: Request, res: Respon
     summarizationProvider: body.summarizationProvider ?? aiConfig.summarizationProvider,
     draftingEnabled: body.draftingEnabled ?? aiConfig.draftingEnabled,
     patternAnalysisEnabled: body.patternAnalysisEnabled ?? aiConfig.patternAnalysisEnabled,
+    googleMapsApiKey: body.googleMapsApiKey !== undefined ? body.googleMapsApiKey : aiConfig.googleMapsApiKey,
   });
 
   if (body.azureOpenAiBaseUrl) process.env.AZURE_OPENAI_BASE_URL = body.azureOpenAiBaseUrl;
@@ -84,6 +91,45 @@ router.post("/admin/ai/config/test", requireRole("admin"), async (req: Request, 
     const testPrompt = prompt ?? "Reply with the single word: OK";
     const result = await generateText(testPrompt, aiConfig.summarizationProvider);
     sendValidated(res, AiTestResponseSchema, { success: true, result: result.text });
+  } catch (err) {
+    sendValidated(res, AiTestResponseSchema, {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+router.post("/admin/ai/config/test-google-maps", requireRole("admin"), async (req: Request, res: Response) => {
+  const parsed = TestGoogleMapsConfigBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
+    return;
+  }
+
+  const key = parsed.data.apiKey || aiConfig.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY;
+  if (!key) {
+    sendValidated(res, AiTestResponseSchema, {
+      success: false,
+      error: "No Google Maps API key configured. Enter a key and save it first.",
+    });
+    return;
+  }
+
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway,+Mountain+View,+CA&key=${encodeURIComponent(key)}`;
+    const response = await fetch(url);
+    const data = await response.json() as { status: string; error_message?: string };
+    if (data.status === "OK" || data.status === "ZERO_RESULTS") {
+      sendValidated(res, AiTestResponseSchema, {
+        success: true,
+        result: "Google Maps API key is valid and the Geocoding API is reachable.",
+      });
+    } else {
+      sendValidated(res, AiTestResponseSchema, {
+        success: false,
+        error: data.error_message ?? `Google Maps API returned status: ${data.status}`,
+      });
+    }
   } catch (err) {
     sendValidated(res, AiTestResponseSchema, {
       success: false,

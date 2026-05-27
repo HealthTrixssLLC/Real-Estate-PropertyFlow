@@ -231,6 +231,7 @@ export const AiConfigResponseSchema = z.object({
     azureWhisperDeployment: z.string().optional(),
     azureSpeechConfigured: z.boolean(),
     openAiConfigured: z.boolean(),
+    googleMapsConfigured: z.boolean(),
   }),
 });
 

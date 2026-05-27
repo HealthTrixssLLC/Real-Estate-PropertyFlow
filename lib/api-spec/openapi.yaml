@@ -856,6 +856,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/AiTestResponse'
 
+  /admin/ai/config/test-google-maps:
+    post:
+      tags: [admin]
+      operationId: testGoogleMapsConfig
+      summary: Test Google Maps API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestGoogleMapsConfigRequest'
+      responses:
+        '200':
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiTestResponse'
+
   /admin/ai/health:
     get:
       tags: [admin]
@@ -1937,6 +1956,8 @@ components:
           type: boolean
         openAiConfigured:
           type: boolean
+        googleMapsConfigured:
+          type: boolean
 
     AiConfigResponse:
       type: object
@@ -1974,6 +1995,16 @@ components:
         azureSpeechRegion:
           type: string
           description: Azure Speech Services region
+        googleMapsApiKey:
+          type: string
+          description: Google Maps API key
+
+    TestGoogleMapsConfigRequest:
+      type: object
+      properties:
+        apiKey:
+          type: string
+          description: Google Maps API key to test (uses saved key if omitted)
 
     TestAiConfigRequest:
       type: object

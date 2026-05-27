@@ -1611,6 +1611,7 @@ export const GetAiConfigResponse = zod.object({
     azureWhisperDeployment: zod.string().optional(),
     azureSpeechConfigured: zod.boolean().optional(),
     openAiConfigured: zod.boolean().optional(),
+    googleMapsConfigured: zod.boolean().optional(),
   }),
 });
 
@@ -1642,6 +1643,7 @@ export const SaveAiConfigBody = zod.object({
     .string()
     .optional()
     .describe("Azure Speech Services region"),
+  googleMapsApiKey: zod.string().optional().describe("Google Maps API key"),
 });
 
 export const SaveAiConfigResponse = zod.object({
@@ -1685,6 +1687,7 @@ export const SaveAiConfigResponse = zod.object({
     azureWhisperDeployment: zod.string().optional(),
     azureSpeechConfigured: zod.boolean().optional(),
     openAiConfigured: zod.boolean().optional(),
+    googleMapsConfigured: zod.boolean().optional(),
   }),
 });
 
@@ -1697,6 +1700,22 @@ export const TestAiConfigBody = zod.object({
 });
 
 export const TestAiConfigResponse = zod.object({
+  success: zod.boolean(),
+  result: zod.string().optional(),
+  error: zod.string().optional(),
+});
+
+/**
+ * @summary Test Google Maps API key
+ */
+export const TestGoogleMapsConfigBody = zod.object({
+  apiKey: zod
+    .string()
+    .optional()
+    .describe("Google Maps API key to test (uses saved key if omitted)"),
+});
+
+export const TestGoogleMapsConfigResponse = zod.object({
   success: zod.boolean(),
   result: zod.string().optional(),
   error: zod.string().optional(),

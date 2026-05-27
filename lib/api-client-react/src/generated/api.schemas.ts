@@ -734,6 +734,7 @@ export interface AiConfig {
   azureWhisperDeployment?: string;
   azureSpeechConfigured?: boolean;
   openAiConfigured?: boolean;
+  googleMapsConfigured?: boolean;
 }
 
 export interface AiConfigResponse {
@@ -773,6 +774,13 @@ export interface SaveAiConfigRequest {
   azureOpenAiWhisperDeployment?: string;
   /** Azure Speech Services region */
   azureSpeechRegion?: string;
+  /** Google Maps API key */
+  googleMapsApiKey?: string;
+}
+
+export interface TestGoogleMapsConfigRequest {
+  /** Google Maps API key to test (uses saved key if omitted) */
+  apiKey?: string;
 }
 
 export type TestAiConfigRequestFeature =
@@ -801,6 +809,12 @@ export type AiHealthResponseProvidersAzureOpenai = {
   error?: string | null;
 };
 
+export type AiHealthResponseProvidersAzureWhisper = {
+  healthy?: boolean;
+  /** @nullable */
+  error?: string | null;
+};
+
 export type AiHealthResponseProvidersAzureSpeech = {
   healthy?: boolean;
   /** @nullable */
@@ -808,12 +822,6 @@ export type AiHealthResponseProvidersAzureSpeech = {
 };
 
 export type AiHealthResponseProvidersOpenai = {
-  healthy?: boolean;
-  /** @nullable */
-  error?: string | null;
-};
-
-export type AiHealthResponseProvidersAzureWhisper = {
   healthy?: boolean;
   /** @nullable */
   error?: string | null;

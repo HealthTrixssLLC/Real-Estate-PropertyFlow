@@ -19,6 +19,10 @@ export interface SaveAiConfigRequest {
   azureOpenAiBaseUrl?: string;
   /** Azure OpenAI deployment model name */
   azureOpenAiModel?: string;
+  /** Azure OpenAI Whisper deployment name */
+  azureOpenAiWhisperDeployment?: string;
   /** Azure Speech Services region */
   azureSpeechRegion?: string;
+  /** Google Maps API key */
+  googleMapsApiKey?: string;
 }

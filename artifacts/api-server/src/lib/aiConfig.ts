@@ -8,6 +8,7 @@ export interface AiConfigState {
   summarizationProvider: string;
   draftingEnabled: boolean;
   patternAnalysisEnabled: boolean;
+  googleMapsApiKey?: string;
 }
 
 const CONFIG_KEY = "ai_config";
@@ -75,5 +76,6 @@ export function getAiConfigResponse() {
     azureWhisperDeployment: process.env.AZURE_OPENAI_WHISPER_DEPLOYMENT ?? "whisper",
     azureSpeechConfigured: !!(process.env.AZURE_SPEECH_KEY && process.env.AZURE_SPEECH_REGION),
     openAiConfigured: !!process.env.OPENAI_API_KEY,
+    googleMapsConfigured: !!(aiConfig.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY),
   };
 }

@@ -34,7 +34,7 @@ export default function PlacesAutocomplete({
   required,
   id,
 }: PlacesAutocompleteProps) {
-  const { status } = useGoogleMaps()
+  const { status, hasApiKey } = useGoogleMaps()
   const inputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   const [autocompleteError, setAutocompleteError] = useState(false)
@@ -79,10 +79,9 @@ export default function PlacesAutocomplete({
   }, [status, onPlaceSelected])
 
   const showFallback = status === "error" || autocompleteError
-  const fallbackMessage =
-    status === "error" && !import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-      ? "Address autocomplete unavailable — set VITE_GOOGLE_MAPS_API_KEY to enable"
-      : "Address autocomplete unavailable — Maps API not activated"
+  const fallbackMessage = !hasApiKey
+    ? "Address autocomplete unavailable — configure a Google Maps API key in Admin → AI Settings"
+    : "Address autocomplete unavailable — check your Google Maps API key in Admin → AI Settings"
 
   if (showFallback) {
     return (
