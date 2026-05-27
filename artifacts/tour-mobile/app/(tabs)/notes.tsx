@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import Colors from "@/constants/colors";
+import { Semantic } from "@/constants/semantic";
 
 interface NoteItem {
   id: string;
@@ -35,7 +36,7 @@ export default function NotesScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
+    <View style={styles.container}>
       <View style={styles.empty}>
         {isIOS ? (
           <SymbolView name="note.text" tintColor={C.textTertiary} size={56} />
@@ -67,6 +68,7 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Semantic.background as unknown as string,
   },
   empty: {
     flex: 1,

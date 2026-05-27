@@ -1,14 +1,12 @@
-import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, useColorScheme } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 
 import Colors from "@/constants/colors";
-import { Semantic } from "@/constants/semantic";
 
 function NativeTabLayout() {
   return (
@@ -38,11 +36,8 @@ function NativeTabLayout() {
 }
 
 function ClassicTabLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  const C = Colors[useColorScheme() ?? "light"];
   const isIOS = Platform.OS === "ios";
-  const isWeb = Platform.OS === "web";
-  const C = Colors[colorScheme ?? "light"];
 
   return (
     <Tabs
@@ -50,24 +45,6 @@ function ClassicTabLayout() {
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.tabIconDefault,
         headerTintColor: C.accent,
-        headerShadowVisible: false,
-        tabBarStyle: {
-          ...(isIOS
-            ? { position: "absolute", backgroundColor: "transparent" }
-            : { backgroundColor: isDark ? Semantic.surface as unknown as string : Semantic.surface as unknown as string }),
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: Semantic.opaqueSeparator as unknown as string,
-          elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
-        },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "systemChromeMaterial"}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : null,
       }}
     >
       <Tabs.Screen

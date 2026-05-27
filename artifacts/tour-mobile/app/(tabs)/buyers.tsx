@@ -30,6 +30,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import Colors from "@/constants/colors";
+import { Semantic } from "@/constants/semantic";
 
 interface BuyerFormState {
   name: string;
@@ -124,10 +125,10 @@ function BuyerFormModal({ visible, onClose, initial, onSaved }: BuyerFormModalPr
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: C.background }}
+        style={styles.modalContainer}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={[styles.modalHeader, { borderBottomColor: C.border, backgroundColor: C.surface }]}>
+        <View style={styles.modalHeader}>
           <Pressable onPress={handleClose} style={styles.modalCancel} disabled={isPending}>
             <Text style={[styles.modalCancelText, { color: isPending ? C.textTertiary : C.accent }]}>Cancel</Text>
           </Pressable>
@@ -144,7 +145,7 @@ function BuyerFormModal({ visible, onClose, initial, onSaved }: BuyerFormModalPr
         </View>
 
         <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
-          <View style={[styles.formSection, { backgroundColor: C.surface, borderColor: C.border }]}>
+          <View style={styles.formSection}>
             <View style={styles.formField}>
               <Text style={[styles.fieldLabel, { color: C.textSecondary }]}>Full Name *</Text>
               <TextInput
@@ -156,7 +157,7 @@ function BuyerFormModal({ visible, onClose, initial, onSaved }: BuyerFormModalPr
                 autoFocus
               />
             </View>
-            <View style={[styles.fieldDivider, { backgroundColor: C.border }]} />
+            <View style={styles.fieldDivider} />
             <View style={styles.formField}>
               <Text style={[styles.fieldLabel, { color: C.textSecondary }]}>Email</Text>
               <TextInput
@@ -169,7 +170,7 @@ function BuyerFormModal({ visible, onClose, initial, onSaved }: BuyerFormModalPr
                 autoCapitalize="none"
               />
             </View>
-            <View style={[styles.fieldDivider, { backgroundColor: C.border }]} />
+            <View style={styles.fieldDivider} />
             <View style={styles.formField}>
               <Text style={[styles.fieldLabel, { color: C.textSecondary }]}>Phone</Text>
               <TextInput
@@ -183,7 +184,7 @@ function BuyerFormModal({ visible, onClose, initial, onSaved }: BuyerFormModalPr
             </View>
           </View>
 
-          <View style={[styles.formSection, { backgroundColor: C.surface, borderColor: C.border }]}>
+          <View style={styles.formSection}>
             <View style={styles.formField}>
               <Text style={[styles.fieldLabel, { color: C.textSecondary }]}>Notes</Text>
               <TextInput
@@ -223,8 +224,7 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
       onPress={() => router.push(`/buyers/${buyer.id}`)}
       style={({ pressed }) => [
         styles.buyerRow,
-        { backgroundColor: C.surface, borderBottomColor: C.border },
-        pressed && { backgroundColor: C.surfaceAlt },
+        pressed && { backgroundColor: Semantic.fillTertiary as unknown as string },
       ]}
     >
       <View style={[styles.buyerAvatar, { backgroundColor: C.accent + "20" }]}>
@@ -263,7 +263,7 @@ function BuyerRow({ buyer, onEdit, onDelete }: BuyerRowProps) {
         </Pressable>
         <Pressable
           onPress={(e) => { e.stopPropagation?.(); onDelete(); }}
-          style={({ pressed }) => [styles.actionBtn, { backgroundColor: "#FDECEC" }, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.actionBtn, styles.actionBtnDanger, pressed && { opacity: 0.7 }]}
         >
           {isIOS ? (
             <SymbolView name="trash" tintColor="#FF3B30" size={15} />
@@ -351,7 +351,7 @@ export default function BuyersScreen() {
   const buyers = data?.buyers ?? [];
 
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
+    <View style={styles.container}>
       {isLoading ? (
         <View style={styles.loader}>
           <ActivityIndicator color={C.accent} />
@@ -407,7 +407,8 @@ export default function BuyersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: Semantic.background as unknown as string },
+  modalContainer: { flex: 1, backgroundColor: Semantic.background as unknown as string },
   loader: {
     flex: 1,
     alignItems: "center",
@@ -438,6 +439,8 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
     paddingRight: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
+    backgroundColor: Semantic.groupedSurface as unknown as string,
   },
   buyerAvatar: {
     width: 40,
@@ -477,6 +480,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: Semantic.fillSecondary as unknown as string,
+  },
+  actionBtnDanger: {
+    backgroundColor: Semantic.fillTertiary as unknown as string,
   },
   modalHeader: {
     flexDirection: "row",
@@ -486,6 +493,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
+    backgroundColor: Semantic.surface as unknown as string,
   },
   modalCancel: { minWidth: 60 },
   modalCancelText: {
@@ -505,9 +514,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   formSection: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
     overflow: "hidden",
+    backgroundColor: Semantic.groupedSurface as unknown as string,
   },
   formField: {
     paddingHorizontal: 16,
@@ -531,6 +540,7 @@ const styles = StyleSheet.create({
   fieldDivider: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 16,
+    backgroundColor: Semantic.opaqueSeparator as unknown as string,
   },
   errorText: {
     fontSize: 13,

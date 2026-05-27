@@ -32,6 +32,8 @@ import type { ActionButton } from "@/components/ActionTray";
 import { StatusChip } from "@/components/StatusChip";
 import { StopProgressBar } from "@/components/StopProgressBar";
 import Colors from "@/constants/colors";
+import { Semantic } from "@/constants/semantic";
+import { Typography } from "@/constants/typography";
 import { useTourContext } from "@/context/TourContext";
 
 const RESTRICTED_STATUSES = new Set(["restricted", "declined", "needs_follow_up"]);
@@ -87,11 +89,9 @@ function StopCard({
       onPress={onPress}
       style={({ pressed }) => [
         styles.stopCard,
-        {
-          backgroundColor: isCurrent ? C.primary : C.surface,
-          borderColor: isCurrent ? "transparent" : C.border,
-          borderWidth: isCurrent ? 0 : 1,
-        },
+        isCurrent
+          ? { backgroundColor: C.primary }
+          : { backgroundColor: Semantic.groupedSurface as unknown as string },
         pressed && { opacity: 0.85 },
       ]}
     >
@@ -424,7 +424,7 @@ export default function ActiveTourScreen() {
 
   if (isLoading && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: C.background }]}>
+      <View style={styles.center}>
         <ActivityIndicator color={C.accent} />
       </View>
     );
@@ -432,21 +432,18 @@ export default function ActiveTourScreen() {
 
   if (!tour) {
     return (
-      <View style={[styles.center, { backgroundColor: C.background }]}>
+      <View style={styles.center}>
         <Text style={{ color: C.textSecondary }}>Tour not found.</Text>
       </View>
     );
   }
 
-  const topPad = isWeb ? 67 : 0;
-
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
+    <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: topPad + 16 },
-        ]}
+        style={styles.scrollBg}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 80 }]}
         showsVerticalScrollIndicator={false}
       >
         <Pressable
@@ -476,8 +473,8 @@ export default function ActiveTourScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setBuyerPickerOpen(false)}
         >
-          <View style={{ flex: 1, backgroundColor: C.background }}>
-            <View style={[styles.pickerHeader, { borderBottomColor: C.border, backgroundColor: C.surface }]}>
+          <View style={styles.pickerContainer}>
+            <View style={styles.pickerHeader}>
               <Pressable onPress={() => setBuyerPickerOpen(false)} style={styles.pickerClose}>
                 <Text style={[styles.pickerCloseText, { color: C.accent }]}>Cancel</Text>
               </Pressable>
@@ -485,35 +482,17 @@ export default function ActiveTourScreen() {
               <View style={styles.pickerClose} />
             </View>
             <ScrollView contentContainerStyle={styles.pickerList}>
-              <Pressable
-                onPress={() => handleAssignBuyer(null)}
-                style={({ pressed }) => [
-                  styles.pickerRow,
-                  { backgroundColor: C.surface, borderColor: C.border },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Text style={[styles.pickerRowText, { color: C.textSecondary }]}>No buyer (unassign)</Text>
-                {!tour.buyerId && (
-                  isIOS ? (
-                    <SymbolView name="checkmark" tintColor={C.accent} size={16} />
-                  ) : (
-                    <Feather name="check" size={16} color={C.accent} />
-                  )
-                )}
-              </Pressable>
-              {(buyersData?.buyers ?? []).map((b) => (
+              <View style={styles.pickerGroup}>
                 <Pressable
-                  key={b.id}
-                  onPress={() => handleAssignBuyer(b.id)}
+                  onPress={() => handleAssignBuyer(null)}
                   style={({ pressed }) => [
                     styles.pickerRow,
-                    { backgroundColor: C.surface, borderColor: C.border },
+                    styles.pickerRowDivider,
                     pressed && { opacity: 0.7 },
                   ]}
                 >
-                  <Text style={[styles.pickerRowText, { color: C.text }]}>{b.name}</Text>
-                  {tour.buyerId === b.id && (
+                  <Text style={[styles.pickerRowText, { color: C.textSecondary }]}>No buyer (unassign)</Text>
+                  {!tour.buyerId && (
                     isIOS ? (
                       <SymbolView name="checkmark" tintColor={C.accent} size={16} />
                     ) : (
@@ -521,7 +500,27 @@ export default function ActiveTourScreen() {
                     )
                   )}
                 </Pressable>
-              ))}
+                {(buyersData?.buyers ?? []).map((b, bi, arr) => (
+                  <Pressable
+                    key={b.id}
+                    onPress={() => handleAssignBuyer(b.id)}
+                    style={({ pressed }) => [
+                      styles.pickerRow,
+                      bi < arr.length - 1 && styles.pickerRowDivider,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Text style={[styles.pickerRowText, { color: C.text }]}>{b.name}</Text>
+                    {tour.buyerId === b.id && (
+                      isIOS ? (
+                        <SymbolView name="checkmark" tintColor={C.accent} size={16} />
+                      ) : (
+                        <Feather name="check" size={16} color={C.accent} />
+                      )
+                    )}
+                  </Pressable>
+                ))}
+              </View>
             </ScrollView>
           </View>
         </Modal>
@@ -556,7 +555,7 @@ export default function ActiveTourScreen() {
         )}
 
         {!currentStop && visitedCount > 0 && (
-          <View style={[styles.completedBanner, { backgroundColor: C.surfaceAlt }]}>
+          <View style={styles.completedBanner}>
             {isIOS ? (
               <SymbolView name="checkmark.seal.fill" tintColor={C.green} size={36} />
             ) : (
@@ -571,14 +570,15 @@ export default function ActiveTourScreen() {
           </View>
         )}
 
-        <Text style={[styles.allStopsTitle, { color: C.text }]}>All Stops</Text>
+        <Text style={[styles.allStopsTitle, { color: C.textSecondary }]}>All stops</Text>
+        <View style={styles.stopsGroup}>
         {stops.map((s, i) => {
           const primaryLabel = s.propertyNickname ?? s.formattedAddress ?? `Stop ${i + 1}`;
           const secondaryLabel =
             s.propertyNickname && s.formattedAddress && s.propertyNickname !== s.formattedAddress
               ? s.formattedAddress
               : null;
-          const numBg = s.skipped ? C.surfaceAlt : s.visited ? C.green : C.accent;
+          const numBg = s.skipped ? (Semantic.fillSecondary as unknown as string) : s.visited ? C.green : C.accent;
           const numColor = s.skipped ? C.textTertiary : "#FFF";
           return (
             <Pressable
@@ -587,9 +587,9 @@ export default function ActiveTourScreen() {
               onPress={() => router.push(`/stop/${s.id}`)}
               style={({ pressed }) => [
                 styles.stopRow,
-                { backgroundColor: C.surface, borderColor: C.border },
+                i < stops.length - 1 && styles.stopRowDivider,
                 s.skipped && { opacity: 0.55 },
-                pressed && { opacity: 0.7 },
+                pressed && { backgroundColor: Semantic.fillTertiary as unknown as string },
               ]}
             >
               <View style={[styles.stopNum, { backgroundColor: numBg }]}>
@@ -636,7 +636,8 @@ export default function ActiveTourScreen() {
             </Pressable>
           );
         })}
-        <View style={{ height: 120 }} />
+        </View>
+        <View style={{ height: 32 }} />
       </ScrollView>
 
       {actionButtons.length > 0 && <ActionTray buttons={actionButtons} />}
@@ -645,9 +646,10 @@ export default function ActiveTourScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  scroll: { paddingHorizontal: 20 },
+  container: { flex: 1, backgroundColor: Semantic.background as unknown as string },
+  scrollBg: { backgroundColor: Semantic.grouped as unknown as string },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Semantic.background as unknown as string },
+  scroll: { paddingHorizontal: 16, paddingTop: 12 },
   buyerRow: { marginBottom: 12 },
   buyerChip: {
     flexDirection: "row",
@@ -773,11 +775,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   completedBanner: {
-    borderRadius: 18,
+    borderRadius: 12,
     padding: 24,
     alignItems: "center",
     gap: 8,
     marginBottom: 16,
+    backgroundColor: Semantic.surface as unknown as string,
   },
   completedTitle: {
     fontSize: 20,
@@ -787,21 +790,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   allStopsTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
+    ...Typography.sectionHeader,
     marginTop: 4,
-    marginBottom: 10,
+    marginBottom: 6,
+  },
+  stopsGroup: {
+    backgroundColor: Semantic.groupedSurface as unknown as string,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 24,
   },
   stopRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 8,
+    paddingHorizontal: 16,
     minHeight: 60,
+  },
+  stopRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
   },
   stopNum: {
     width: 34,
@@ -843,6 +852,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "500",
   },
+  pickerContainer: {
+    flex: 1,
+    backgroundColor: Semantic.background as unknown as string,
+  },
   pickerHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -851,6 +864,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
+    backgroundColor: Semantic.surface as unknown as string,
   },
   pickerClose: { minWidth: 70 },
   pickerCloseText: {
@@ -863,7 +878,11 @@ const styles = StyleSheet.create({
   },
   pickerList: {
     padding: 16,
-    gap: 8,
+  },
+  pickerGroup: {
+    backgroundColor: Semantic.groupedSurface as unknown as string,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   pickerRow: {
     flexDirection: "row",
@@ -871,8 +890,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+  },
+  pickerRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
   },
   pickerRowText: {
     fontSize: 15,
