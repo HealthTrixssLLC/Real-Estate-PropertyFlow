@@ -7,7 +7,7 @@ import {
   useDeleteTourStop,
   useListProperties,
 } from "@workspace/api-client-react"
-import type { TourStop } from "@workspace/api-client-react"
+import type { TourStop, TourStopWithAddress } from "@workspace/api-client-react"
 import { GripVertical, Plus, Route, Loader2, MapPin, Building2, Trash2, Search, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -30,14 +30,14 @@ import {
 
 interface StopsTabProps {
   tourId: string
-  stops: TourStop[]
+  stops: TourStopWithAddress[]
   tourStatus?: string
 }
 
 const DEBOUNCE_MS = 300
 
 export default function StopsTab({ tourId, stops: initialStops, tourStatus }: StopsTabProps) {
-  const [stops, setStops] = useState<TourStop[]>(initialStops)
+  const [stops, setStops] = useState<TourStopWithAddress[]>(initialStops)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [stopToDelete, setStopToDelete] = useState<TourStop | null>(null)
   const [search, setSearch] = useState("")
@@ -306,11 +306,16 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
 
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-foreground truncate flex items-center gap-2">
-                            Property #{stop.propertyId.slice(0, 8)}
+                            {stop.propertyNickname ?? stop.formattedAddress ?? `Property #${stop.propertyId.slice(0, 8)}`}
                             <Badge variant="outline" className={cn("text-[10px] uppercase font-bold tracking-wider", getStatusColor(stop.approvedStatus))}>
                               {stop.approvedStatus.replace(/_/g, " ")}
                             </Badge>
                           </h4>
+                          {stop.propertyNickname && stop.formattedAddress && (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">
+                              {stop.formattedAddress}
+                            </div>
+                          )}
                           <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1 truncate">
                             <MapPin className="h-3.5 w-3.5" />
                             Stop {stop.sequence} · {stop.visited ? "Visited" : "Pending"}
