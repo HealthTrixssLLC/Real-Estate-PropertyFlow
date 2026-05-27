@@ -26,10 +26,17 @@ router.get("/properties", async (req: Request, res: Response) => {
         ? eq(propertiesTable.agentId, user.id)
         : and(eq(propertiesTable.agentId, user.id), eq(propertiesTable.archived, false));
     const searchFilter = q
-      ? or(
-          ilike(propertiesTable.formattedAddress, `%${q}%`),
-          ilike(propertiesTable.nickname, `%${q}%`),
-          ilike(propertiesTable.mlsId, `%${q}%`),
+      ? and(
+          ...q
+            .split(/\s+/)
+            .filter(Boolean)
+            .map(word =>
+              or(
+                ilike(propertiesTable.formattedAddress, `%${word}%`),
+                ilike(propertiesTable.nickname, `%${word}%`),
+                ilike(propertiesTable.mlsId, `%${word}%`),
+              )
+            ),
         )
       : undefined;
     const whereClause =

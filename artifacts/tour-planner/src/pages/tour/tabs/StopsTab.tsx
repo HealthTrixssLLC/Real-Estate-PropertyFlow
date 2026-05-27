@@ -186,10 +186,24 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
               {!propertiesFetching && catalogProperties.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">
                   <Building2 className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  {debouncedSearch
-                    ? "No properties match your search."
-                    : "No properties in your catalog yet. Add properties on the Properties page first."
-                  }
+                  {debouncedSearch ? (
+                    <span>
+                      No properties match your search.{" "}
+                      <span className="block mt-1 text-xs">
+                        Make sure the property has been added on the{" "}
+                        <a
+                          href="/properties"
+                          className="underline hover:text-foreground"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          Properties page
+                        </a>{" "}
+                        first.
+                      </span>
+                    </span>
+                  ) : (
+                    "No properties in your catalog yet. Add properties on the Properties page first."
+                  )}
                 </div>
               ) : (
                 <div className="max-h-72 overflow-y-auto space-y-1 -mx-1 px-1">
