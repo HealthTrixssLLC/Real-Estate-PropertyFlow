@@ -7,8 +7,19 @@ import { idParams, parseParams, parseBody } from "../lib/validate";
 import { sendValidated, PropertyResponseSchema, PropertyListResponseSchema } from "../lib/responseSchemas";
 import { geocodeAddress } from "../lib/geocode";
 import { logger } from "../lib/logger";
+import { lookupPropertyDetails } from "../lib/propertyLookup";
 
 const router: IRouter = Router();
+
+router.get("/properties/lookup", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const address = typeof req.query.address === "string" ? req.query.address.trim() : "";
+  const result = await lookupPropertyDetails(address);
+  res.json(result);
+});
 
 router.get("/properties", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {

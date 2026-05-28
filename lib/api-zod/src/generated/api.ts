@@ -388,6 +388,25 @@ export const CreatePropertyBody = zod.object({
 });
 
 /**
+ * @summary Look up property details by address from listing sites
+ */
+export const LookupPropertyDetailsQueryParams = zod.object({
+  address: zod.coerce.string().describe("Formatted address to look up"),
+});
+
+export const LookupPropertyDetailsResponse = zod.object({
+  source: zod
+    .union([zod.literal("realtor"), zod.literal("redfin"), zod.literal(null)])
+    .nullable()
+    .describe("Which site provided the data, or null if nothing was found"),
+  beds: zod.number().nullish(),
+  baths: zod.number().nullish(),
+  squareFeet: zod.number().nullish(),
+  listPrice: zod.number().nullish(),
+  mlsId: zod.string().nullish(),
+});
+
+/**
  * @summary Get a property by ID
  */
 export const GetPropertyParams = zod.object({

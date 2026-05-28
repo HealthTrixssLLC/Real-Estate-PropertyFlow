@@ -39,12 +39,14 @@ import type {
   ListPropertiesParams,
   ListToursParams,
   LogoutSuccess,
+  LookupPropertyDetailsParams,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
   OptimizeRouteRequest,
   OptimizeRouteResponse,
   PreferenceProfileResponse,
   PropertyListResponse,
+  PropertyLookupResponse,
   PropertyResponse,
   PropertySummaryResponse,
   ReorderStopsRequest,
@@ -1454,6 +1456,109 @@ export const useCreateProperty = <
 > => {
   return useMutation(getCreatePropertyMutationOptions(options));
 };
+
+/**
+ * @summary Look up property details by address from listing sites
+ */
+export const getLookupPropertyDetailsUrl = (
+  params: LookupPropertyDetailsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/properties/lookup?${stringifiedParams}`
+    : `/api/properties/lookup`;
+};
+
+export const lookupPropertyDetails = async (
+  params: LookupPropertyDetailsParams,
+  options?: RequestInit,
+): Promise<PropertyLookupResponse> => {
+  return customFetch<PropertyLookupResponse>(
+    getLookupPropertyDetailsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getLookupPropertyDetailsQueryKey = (
+  params?: LookupPropertyDetailsParams,
+) => {
+  return [`/api/properties/lookup`, ...(params ? [params] : [])] as const;
+};
+
+export const getLookupPropertyDetailsQueryOptions = <
+  TData = Awaited<ReturnType<typeof lookupPropertyDetails>>,
+  TError = ErrorType<unknown>,
+>(
+  params: LookupPropertyDetailsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof lookupPropertyDetails>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getLookupPropertyDetailsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof lookupPropertyDetails>>
+  > = ({ signal }) =>
+    lookupPropertyDetails(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof lookupPropertyDetails>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type LookupPropertyDetailsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof lookupPropertyDetails>>
+>;
+export type LookupPropertyDetailsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Look up property details by address from listing sites
+ */
+
+export function useLookupPropertyDetails<
+  TData = Awaited<ReturnType<typeof lookupPropertyDetails>>,
+  TError = ErrorType<unknown>,
+>(
+  params: LookupPropertyDetailsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof lookupPropertyDetails>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getLookupPropertyDetailsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get a property by ID

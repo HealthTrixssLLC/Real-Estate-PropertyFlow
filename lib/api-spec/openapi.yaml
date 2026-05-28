@@ -320,6 +320,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/PropertyResponse'
 
+  /properties/lookup:
+    get:
+      tags: [properties]
+      operationId: lookupPropertyDetails
+      summary: Look up property details by address from listing sites
+      parameters:
+        - name: address
+          in: query
+          required: true
+          description: Formatted address to look up
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lookup result (source is null if nothing was found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyLookupResponse'
+
   /properties/{propertyId}:
     get:
       tags: [properties]
@@ -1242,6 +1262,31 @@ components:
           type: string
         archived:
           type: boolean
+
+    PropertyLookupResponse:
+      type: object
+      required: [source]
+      properties:
+        source:
+          type: string
+          nullable: true
+          enum: [realtor, redfin, null]
+          description: Which site provided the data, or null if nothing was found
+        beds:
+          type: integer
+          nullable: true
+        baths:
+          type: number
+          nullable: true
+        squareFeet:
+          type: integer
+          nullable: true
+        listPrice:
+          type: integer
+          nullable: true
+        mlsId:
+          type: string
+          nullable: true
 
     # ── Buyer schemas ─────────────────────────────────────────────────────────
     Buyer:

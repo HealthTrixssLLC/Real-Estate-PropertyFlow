@@ -141,6 +141,28 @@ export interface UpdatePropertyBody {
   archived?: boolean;
 }
 
+/**
+ * Which site provided the data, or null if nothing was found
+ */
+export type PropertyLookupResponseSource =
+  | (typeof PropertyLookupResponseSource)[keyof typeof PropertyLookupResponseSource]
+  | null;
+
+export const PropertyLookupResponseSource = {
+  realtor: "realtor",
+  redfin: "redfin",
+} as const;
+
+export interface PropertyLookupResponse {
+  /** Which site provided the data, or null if nothing was found */
+  source: PropertyLookupResponseSource;
+  beds?: number | null;
+  baths?: number | null;
+  squareFeet?: number | null;
+  listPrice?: number | null;
+  mlsId?: string | null;
+}
+
 export interface Buyer {
   id: string;
   name: string;
@@ -1062,6 +1084,13 @@ export type ListPropertiesParams = {
    * Search term to filter by address, nickname, or MLS ID
    */
   q?: string;
+};
+
+export type LookupPropertyDetailsParams = {
+  /**
+   * Formatted address to look up
+   */
+  address: string;
 };
 
 export type ListToursParams = {

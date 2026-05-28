@@ -3,6 +3,7 @@ import {
   useListProperties,
   useCreateProperty,
   useUpdateProperty,
+  lookupPropertyDetails,
 } from "@workspace/api-client-react"
 import type { Property, CreatePropertyBody } from "@workspace/api-client-react"
 import {
@@ -19,6 +20,7 @@ import {
   ArchiveRestore,
   Pencil,
   ChevronLeft,
+  X,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -253,10 +255,17 @@ interface PropertyFormProps {
 
 function PropertyForm({ form, onChange, addressValidated, onAddressValidationChange }: PropertyFormProps) {
   const { hasApiKey } = useGoogleMaps()
+  const [isLookingUp, setIsLookingUp] = useState(false)
+  const [lookupSource, setLookupSource] = useState<"realtor" | "redfin" | null>(null)
+  const [badgeDismissed, setBadgeDismissed] = useState(false)
+  const autofilledRef = useRef<Set<string>>(new Set())
+  const formRef = useRef(form)
+  const lookupTokenRef = useRef(0)
+  useEffect(() => { formRef.current = form }, [form])
 
   const handlePlaceSelected = (place: PlaceResult) => {
     onAddressValidationChange(true)
-    onChange({
+    const updatedForm: PropertyFormData = {
       ...form,
       addressInput: place.formattedAddress,
       placeData: {
@@ -268,29 +277,96 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
         state: place.state,
         zip: place.zip,
       },
-    })
+    }
+    onChange(updatedForm)
+    setLookupSource(null)
+    setBadgeDismissed(false)
+    autofilledRef.current = new Set()
+
+    const token = ++lookupTokenRef.current
+    setIsLookingUp(true)
+    lookupPropertyDetails({ address: place.formattedAddress })
+      .then(result => {
+        if (token !== lookupTokenRef.current) return
+        setIsLookingUp(false)
+        if (!result.source) return
+        const current = formRef.current
+        const next = { ...current }
+        const filled = new Set<string>()
+        if (result.beds != null && !current.beds) { next.beds = String(result.beds); filled.add("beds") }
+        if (result.baths != null && !current.baths) { next.baths = String(result.baths); filled.add("baths") }
+        if (result.squareFeet != null && !current.squareFeet) { next.squareFeet = String(result.squareFeet); filled.add("squareFeet") }
+        if (result.listPrice != null && !current.listPrice) { next.listPrice = String(result.listPrice); filled.add("listPrice") }
+        if (result.mlsId != null && !current.mlsId) { next.mlsId = result.mlsId; filled.add("mlsId") }
+        if (filled.size > 0) {
+          autofilledRef.current = filled
+          setLookupSource(result.source)
+          onChange(next)
+        }
+      })
+      .catch(() => {
+        if (token === lookupTokenRef.current) setIsLookingUp(false)
+      })
   }
 
   const handleAddressChange = (value: string) => {
     if (value !== form.addressInput) {
       onAddressValidationChange(false)
       onChange({ ...form, addressInput: value, placeData: {} })
+      lookupTokenRef.current++
+      setIsLookingUp(false)
+      setLookupSource(null)
+      setBadgeDismissed(false)
+      autofilledRef.current = new Set()
     } else {
       onChange({ ...form, addressInput: value })
     }
   }
 
+  const handleAutofilledFieldChange = (field: string, updater: (prev: PropertyFormData) => PropertyFormData) => {
+    onChange(updater(form))
+    if (autofilledRef.current.has(field)) {
+      setLookupSource(null)
+      autofilledRef.current = new Set()
+    }
+  }
+
+  const showBadge = lookupSource != null && !badgeDismissed
+
+  const sourceName = lookupSource === "realtor" ? "Realtor.com" : lookupSource === "redfin" ? "Redfin" : null
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="prop-address">Full Address *</Label>
-        <PlacesAutocomplete
-          id="prop-address"
-          value={form.addressInput}
-          onChange={handleAddressChange}
-          onPlaceSelected={handlePlaceSelected}
-          placeholder="Start typing an address..."
-        />
+        <div className="relative">
+          <PlacesAutocomplete
+            id="prop-address"
+            value={form.addressInput}
+            onChange={handleAddressChange}
+            onPlaceSelected={handlePlaceSelected}
+            placeholder="Start typing an address..."
+          />
+          {isLookingUp && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-muted-foreground pointer-events-none">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Fetching listing details…</span>
+            </div>
+          )}
+        </div>
+        {showBadge && sourceName && (
+          <div className="flex items-center justify-between rounded-md bg-indigo-50 border border-indigo-100 px-3 py-1.5 text-xs text-indigo-700">
+            <span>Details pre-filled via {sourceName} — tap any field to edit</span>
+            <button
+              type="button"
+              onClick={() => setBadgeDismissed(true)}
+              className="ml-2 hover:text-indigo-900"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         {addressValidated && form.placeData.lat != null && (
           <p className="text-xs text-green-600 flex items-center gap-1">
             <MapPin className="h-3 w-3" />
@@ -309,7 +385,7 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
           <Label>MLS ID</Label>
           <Input
             value={form.mlsId}
-            onChange={e => onChange({ ...form, mlsId: e.target.value })}
+            onChange={e => handleAutofilledFieldChange("mlsId", prev => ({ ...prev, mlsId: e.target.value }))}
             placeholder="#1234567"
           />
         </div>
@@ -317,7 +393,7 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
           <Label>List Price</Label>
           <Input
             value={form.listPrice}
-            onChange={e => onChange({ ...form, listPrice: e.target.value })}
+            onChange={e => handleAutofilledFieldChange("listPrice", prev => ({ ...prev, listPrice: e.target.value }))}
             type="number"
             placeholder="500000"
             min="0"
@@ -327,7 +403,7 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
           <Label>Beds</Label>
           <Input
             value={form.beds}
-            onChange={e => onChange({ ...form, beds: e.target.value })}
+            onChange={e => handleAutofilledFieldChange("beds", prev => ({ ...prev, beds: e.target.value }))}
             type="number"
             min="0"
           />
@@ -336,7 +412,7 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
           <Label>Baths</Label>
           <Input
             value={form.baths}
-            onChange={e => onChange({ ...form, baths: e.target.value })}
+            onChange={e => handleAutofilledFieldChange("baths", prev => ({ ...prev, baths: e.target.value }))}
             type="number"
             step="0.5"
             min="0"
@@ -346,7 +422,7 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
           <Label>Sq. Feet</Label>
           <Input
             value={form.squareFeet}
-            onChange={e => onChange({ ...form, squareFeet: e.target.value })}
+            onChange={e => handleAutofilledFieldChange("squareFeet", prev => ({ ...prev, squareFeet: e.target.value }))}
             type="number"
             min="0"
           />
