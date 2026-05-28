@@ -15,6 +15,7 @@ import { renderTourReportDocx } from "../lib/tourReportDocx";
 import { signReportToken, verifyReportToken } from "../lib/reportToken";
 import { sendEmail, isEmailConfigured, EmailNotConfiguredError } from "../lib/email";
 import { sendSms, isSmsConfigured, SmsNotConfiguredError } from "../lib/sms";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -35,10 +36,11 @@ async function loadOwnedTour(tourId: string, agentId: string, res: Response) {
   return tour;
 }
 
-async function loadAgentName(agentId: string): Promise<string | null> {
+async function loadAgentContact(agentId: string): Promise<{ name: string | null; email: string | null; phone: string | null }> {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, agentId)).limit(1);
-  if (!user) return null;
-  return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || null;
+  if (!user) return { name: null, email: null, phone: null };
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || null;
+  return { name, email: user.email ?? null, phone: null };
 }
 
 function buildReportFilename(title: string, ext: "pdf" | "docx"): string {
@@ -57,16 +59,24 @@ function reportLinkSecretConfigured(): boolean {
   return !!(process.env.REPORT_LINK_SECRET || process.env.SESSION_SECRET);
 }
 
+function objectStorageConfigured(): boolean {
+  return !!process.env.PRIVATE_OBJECT_DIR;
+}
+
 router.get("/tours/report/capabilities", (_req: Request, res: Response) => {
   const publicBaseUrl = publicBaseUrlConfigured();
   const linkSecret = reportLinkSecretConfigured();
+  const objectStorage = objectStorageConfigured();
+  // Preferred SMS path: signed object-storage URL (no public base URL or app-level secret needed).
+  // Fallback SMS path: HMAC token + public app route (needs public base URL + signing secret).
+  const smsReady = isSmsConfigured() && (objectStorage || (publicBaseUrl && linkSecret));
   res.json({
     emailConfigured: isEmailConfigured(),
-    // SMS is only truly usable if Twilio + a public base URL + a signing secret are all present
-    smsConfigured: isSmsConfigured() && publicBaseUrl && linkSecret,
+    smsConfigured: smsReady,
     smsTwilioConfigured: isSmsConfigured(),
     publicBaseUrlConfigured: publicBaseUrl,
     reportLinkSecretConfigured: linkSecret,
+    objectStorageConfigured: objectStorage,
   });
 });
 
@@ -81,8 +91,8 @@ router.get("/tours/:tourId/report/data", async (req: Request, res: Response) => 
   const tour = await loadOwnedTour(params.tourId, user.id, res);
   if (!tour) return;
   try {
-    const agentName = await loadAgentName(user.id);
-    const data = await assembleTourReportData(params.tourId, agentName);
+    const agent = await loadAgentContact(user.id);
+    const data = await assembleTourReportData(params.tourId, agent);
     if (!data) { res.status(404).json({ error: "Tour not found" }); return; }
     res.json({
       tour: data.tour,
@@ -125,8 +135,8 @@ router.get("/tours/:tourId/report.pdf", async (req: Request, res: Response) => {
   const tour = await loadOwnedTour(params.tourId, user.id, res);
   if (!tour) return;
   try {
-    const agentName = await loadAgentName(user.id);
-    const data = await assembleTourReportData(params.tourId, agentName);
+    const agent = await loadAgentContact(user.id);
+    const data = await assembleTourReportData(params.tourId, agent);
     if (!data) { res.status(404).json({ error: "Tour not found" }); return; }
     const buffer = await renderTourReportPdf(data);
     res.setHeader("Content-Type", "application/pdf");
@@ -147,8 +157,8 @@ router.get("/tours/:tourId/report.docx", async (req: Request, res: Response) => 
   const tour = await loadOwnedTour(params.tourId, user.id, res);
   if (!tour) return;
   try {
-    const agentName = await loadAgentName(user.id);
-    const data = await assembleTourReportData(params.tourId, agentName);
+    const agent = await loadAgentContact(user.id);
+    const data = await assembleTourReportData(params.tourId, agent);
     if (!data) { res.status(404).json({ error: "Tour not found" }); return; }
     const buffer = await renderTourReportDocx(data);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -176,8 +186,8 @@ async function handlePublicReport(req: Request, res: Response, format: "pdf" | "
   try {
     const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, tourId));
     if (!tour) { res.status(404).send("Tour not found"); return; }
-    const agentName = await loadAgentName(tour.agentId);
-    const data = await assembleTourReportData(tourId, agentName);
+    const agent = await loadAgentContact(tour.agentId);
+    const data = await assembleTourReportData(tourId, agent);
     if (!data) { res.status(404).send("Tour not found"); return; }
     if (format === "pdf") {
       const buffer = await renderTourReportPdf(data);
@@ -213,8 +223,8 @@ router.post("/tours/:tourId/report/email", async (req: Request, res: Response) =
   if (!tour) return;
 
   try {
-    const agentName = await loadAgentName(user.id);
-    const data = await assembleTourReportData(params.tourId, agentName);
+    const agent = await loadAgentContact(user.id);
+    const data = await assembleTourReportData(params.tourId, agent);
     if (!data) { res.status(404).json({ error: "Tour not found" }); return; }
 
     const recipient = body.recipient?.trim() || data.buyer?.email || "";
@@ -235,7 +245,7 @@ router.post("/tours/:tourId/report/email", async (req: Request, res: Response) =
 
     try {
       const subject = `Your tour report — ${tour.title}`;
-      const intro = `Hi${data.buyer?.name ? ` ${data.buyer.name.split(" ")[0]}` : ""},\n\nHere's the report from your tour on ${tour.date}.${data.tourSummary?.summaryText ? `\n\n${data.tourSummary.summaryText}` : ""}\n\n${agentName ? `— ${agentName}` : "— Your agent"}`;
+      const intro = `Hi${data.buyer?.name ? ` ${data.buyer.name.split(" ")[0]}` : ""},\n\nHere's the report from your tour on ${tour.date}.${data.tourSummary?.summaryText ? `\n\n${data.tourSummary.summaryText}` : ""}\n\n${agent.name ? `— ${agent.name}` : "— Your agent"}`;
       const result = await sendEmail({
         to: recipient,
         subject,
@@ -281,8 +291,8 @@ router.post("/tours/:tourId/report/sms", async (req: Request, res: Response) => 
   if (!tour) return;
 
   try {
-    const agentName = await loadAgentName(user.id);
-    const data = await assembleTourReportData(params.tourId, agentName);
+    const agent = await loadAgentContact(user.id);
+    const data = await assembleTourReportData(params.tourId, agent);
     if (!data) { res.status(404).json({ error: "Tour not found" }); return; }
 
     const recipient = body.recipient?.trim() || data.buyer?.phone || "";
@@ -291,28 +301,61 @@ router.post("/tours/:tourId/report/sms", async (req: Request, res: Response) => 
       return;
     }
 
-    let token: ReturnType<typeof signReportToken>;
-    try {
-      token = signReportToken(params.tourId);
-    } catch (err) {
-      res.status(503).json({
-        error: err instanceof Error ? err.message : "Cannot sign download link",
-        code: "signing_secret_missing",
-      });
-      return;
-    }
+    // Preferred path: upload the rendered PDF to object storage and SMS a short-lived signed URL.
+    // Fallback path: sign an app-level HMAC token and SMS the public-route URL.
+    let link: string;
+    let publicTokenJti: string | null = null;
+    let deliveryMethod: "object_storage_signed_url" | "hmac_public_route";
 
-    const rawDomain = process.env.PUBLIC_APP_URL
-      || process.env.REPLIT_DEV_DOMAIN
-      || (process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(",")[0]?.trim() : "")
-      || "";
-    const baseUrl = rawDomain.replace(/\/+$/, "");
-    const fullBase = baseUrl.startsWith("http") ? baseUrl : baseUrl ? `https://${baseUrl}` : "";
-    if (!fullBase) {
-      res.status(503).json({ error: "Public base URL is not configured. Set PUBLIC_APP_URL.", code: "base_url_missing" });
-      return;
+    if (objectStorageConfigured()) {
+      try {
+        const buffer = await renderTourReportPdf(data);
+        const filename = buildReportFilename(tour.title, "pdf");
+        const uploaded = await new ObjectStorageService().uploadBytesAndGetSignedUrl({
+          bytes: buffer,
+          contentType: "application/pdf",
+          contentDisposition: `inline; filename="${filename}"`,
+          extension: "pdf",
+          ttlSec: 7 * 24 * 60 * 60, // 7 days
+        });
+        link = uploaded.url;
+        deliveryMethod = "object_storage_signed_url";
+      } catch (err) {
+        req.log.error({ err }, "Object storage upload failed for SMS report");
+        res.status(502).json({
+          error: err instanceof Error ? err.message : "Failed to upload report to object storage",
+          code: "object_storage_upload_failed",
+        });
+        return;
+      }
+    } else {
+      let token: ReturnType<typeof signReportToken>;
+      try {
+        token = signReportToken(params.tourId);
+      } catch (err) {
+        res.status(503).json({
+          error: err instanceof Error ? err.message : "Cannot sign download link",
+          code: "signing_secret_missing",
+        });
+        return;
+      }
+      const rawDomain = process.env.PUBLIC_APP_URL
+        || process.env.REPLIT_DEV_DOMAIN
+        || (process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(",")[0]?.trim() : "")
+        || "";
+      const baseUrl = rawDomain.replace(/\/+$/, "");
+      const fullBase = baseUrl.startsWith("http") ? baseUrl : baseUrl ? `https://${baseUrl}` : "";
+      if (!fullBase) {
+        res.status(503).json({
+          error: "Set up Object Storage (preferred) or PUBLIC_APP_URL to send report SMS.",
+          code: "no_delivery_method_configured",
+        });
+        return;
+      }
+      link = `${fullBase}/api/public/tour-reports/${params.tourId}/pdf?token=${encodeURIComponent(token.token)}`;
+      publicTokenJti = token.jti;
+      deliveryMethod = "hmac_public_route";
     }
-    const link = `${fullBase}/api/public/tour-reports/${params.tourId}/pdf?token=${encodeURIComponent(token.token)}`;
 
     const deliveryId = randomUUID();
     await db.insert(tourReportDeliveriesTable).values({
@@ -321,17 +364,17 @@ router.post("/tours/:tourId/report/sms", async (req: Request, res: Response) => 
       channel: "sms",
       recipient,
       status: "pending",
-      publicTokenJti: token.jti,
+      publicTokenJti,
     });
 
     try {
       const firstName = data.buyer?.name?.split(" ")[0];
-      const smsBody = `${firstName ? `Hi ${firstName}, ` : ""}your tour report from ${tour.date} is ready: ${link} (link expires in 7 days)${agentName ? ` — ${agentName}` : ""}`;
+      const smsBody = `${firstName ? `Hi ${firstName}, ` : ""}your tour report from ${tour.date} is ready: ${link} (link expires in 7 days)${agent.name ? ` — ${agent.name}` : ""}`;
       const result = await sendSms({ to: recipient, body: smsBody });
       await db.update(tourReportDeliveriesTable)
         .set({ status: "sent", provider: result.provider, sentAt: new Date() })
         .where(eq(tourReportDeliveriesTable.id, deliveryId));
-      res.json({ ok: true, deliveryId, channel: "sms", recipient, provider: result.provider, link });
+      res.json({ ok: true, deliveryId, channel: "sms", recipient, provider: result.provider, link, deliveryMethod });
     } catch (sendErr) {
       const msg = sendErr instanceof Error ? sendErr.message : String(sendErr);
       await db.update(tourReportDeliveriesTable)
@@ -346,6 +389,68 @@ router.post("/tours/:tourId/report/sms", async (req: Request, res: Response) => 
   } catch (err) {
     req.log.error({ err }, "Failed to send tour report SMS");
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to send SMS" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Short-lived shareable PDF URL (object storage signed GET)
+// Used by mobile for native Share / mailto: / sms: deep-links.
+// ---------------------------------------------------------------------------
+router.post("/tours/:tourId/report/share-url", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = parseParams(idParams.tourId, req, res);
+  if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
+  const tour = await loadOwnedTour(params.tourId, user.id, res);
+  if (!tour) return;
+  if (!objectStorageConfigured()) {
+    res.status(503).json({ error: "Object Storage is not configured.", code: "object_storage_not_configured" });
+    return;
+  }
+  try {
+    const agent = await loadAgentContact(user.id);
+    const data = await assembleTourReportData(params.tourId, agent);
+    if (!data) { res.status(404).json({ error: "Tour not found" }); return; }
+    const buffer = await renderTourReportPdf(data);
+    const filename = buildReportFilename(tour.title, "pdf");
+    const uploaded = await new ObjectStorageService().uploadBytesAndGetSignedUrl({
+      bytes: buffer,
+      contentType: "application/pdf",
+      contentDisposition: `inline; filename="${filename}"`,
+      extension: "pdf",
+      ttlSec: 7 * 24 * 60 * 60,
+    });
+    res.json({ url: uploaded.url, expiresAt: uploaded.expiresAt, filename });
+  } catch (err) {
+    req.log.error({ err }, "Failed to build share URL");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to build share URL" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Generate / refresh report (auto-fills missing per-property summaries)
+// ---------------------------------------------------------------------------
+router.post("/tours/:tourId/report/generate", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = parseParams(idParams.tourId, req, res);
+  if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
+  const tour = await loadOwnedTour(params.tourId, user.id, res);
+  if (!tour) return;
+  try {
+    const agent = await loadAgentContact(user.id);
+    const data = await assembleTourReportData(params.tourId, agent);
+    if (!data) { res.status(404).json({ error: "Tour not found" }); return; }
+    const summariesGenerated = data.stops.filter(s => s.propertySummary).length;
+    res.json({
+      ok: true,
+      generatedAt: data.generatedAt,
+      stopsTotal: data.stops.length,
+      stopsWithSummary: summariesGenerated,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to generate tour report");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to generate report" });
   }
 });
 

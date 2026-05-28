@@ -106,6 +106,41 @@ export class ObjectStorageService {
     return new Response(webStream, { headers });
   }
 
+  async uploadBytesAndGetSignedUrl(opts: {
+    bytes: Buffer;
+    contentType: string;
+    contentDisposition?: string;
+    extension?: string;
+    ttlSec?: number;
+  }): Promise<{ url: string; objectPath: string; expiresAt: Date }> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const objectId = randomUUID();
+    const ext = opts.extension ? `.${opts.extension.replace(/^\./, "")}` : "";
+    const fullPath = `${privateObjectDir.replace(/\/+$/, "")}/tour-reports/${objectId}${ext}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+
+    const putUrl = await signObjectURL({ bucketName, objectName, method: "PUT", ttlSec: 600 });
+    const putRes = await fetch(putUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": opts.contentType,
+        ...(opts.contentDisposition ? { "Content-Disposition": opts.contentDisposition } : {}),
+      },
+      body: opts.bytes,
+    });
+    if (!putRes.ok) {
+      throw new Error(`Object storage upload failed (HTTP ${putRes.status}): ${await putRes.text().catch(() => "")}`);
+    }
+
+    const ttlSec = opts.ttlSec ?? 60 * 60 * 24 * 7; // default 7 days
+    const getUrl = await signObjectURL({ bucketName, objectName, method: "GET", ttlSec });
+    return {
+      url: getUrl,
+      objectPath: this.normalizeObjectEntityPath(`https://storage.googleapis.com/${bucketName}/${objectName}`),
+      expiresAt: new Date(Date.now() + ttlSec * 1000),
+    };
+  }
+
   async getObjectEntityUploadURL(): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {

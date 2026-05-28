@@ -16,6 +16,7 @@ type Capabilities = {
   smsTwilioConfigured?: boolean
   publicBaseUrlConfigured?: boolean
   reportLinkSecretConfigured?: boolean
+  objectStorageConfigured?: boolean
 }
 
 type ReportStop = {
@@ -100,6 +101,7 @@ export default function ReportTab({ tourId }: { tourId: string }) {
   const [smsRecipient, setSmsRecipient] = useState("")
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendingSms, setSendingSms] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
   async function loadAll() {
     setLoading(true)
@@ -132,6 +134,28 @@ export default function ReportTab({ tourId }: { tourId: string }) {
     void loadAll()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tourId])
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch(`/api/tours/${tourId}/report/generate`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || `Generate failed (${res.status})`)
+      toast({
+        title: "Report ready",
+        description: `${json.stopsWithSummary ?? 0} of ${json.stopsTotal ?? 0} properties have summaries.`,
+      })
+      await loadAll()
+    } catch (err) {
+      toast({ title: "Could not generate report", description: err instanceof Error ? err.message : String(err), variant: "destructive" })
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const handleDownloadPdf = async () => {
     setDownloadingPdf(true)
@@ -211,8 +235,20 @@ export default function ReportTab({ tourId }: { tourId: string }) {
     return <div className="p-12 text-center text-muted-foreground">Could not load report.</div>
   }
 
-  const emailDisabled = !caps?.emailConfigured || sendingEmail || !emailRecipient
-  const smsDisabled = !caps?.smsConfigured || sendingSms || !smsRecipient
+  const hasEmail = !!emailRecipient.trim()
+  const hasPhone = !!smsRecipient.trim()
+  const emailDisabled = !caps?.emailConfigured || sendingEmail || !hasEmail
+  const smsDisabled = !caps?.smsConfigured || sendingSms || !hasPhone
+  const emailDisabledReason = !caps?.emailConfigured
+    ? "Email isn't configured (set SENDGRID_API_KEY)."
+    : !hasEmail
+      ? "Add a buyer email or type a recipient address."
+      : ""
+  const smsDisabledReason = !caps?.smsConfigured
+    ? "SMS isn't configured."
+    : !hasPhone
+      ? "Add a buyer phone number or type a recipient."
+      : ""
 
   return (
     <div className="p-6 space-y-6">
@@ -230,7 +266,11 @@ export default function ReportTab({ tourId }: { tourId: string }) {
             <span className="font-medium text-foreground">{data.buyer?.name || "the buyer"}</span>.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={handleDownloadPdf} disabled={downloadingPdf} className="gap-2">
+            <Button onClick={handleGenerate} disabled={generating} className="gap-2">
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Generate Report
+            </Button>
+            <Button variant="outline" onClick={handleDownloadPdf} disabled={downloadingPdf} className="gap-2">
               {downloadingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
               Download PDF
             </Button>
@@ -239,6 +279,9 @@ export default function ReportTab({ tourId }: { tourId: string }) {
               Download Word
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            "Generate Report" auto-creates AI summaries for any visited property that doesn't have one yet, then refreshes the preview below.
+          </p>
         </CardContent>
       </Card>
 
@@ -346,10 +389,13 @@ export default function ReportTab({ tourId }: { tourId: string }) {
               placeholder={data.buyer?.email || "buyer@example.com"}
             />
           </div>
-          <Button onClick={handleSendEmail} disabled={emailDisabled} className="gap-2">
+          <Button onClick={handleSendEmail} disabled={emailDisabled} className="gap-2" title={emailDisabledReason || undefined}>
             {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
             Send Email
           </Button>
+          {emailDisabled && emailDisabledReason && (
+            <p className="text-xs text-muted-foreground">{emailDisabledReason}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -367,10 +413,15 @@ export default function ReportTab({ tourId }: { tourId: string }) {
               <div>SMS isn't ready. To enable, set:</div>
               <ul className="list-disc list-inside">
                 {!caps?.smsTwilioConfigured && <li><code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_FROM_NUMBER</code></li>}
-                {!caps?.publicBaseUrlConfigured && <li><code>PUBLIC_APP_URL</code> (so the buyer's link resolves)</li>}
-                {!caps?.reportLinkSecretConfigured && <li><code>REPORT_LINK_SECRET</code> (signs the download link)</li>}
+                {!caps?.objectStorageConfigured && !caps?.publicBaseUrlConfigured && <li>Object Storage (preferred) or <code>PUBLIC_APP_URL</code></li>}
+                {!caps?.objectStorageConfigured && !caps?.reportLinkSecretConfigured && <li><code>REPORT_LINK_SECRET</code> (only needed if not using Object Storage)</li>}
               </ul>
             </div>
+          )}
+          {caps?.smsConfigured && caps?.objectStorageConfigured && (
+            <p className="text-xs text-muted-foreground">
+              Uses a signed Object Storage download URL (no public app route needed).
+            </p>
           )}
           <div className="space-y-2">
             <Label htmlFor="sms-recipient">Recipient phone (E.164, e.g. +15551234567)</Label>
@@ -382,10 +433,13 @@ export default function ReportTab({ tourId }: { tourId: string }) {
               placeholder={data.buyer?.phone || "+15551234567"}
             />
           </div>
-          <Button onClick={handleSendSms} disabled={smsDisabled} className="gap-2">
+          <Button onClick={handleSendSms} disabled={smsDisabled} className="gap-2" title={smsDisabledReason || undefined}>
             {sendingSms ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
             Text Link
           </Button>
+          {smsDisabled && smsDisabledReason && (
+            <p className="text-xs text-muted-foreground">{smsDisabledReason}</p>
+          )}
           <p className="text-xs text-muted-foreground">Link is signed and expires after 7 days.</p>
         </CardContent>
       </Card>

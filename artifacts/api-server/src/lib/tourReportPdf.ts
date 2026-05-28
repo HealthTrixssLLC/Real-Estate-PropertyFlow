@@ -355,15 +355,26 @@ export async function renderTourReportPdf(data: TourReportData): Promise<Buffer>
 
       doc.addPage();
       sectionHeading(doc, "Properties Visited");
-      data.stops.forEach((s, i) => renderStop(doc, s, i));
+      data.stops.forEach((s, i) => {
+        if (i > 0) doc.addPage();
+        renderStop(doc, s, i);
+      });
 
-      // Footer with page numbers
+      // Footer with page numbers + agent contact info
+      const contactParts: string[] = [];
+      if (data.agentName) contactParts.push(data.agentName);
+      if (data.agentEmail) contactParts.push(data.agentEmail);
+      if (data.agentPhone) contactParts.push(data.agentPhone);
+      const agentLine = contactParts.length > 0
+        ? `Prepared by ${contactParts.join(" · ")}`
+        : `TourFlow · ${data.tour.title}`;
+
       const range = doc.bufferedPageRange();
       for (let i = 0; i < range.count; i++) {
         doc.switchToPage(range.start + i);
         doc.font("Helvetica").fontSize(8).fillColor(COLOR_MUTED);
         doc.text(
-          `TourFlow · ${data.tour.title}`,
+          agentLine,
           doc.page.margins.left,
           doc.page.height - 36,
           { align: "left", width: doc.page.width - doc.page.margins.left - doc.page.margins.right },

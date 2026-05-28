@@ -1,7 +1,9 @@
 import {
   AlignmentType,
   Document,
+  Footer,
   HeadingLevel,
+  PageBreak,
   Packer,
   Paragraph,
   TextRun,
@@ -87,6 +89,14 @@ function renderStopParagraphs(rs: TourReportData["stops"][number], index: number
   const statusText = stop.skipped ? "SKIPPED" : stop.visited ? "VISITED" : "NOT VISITED";
   const statusColor = stop.skipped ? AMBER : stop.visited ? GREEN : MUTED;
 
+  // One property per page (skip break before the very first stop)
+  if (index > 0) {
+    out.push(
+      new Paragraph({
+        children: [new PageBreak()],
+      }),
+    );
+  }
   out.push(
     new Paragraph({
       spacing: { before: 240, after: 60 },
@@ -289,11 +299,31 @@ export async function renderTourReportDocx(data: TourReportData): Promise<Buffer
   children.push(heading("Properties Visited"));
   stops.forEach((s, i) => children.push(...renderStopParagraphs(s, i)));
 
+  const contactParts: string[] = [];
+  if (agentName) contactParts.push(agentName);
+  if (data.agentEmail) contactParts.push(data.agentEmail);
+  if (data.agentPhone) contactParts.push(data.agentPhone);
+  const footerLine = contactParts.length > 0
+    ? `Prepared by ${contactParts.join(" · ")}`
+    : `TourFlow · ${tour.title}`;
+
   const doc = new Document({
     creator: "TourFlow",
     title: `Tour Report — ${tour.title}`,
     description: "Real estate tour report",
-    sections: [{ children }],
+    sections: [{
+      children,
+      footers: {
+        default: new Footer({
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [text(footerLine, { color: MUTED, size: 16 })],
+            }),
+          ],
+        }),
+      },
+    }],
   });
 
   return Packer.toBuffer(doc);

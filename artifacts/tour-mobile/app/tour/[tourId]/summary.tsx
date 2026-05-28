@@ -6,12 +6,15 @@ import {
 } from "@workspace/api-client-react";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import * as Linking from "expo-linking";
 import React from "react";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -21,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { StatusChip } from "@/components/StatusChip";
 import Colors from "@/constants/colors";
+import { useAuth } from "@/context/AuthContext";
 
 export default function TourSummaryScreen() {
   const { tourId } = useLocalSearchParams<{ tourId: string }>();
@@ -37,6 +41,90 @@ export default function TourSummaryScreen() {
   const { mutate: generateSummary, isPending: isGenerating } = useGenerateTourSummary({
     mutation: { onSuccess: () => refetch() },
   });
+
+  const { token } = useAuth();
+  const [shareBusy, setShareBusy] = React.useState<null | "share" | "email" | "sms">(null);
+
+  async function fetchShareUrl(): Promise<{ url: string; filename: string } | null> {
+    if (!tourId) return null;
+    const apiBase = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+    const res = await fetch(`${apiBase}/api/tours/${tourId}/report/share-url`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j?.error || `Could not build share link (${res.status})`);
+    }
+    return res.json();
+  }
+
+  async function handleShareReport() {
+    setShareBusy("share");
+    try {
+      const out = await fetchShareUrl();
+      if (!out) return;
+      await Share.share({
+        message: `Your tour report: ${out.url}`,
+        url: out.url,
+        title: out.filename,
+      });
+    } catch (err) {
+      Alert.alert("Share failed", err instanceof Error ? err.message : String(err));
+    } finally {
+      setShareBusy(null);
+    }
+  }
+
+  async function handleEmailReport() {
+    if (!buyer?.email) {
+      Alert.alert("No email", "Add an email to the buyer first.");
+      return;
+    }
+    setShareBusy("email");
+    try {
+      const out = await fetchShareUrl();
+      if (!out) return;
+      const subject = encodeURIComponent(`Your tour report${tour?.title ? ` — ${tour.title}` : ""}`);
+      const body = encodeURIComponent(
+        `Hi${buyer?.name ? ` ${buyer.name.split(" ")[0]}` : ""},\n\nHere is the report from your tour:\n${out.url}\n\n(Link expires in 7 days.)`,
+      );
+      const ok = await Linking.canOpenURL("mailto:");
+      if (!ok) throw new Error("No email app available on this device.");
+      await Linking.openURL(`mailto:${buyer.email}?subject=${subject}&body=${body}`);
+    } catch (err) {
+      Alert.alert("Email failed", err instanceof Error ? err.message : String(err));
+    } finally {
+      setShareBusy(null);
+    }
+  }
+
+  async function handleSmsReport() {
+    if (!buyer?.phone) {
+      Alert.alert("No phone", "Add a phone number to the buyer first.");
+      return;
+    }
+    setShareBusy("sms");
+    try {
+      const out = await fetchShareUrl();
+      if (!out) return;
+      const sep = Platform.OS === "ios" ? "&" : "?";
+      const body = encodeURIComponent(
+        `${buyer?.name ? `Hi ${buyer.name.split(" ")[0]}, ` : ""}your tour report is ready: ${out.url} (link expires in 7 days)`,
+      );
+      const url = `sms:${buyer.phone}${sep}body=${body}`;
+      const ok = await Linking.canOpenURL(url);
+      if (!ok) throw new Error("Texting not available on this device.");
+      await Linking.openURL(url);
+    } catch (err) {
+      Alert.alert("SMS failed", err instanceof Error ? err.message : String(err));
+    } finally {
+      setShareBusy(null);
+    }
+  }
 
   const tour = data?.tour;
   const stops = data?.stops ?? [];
@@ -258,6 +346,78 @@ export default function TourSummaryScreen() {
         </View>
       )}
 
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: C.text }]}>Tour Report</Text>
+        <View style={styles.reportActions}>
+          <Pressable
+            testID="report-share-btn"
+            onPress={handleShareReport}
+            disabled={shareBusy !== null}
+            style={({ pressed }) => [
+              styles.reportActionBtn,
+              { backgroundColor: C.accent },
+              (pressed || shareBusy === "share") && { opacity: 0.7 },
+            ]}
+          >
+            {shareBusy === "share" ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : isIOS ? (
+              <SymbolView name="square.and.arrow.up" tintColor="#FFF" size={18} />
+            ) : (
+              <Feather name="share-2" size={18} color="#FFF" />
+            )}
+            <Text style={styles.reportActionLabel}>Share PDF</Text>
+          </Pressable>
+          <Pressable
+            testID="report-email-btn"
+            onPress={handleEmailReport}
+            disabled={shareBusy !== null || !buyer?.email}
+            style={({ pressed }) => [
+              styles.reportActionBtn,
+              { backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+              (pressed || shareBusy === "email" || !buyer?.email) && { opacity: 0.7 },
+            ]}
+          >
+            {shareBusy === "email" ? (
+              <ActivityIndicator color={C.text} size="small" />
+            ) : isIOS ? (
+              <SymbolView name="envelope" tintColor={C.text} size={18} />
+            ) : (
+              <Feather name="mail" size={18} color={C.text} />
+            )}
+            <Text style={[styles.reportActionLabel, { color: C.text }]}>Email</Text>
+          </Pressable>
+          <Pressable
+            testID="report-sms-btn"
+            onPress={handleSmsReport}
+            disabled={shareBusy !== null || !buyer?.phone}
+            style={({ pressed }) => [
+              styles.reportActionBtn,
+              { backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+              (pressed || shareBusy === "sms" || !buyer?.phone) && { opacity: 0.7 },
+            ]}
+          >
+            {shareBusy === "sms" ? (
+              <ActivityIndicator color={C.text} size="small" />
+            ) : isIOS ? (
+              <SymbolView name="message" tintColor={C.text} size={18} />
+            ) : (
+              <Feather name="message-circle" size={18} color={C.text} />
+            )}
+            <Text style={[styles.reportActionLabel, { color: C.text }]}>Text</Text>
+          </Pressable>
+        </View>
+        {(!buyer?.email || !buyer?.phone) && (
+          <Text style={[styles.reportHint, { color: C.textTertiary }]}>
+            {!buyer?.email && !buyer?.phone
+              ? "Add email and phone to the buyer to enable Email and Text."
+              : !buyer?.email
+                ? "Add an email to the buyer to enable Email."
+                : "Add a phone number to the buyer to enable Text."}
+          </Text>
+        )}
+      </View>
+
       <Pressable
         testID="generate-summary-btn"
         onPress={() => generateSummary({ tourId: tourId ?? "" })}
@@ -455,5 +615,27 @@ const styles = StyleSheet.create({
   transcriptionText: {
     fontSize: 12,
     color: "rgba(255,255,255,0.85)",
+  },
+  reportActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  reportActionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  reportActionLabel: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  reportHint: {
+    fontSize: 12,
+    marginTop: 8,
   },
 });

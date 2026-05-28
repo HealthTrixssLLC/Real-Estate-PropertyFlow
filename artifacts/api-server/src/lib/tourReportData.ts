@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import {
   db,
   toursTable,
@@ -16,6 +17,8 @@ import {
   type Buyer,
 } from "@workspace/db";
 import { and, eq, inArray, desc } from "drizzle-orm";
+import { generateText } from "./ai";
+import { aiConfig } from "./aiConfig";
 
 export interface ReportStop {
   stop: TourStop;
@@ -41,13 +44,90 @@ export interface TourReportData {
   tour: Tour;
   buyer: Buyer | null;
   agentName: string | null;
+  agentEmail: string | null;
+  agentPhone: string | null;
   stops: ReportStop[];
   tourSummary: TourSummary | null;
   crossTourRollup: CrossTourRollup | null;
   generatedAt: Date;
 }
 
-export async function assembleTourReportData(tourId: string, agentName?: string | null): Promise<TourReportData | null> {
+export interface AgentContact {
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
+async function generatePropertySummaryFor(
+  stop: TourStop,
+  property: Property | null,
+  notes: string[],
+): Promise<PropertySummary | null> {
+  try {
+    const ratings = [
+      stop.overallFitRating != null ? `Overall fit: ${stop.overallFitRating}/5` : null,
+      stop.buyerInterest != null ? `Buyer interest: ${stop.buyerInterest}/5` : null,
+      stop.kitchenRating != null ? `Kitchen: ${stop.kitchenRating}/5` : null,
+      stop.primarySuiteRating != null ? `Primary suite: ${stop.primarySuiteRating}/5` : null,
+      stop.backyardRating != null ? `Backyard: ${stop.backyardRating}/5` : null,
+      stop.roadNoiseRating != null ? `Road noise: ${stop.roadNoiseRating}/5` : null,
+    ].filter(Boolean).join(", ");
+
+    const prompt = `You are a real estate agent assistant analyzing a property showing.
+
+Property: ${property?.formattedAddress ?? "Unknown address"}
+Ratings: ${ratings || "None recorded"}
+${property?.beds ? `Beds: ${property.beds}, Baths: ${property.baths}, Sq Ft: ${property.squareFeet}` : ""}
+${property?.listPrice ? `List Price: $${property.listPrice.toLocaleString()}` : ""}
+Notes from showing: ${notes.join("\n") || "None recorded"}
+Tags: ${stop.quickTags?.join(", ") || "None"}
+Follow-up flag: ${stop.followUpFlag ? "Yes" : "No"}
+Revisit flag: ${stop.revisitFlag ? "Yes" : "No"}
+
+Generate a concise property summary with:
+1. summaryText: 2-3 sentence overview
+2. positives: list of pros (max 5)
+3. negatives: list of cons (max 5)
+4. questions: follow-up questions for listing agent (max 3)
+
+Return as JSON with those exact keys.`;
+
+    const result = await generateText(prompt, aiConfig.summarizationProvider);
+    let parsed: { summaryText?: string; positives?: string[]; negatives?: string[]; questions?: string[] } = {};
+    try {
+      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+    } catch {
+      parsed = { summaryText: result.text };
+    }
+
+    const [row] = await db
+      .insert(propertySummariesTable)
+      .values({
+        id: randomUUID(),
+        tourStopId: stop.id,
+        summaryText: parsed.summaryText ?? result.text,
+        positives: parsed.positives ?? [],
+        negatives: parsed.negatives ?? [],
+        questions: parsed.questions ?? [],
+        provider: result.provider,
+        generatedAt: new Date(),
+      })
+      .returning();
+    return row ?? null;
+  } catch {
+    // Auto-generation is best-effort; never fail the report just because AI is unavailable.
+    return null;
+  }
+}
+
+export async function assembleTourReportData(
+  tourId: string,
+  agentContact?: AgentContact | string | null,
+): Promise<TourReportData | null> {
+  const agent: AgentContact | null = typeof agentContact === "string"
+    ? { name: agentContact }
+    : agentContact ?? null;
   const [tour] = await db.select().from(toursTable).where(eq(toursTable.id, tourId)).limit(1);
   if (!tour) return null;
 
@@ -73,17 +153,35 @@ export async function assembleTourReportData(tourId: string, agentName?: string 
     : [];
   const summaryMap = new Map(summaries.map(ps => [ps.tourStopId, ps]));
 
-  const voiceNotes = stopIds.length > 0
+  const voiceNotesEarly = stopIds.length > 0
     ? await db.select().from(voiceNotesTable).where(inArray(voiceNotesTable.tourStopId, stopIds))
     : [];
-  const notesByStop = new Map<string, string[]>();
-  for (const vn of voiceNotes) {
+  const notesByStopEarly = new Map<string, string[]>();
+  for (const vn of voiceNotesEarly) {
     if (vn.typedNote) {
-      const arr = notesByStop.get(vn.tourStopId) ?? [];
+      const arr = notesByStopEarly.get(vn.tourStopId) ?? [];
       arr.push(vn.typedNote);
-      notesByStop.set(vn.tourStopId, arr);
+      notesByStopEarly.set(vn.tourStopId, arr);
     }
   }
+
+  // Auto-generate summaries for stops that are visited but have no existing summary
+  // so a report is never blank for completed stops.
+  const stopsNeedingSummary = stops.filter(
+    s => s.visited && !s.skipped && !summaryMap.has(s.id),
+  );
+  if (stopsNeedingSummary.length > 0 && aiConfig.summarizationEnabled !== false) {
+    const generated = await Promise.all(
+      stopsNeedingSummary.map(s =>
+        generatePropertySummaryFor(s, propMap.get(s.propertyId) ?? null, notesByStopEarly.get(s.id) ?? []),
+      ),
+    );
+    for (const ps of generated) {
+      if (ps) summaryMap.set(ps.tourStopId, ps);
+    }
+  }
+
+  const notesByStop = notesByStopEarly;
 
   const debriefs = stopIds.length > 0
     ? await db.select().from(debriefVoiceNotesTable).where(inArray(debriefVoiceNotesTable.tourStopId, stopIds))
@@ -158,7 +256,9 @@ export async function assembleTourReportData(tourId: string, agentName?: string 
   return {
     tour,
     buyer,
-    agentName: agentName ?? null,
+    agentName: agent?.name ?? null,
+    agentEmail: agent?.email ?? null,
+    agentPhone: agent?.phone ?? null,
     stops: reportStops,
     tourSummary: tourSummary ?? null,
     crossTourRollup,
