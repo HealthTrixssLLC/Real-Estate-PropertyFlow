@@ -1,2 +1,2 @@
 - [TourFlow visited semantics](tourflow-visited-semantics.md) — voice note OR debrief upload auto-marks tour_stop.visited; Generate Profile only requires visited+!skipped, not a debrief.
-- [expo-file-system on SDK 54](expo-file-system-sdk54.md) — pin to ~19.0.x AND import from `expo-file-system/legacy`; root export's classic methods throw at runtime, invisible to tsc.
+- [tour-mobile bare RN shims](tour-mobile-bare-rn.md) — Expo→bare RN swap kept screen code stable via drop-in shims in src/lib/* (router, audio, haptics, icon); call sites import from `@/lib/*` not `expo-*`.

@@ -3,7 +3,6 @@ previewPath = "/tour-mobile/"
 title = "TourFlow Mobile"
 version = "1.0.0"
 id = "artifacts/tour-mobile"
-router = "expo-domain"
 
 [[integratedSkills]]
 name = "expo"
@@ -16,7 +15,7 @@ paths = [ "/tour-mobile/" ]
 localPort = 22753
 
 [services.development]
-run = "pnpm --filter @workspace/tour-mobile run dev"
+run = "pnpm --filter @workspace/tour-mobile run serve"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/tour-mobile", "run", "build" ]
