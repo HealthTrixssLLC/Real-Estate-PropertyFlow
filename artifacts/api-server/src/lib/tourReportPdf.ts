@@ -1,14 +1,21 @@
 import PDFDocument from "pdfkit";
 import { type TourReportData, formatPrice } from "./tourReportData";
 
-const COLOR_PRIMARY = "#0F172A";
-const COLOR_ACCENT = "#2563EB";
-const COLOR_MUTED = "#64748B";
-const COLOR_BORDER = "#E2E8F0";
-const COLOR_BG_SOFT = "#F8FAFC";
-const COLOR_GREEN = "#059669";
-const COLOR_AMBER = "#D97706";
-const COLOR_RED = "#DC2626";
+const COLOR_PRIMARY  = "#0F172A";
+const COLOR_ACCENT   = "#2563EB";
+const COLOR_MUTED    = "#64748B";
+const COLOR_BORDER   = "#CBD5E1";
+const COLOR_GREEN    = "#059669";
+const COLOR_AMBER    = "#D97706";
+const COLOR_RED      = "#DC2626";
+const COLOR_WHITE    = "#FFFFFF";
+const COLOR_HEADER_BG = "#0F172A";
+const COLOR_ACCENT_STRIP = "#2563EB";
+
+const MARGIN = 52;
+const FONT_BODY = "Helvetica";
+const FONT_BOLD = "Helvetica-Bold";
+const FONT_ITALIC = "Helvetica-Oblique";
 
 function fmtDate(d: string | Date | null | undefined): string {
   if (!d) return "—";
@@ -27,130 +34,160 @@ function fitColor(score: number | null): string {
   return COLOR_RED;
 }
 
+function contentWidth(doc: PDFKit.PDFDocument): number {
+  return doc.page.width - MARGIN * 2;
+}
+
+function pageBottom(doc: PDFKit.PDFDocument): number {
+  return doc.page.height - doc.page.margins.bottom;
+}
+
 function ensureSpace(doc: PDFKit.PDFDocument, needed: number): void {
-  const bottom = doc.page.height - doc.page.margins.bottom;
-  if (doc.y + needed > bottom) {
-    doc.addPage();
-  }
+  if (doc.y + needed > pageBottom(doc)) doc.addPage();
 }
 
-function hr(doc: PDFKit.PDFDocument, color = COLOR_BORDER): void {
-  doc.moveTo(doc.page.margins.left, doc.y)
-    .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-    .lineWidth(0.7)
-    .strokeColor(color)
-    .stroke();
-  doc.moveDown(0.6);
+function rule(doc: PDFKit.PDFDocument, color = COLOR_BORDER, weight = 0.5): void {
+  const y = doc.y;
+  doc.moveTo(MARGIN, y).lineTo(MARGIN + contentWidth(doc), y)
+    .lineWidth(weight).strokeColor(color).stroke();
 }
 
-function sectionHeading(doc: PDFKit.PDFDocument, label: string): void {
-  ensureSpace(doc, 50);
-  doc.fillColor(COLOR_ACCENT).font("Helvetica-Bold").fontSize(8);
-  doc.text(label.toUpperCase(), { characterSpacing: 1.4 });
-  doc.moveDown(0.2);
-  hr(doc);
+function gap(doc: PDFKit.PDFDocument, pts = 8): void {
+  doc.y += pts;
+}
+
+function label(doc: PDFKit.PDFDocument, text: string): void {
+  doc.font(FONT_BOLD).fontSize(7).fillColor(COLOR_MUTED)
+    .text(text.toUpperCase(), MARGIN, doc.y, { characterSpacing: 1.2, width: contentWidth(doc) });
+  gap(doc, 3);
+}
+
+function body(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  opts: { color?: string; size?: number; italic?: boolean; indent?: number } = {},
+): void {
+  if (!text) return;
+  doc.font(opts.italic ? FONT_ITALIC : FONT_BODY)
+    .fontSize(opts.size ?? 9.5)
+    .fillColor(opts.color ?? COLOR_PRIMARY)
+    .text(text, MARGIN + (opts.indent ?? 0), doc.y, {
+      width: contentWidth(doc) - (opts.indent ?? 0),
+      lineGap: 1.5,
+    });
+  gap(doc, 4);
 }
 
 function bullets(doc: PDFKit.PDFDocument, items: string[], color = COLOR_PRIMARY): void {
   if (!items || items.length === 0) return;
-  doc.font("Helvetica").fontSize(10).fillColor(color);
+  doc.font(FONT_BODY).fontSize(9.5).fillColor(color);
   for (const item of items) {
-    ensureSpace(doc, 16);
-    doc.text(`•  ${item}`, { indent: 8, lineGap: 2 });
+    ensureSpace(doc, 15);
+    doc.text(`•  ${item}`, MARGIN + 8, doc.y, { width: contentWidth(doc) - 8, lineGap: 1.5 });
+    gap(doc, 2);
   }
-  doc.moveDown(0.4);
+  gap(doc, 4);
 }
 
-function paragraph(doc: PDFKit.PDFDocument, text: string, opts: { color?: string; size?: number; italic?: boolean } = {}): void {
-  if (!text) return;
-  doc
-    .font(opts.italic ? "Helvetica-Oblique" : "Helvetica")
-    .fontSize(opts.size ?? 10)
-    .fillColor(opts.color ?? COLOR_PRIMARY)
-    .text(text, { lineGap: 2, align: "left" });
-  doc.moveDown(0.4);
+function sectionTitle(doc: PDFKit.PDFDocument, text: string): void {
+  ensureSpace(doc, 40);
+  gap(doc, 10);
+  label(doc, text);
+  rule(doc, COLOR_ACCENT_STRIP, 1);
+  gap(doc, 6);
 }
 
 function renderHeader(doc: PDFKit.PDFDocument, data: TourReportData): void {
-  const { tour, buyer, agentName, generatedAt } = data;
-  doc.rect(0, 0, doc.page.width, 110).fillColor(COLOR_PRIMARY).fill();
-  doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(11);
-  doc.text("TOURFLOW · TOUR REPORT", doc.page.margins.left, 32, { characterSpacing: 2 });
-  doc.font("Helvetica-Bold").fontSize(22).fillColor("#FFFFFF");
-  doc.text(tour.title, doc.page.margins.left, 50, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right });
-  doc.font("Helvetica").fontSize(10).fillColor("#CBD5E1");
+  const { tour, buyer, agentName } = data;
+  const bandH = 82;
+
+  doc.rect(0, 0, doc.page.width, bandH).fillColor(COLOR_HEADER_BG).fill();
+
+  doc.font(FONT_BOLD).fontSize(7.5).fillColor("#64748B")
+    .text("TOURFLOW  ·  TOUR REPORT", MARGIN, 18, { characterSpacing: 2, width: contentWidth(doc) });
+
+  doc.font(FONT_BOLD).fontSize(20).fillColor(COLOR_WHITE)
+    .text(tour.title, MARGIN, 30, { width: doc.page.width - MARGIN - 120 });
+
   const subParts: string[] = [];
-  if (buyer?.name) subParts.push(`Buyer: ${buyer.name}`);
+  if (buyer?.name) subParts.push(buyer.name);
   subParts.push(fmtDate(tour.date));
   if (agentName) subParts.push(`Agent: ${agentName}`);
-  doc.text(subParts.join("   ·   "), doc.page.margins.left, 82);
-  doc.y = 130;
-  doc.fillColor(COLOR_MUTED).fontSize(8).font("Helvetica");
-  doc.text(`Generated ${generatedAt.toLocaleString("en-US")}`, { align: "right" });
-  doc.moveDown(0.8);
+
+  doc.font(FONT_BODY).fontSize(8.5).fillColor("#94A3B8")
+    .text(subParts.join("   ·   "), MARGIN, 58, { width: contentWidth(doc) });
+
+  doc.y = bandH + 12;
+
+  doc.font(FONT_BODY).fontSize(7.5).fillColor(COLOR_MUTED)
+    .text(`Generated ${data.generatedAt.toLocaleString("en-US")}`, MARGIN, doc.y, {
+      width: contentWidth(doc), align: "right",
+    });
+  gap(doc, 8);
 }
 
 function renderOverview(doc: PDFKit.PDFDocument, data: TourReportData): void {
   const { tour, stops, buyer } = data;
-  const visited = stops.filter(s => s.stop.visited && !s.stop.skipped).length;
-  const skipped = stops.filter(s => s.stop.skipped).length;
+  const visited   = stops.filter(s => s.stop.visited && !s.stop.skipped).length;
+  const skipped   = stops.filter(s => s.stop.skipped).length;
   const followUps = stops.filter(s => s.stop.followUpFlag).length;
-  const revisits = stops.filter(s => s.stop.revisitFlag).length;
+  const revisits  = stops.filter(s => s.stop.revisitFlag).length;
 
-  sectionHeading(doc, "Tour Overview");
+  sectionTitle(doc, "Tour Overview");
+
   const startY = doc.y;
-  const colW = (doc.page.width - doc.page.margins.left - doc.page.margins.right) / 4;
+  const cw = contentWidth(doc);
+  const colW = cw / 4;
   const stats: Array<[string, string, string]> = [
-    [String(stops.length), "Stops", COLOR_PRIMARY],
-    [String(visited), "Visited", COLOR_GREEN],
-    [String(followUps), "Follow-ups", COLOR_AMBER],
-    [String(revisits), "Second Looks", COLOR_ACCENT],
+    [String(stops.length),  "Properties",   COLOR_PRIMARY],
+    [String(visited),       "Visited",       COLOR_GREEN],
+    [String(followUps),     "Follow-ups",    COLOR_AMBER],
+    [String(revisits),      "Second Looks",  COLOR_ACCENT],
   ];
-  stats.forEach(([num, label, color], i) => {
-    const x = doc.page.margins.left + colW * i;
-    doc.font("Helvetica-Bold").fontSize(22).fillColor(color);
-    doc.text(num, x, startY, { width: colW, align: "center" });
-    doc.font("Helvetica").fontSize(9).fillColor(COLOR_MUTED);
-    doc.text(label, x, startY + 28, { width: colW, align: "center" });
+  stats.forEach(([num, lbl, color], i) => {
+    const x = MARGIN + colW * i;
+    doc.font(FONT_BOLD).fontSize(20).fillColor(color)
+      .text(num, x, startY, { width: colW, align: "center" });
+    doc.font(FONT_BODY).fontSize(8).fillColor(COLOR_MUTED)
+      .text(lbl, x, startY + 24, { width: colW, align: "center" });
   });
-  doc.y = startY + 50;
+  doc.y = startY + 44;
   if (skipped > 0) {
-    doc.font("Helvetica").fontSize(9).fillColor(COLOR_MUTED);
-    doc.text(`${skipped} stop${skipped === 1 ? "" : "s"} skipped`, { align: "center" });
+    doc.font(FONT_BODY).fontSize(8).fillColor(COLOR_MUTED)
+      .text(`${skipped} stop${skipped === 1 ? "" : "s"} skipped`, MARGIN, doc.y, { width: cw, align: "center" });
+    gap(doc, 4);
   }
-  doc.moveDown(0.6);
+  gap(doc, 6);
 
+  const metaLines: string[] = [];
   if (buyer && (buyer.email || buyer.phone)) {
-    const contact = [buyer.email, buyer.phone].filter(Boolean).join(" · ");
-    doc.font("Helvetica").fontSize(9).fillColor(COLOR_MUTED);
-    doc.text(`Buyer contact: ${contact}`, { align: "center" });
-    doc.moveDown(0.4);
+    metaLines.push([buyer.email, buyer.phone].filter(Boolean).join("  ·  "));
   }
-  if (tour.startAddress) {
-    doc.font("Helvetica").fontSize(9).fillColor(COLOR_MUTED);
-    doc.text(`Start: ${tour.startAddress}`, { align: "center" });
-    doc.moveDown(0.6);
+  if (tour.startAddress) metaLines.push(`Start: ${tour.startAddress}`);
+  if (metaLines.length > 0) {
+    doc.font(FONT_BODY).fontSize(8.5).fillColor(COLOR_MUTED)
+      .text(metaLines.join("    "), MARGIN, doc.y, { width: cw, align: "center" });
+    gap(doc, 8);
   }
 }
 
 function renderTourSummary(doc: PDFKit.PDFDocument, data: TourReportData): void {
   if (!data.tourSummary) return;
   const s = data.tourSummary;
-  sectionHeading(doc, "AI Tour Summary");
-  paragraph(doc, s.summaryText);
+  sectionTitle(doc, "AI Tour Summary");
+  if (s.summaryText) body(doc, s.summaryText);
 
   const blocks: Array<[string, string[] | null]> = [
-    ["Top Homes to Consider", s.topHomes ?? null],
-    ["Homes to Eliminate", s.homesToEliminate ?? null],
-    ["Buyer Preferences Observed", s.buyerPreferences ?? null],
-    ["Suggested Next Actions", s.nextActions ?? null],
+    ["Top homes to consider",       s.topHomes ?? null],
+    ["Homes to eliminate",          s.homesToEliminate ?? null],
+    ["Buyer preferences observed",  s.buyerPreferences ?? null],
+    ["Suggested next actions",      s.nextActions ?? null],
   ];
-  for (const [label, items] of blocks) {
+  for (const [lbl, items] of blocks) {
     if (items && items.length > 0) {
-      ensureSpace(doc, 60);
-      doc.font("Helvetica-Bold").fontSize(10).fillColor(COLOR_PRIMARY);
-      doc.text(label);
-      doc.moveDown(0.2);
+      ensureSpace(doc, 50);
+      doc.font(FONT_BOLD).fontSize(9.5).fillColor(COLOR_PRIMARY).text(lbl, MARGIN, doc.y);
+      gap(doc, 3);
       bullets(doc, items);
     }
   }
@@ -159,232 +196,241 @@ function renderTourSummary(doc: PDFKit.PDFDocument, data: TourReportData): void 
 function renderCrossTour(doc: PDFKit.PDFDocument, data: TourReportData): void {
   const r = data.crossTourRollup;
   if (!r) return;
-  sectionHeading(doc, `Buyer Preference Rollup · ${r.totalCompletedTours} Completed Tours`);
+  sectionTitle(doc, `Buyer Preference Rollup  ·  ${r.totalCompletedTours} Completed Tours`);
   if (r.preferenceProfile) {
     try {
       const parsed = JSON.parse(r.preferenceProfile) as { summary?: string };
-      if (parsed.summary) paragraph(doc, parsed.summary);
+      if (parsed.summary) body(doc, parsed.summary);
     } catch {
-      paragraph(doc, r.preferenceProfile);
+      body(doc, r.preferenceProfile);
     }
   }
   if (r.recurringPositives.length > 0) {
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(COLOR_GREEN);
-    doc.text("Recurring positives across tours");
-    doc.moveDown(0.2);
+    doc.font(FONT_BOLD).fontSize(9.5).fillColor(COLOR_GREEN).text("Recurring strengths", MARGIN, doc.y);
+    gap(doc, 3);
     bullets(doc, r.recurringPositives);
   }
   if (r.recurringConcerns.length > 0) {
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(COLOR_RED);
-    doc.text("Recurring concerns across tours");
-    doc.moveDown(0.2);
+    doc.font(FONT_BOLD).fontSize(9.5).fillColor(COLOR_RED).text("Recurring concerns", MARGIN, doc.y);
+    gap(doc, 3);
     bullets(doc, r.recurringConcerns);
   }
 }
 
-function renderStop(doc: PDFKit.PDFDocument, rs: TourReportData["stops"][number], index: number): void {
-  ensureSpace(doc, 140);
+function renderStop(doc: PDFKit.PDFDocument, rs: TourReportData["stops"][number], index: number, total: number): void {
   const { stop, property, propertySummary, typedNotes } = rs;
-  const x0 = doc.page.margins.left;
-  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const cw = contentWidth(doc);
 
-  // Card header band
-  const bandY = doc.y;
-  doc.rect(x0, bandY, w, 32).fillColor(COLOR_BG_SOFT).fill();
-  doc.fillColor(COLOR_PRIMARY).font("Helvetica-Bold").fontSize(11);
-  const headerLabel = `STOP ${index + 1} · ${property?.nickname ?? property?.formattedAddress ?? "Property"}`;
-  doc.text(headerLabel, x0 + 10, bandY + 9, { width: w - 100 });
-  // Status pill
-  const statusText = stop.skipped ? "SKIPPED" : stop.visited ? "VISITED" : "NOT VISITED";
+  // Thin accent rule above stop header
+  rule(doc, COLOR_ACCENT_STRIP, 1.5);
+  gap(doc, 7);
+
+  // Stop number + property name line
+  const statusText  = stop.skipped ? "SKIPPED" : stop.visited ? "VISITED" : "NOT VISITED";
   const statusColor = stop.skipped ? COLOR_AMBER : stop.visited ? COLOR_GREEN : COLOR_MUTED;
-  doc.fillColor(statusColor).font("Helvetica-Bold").fontSize(8);
-  doc.text(statusText, x0 + w - 90, bandY + 11, { width: 80, align: "right", characterSpacing: 1 });
-  doc.y = bandY + 38;
 
-  // Address line (if nickname header)
+  const stopNumLabel = `STOP ${index + 1} OF ${total}`;
+  doc.font(FONT_BOLD).fontSize(7.5).fillColor(COLOR_ACCENT)
+    .text(stopNumLabel, MARGIN, doc.y, { continued: true, characterSpacing: 1 });
+  doc.font(FONT_BOLD).fontSize(7.5).fillColor(statusColor)
+    .text(`    ${statusText}`, { characterSpacing: 0.8 });
+
+  gap(doc, 3);
+
+  const propertyName = property?.nickname ?? property?.formattedAddress ?? "Property";
+  doc.font(FONT_BOLD).fontSize(14).fillColor(COLOR_PRIMARY)
+    .text(propertyName, MARGIN, doc.y, { width: cw });
+  gap(doc, 2);
+
   if (property?.nickname && property?.formattedAddress) {
-    doc.font("Helvetica").fontSize(9).fillColor(COLOR_MUTED);
-    doc.text(property.formattedAddress, x0 + 10, doc.y, { width: w - 20 });
-    doc.moveDown(0.3);
+    doc.font(FONT_BODY).fontSize(8.5).fillColor(COLOR_MUTED)
+      .text(property.formattedAddress, MARGIN, doc.y, { width: cw });
+    gap(doc, 3);
   }
 
-  // Property meta line
+  // Property details line
   if (property) {
     const meta = [
       property.listPrice ? formatPrice(property.listPrice) : null,
-      property.beds ? `${property.beds} bd` : null,
-      property.baths ? `${property.baths} ba` : null,
+      property.beds      ? `${property.beds} bd`                          : null,
+      property.baths     ? `${property.baths} ba`                         : null,
       property.squareFeet ? `${property.squareFeet.toLocaleString()} sqft` : null,
-    ].filter(Boolean).join("  ·  ");
+    ].filter(Boolean).join("   ·   ");
     if (meta) {
-      doc.font("Helvetica").fontSize(9).fillColor(COLOR_PRIMARY);
-      doc.text(meta, x0 + 10, doc.y, { width: w - 20 });
-      doc.moveDown(0.4);
+      doc.font(FONT_BOLD).fontSize(9).fillColor(COLOR_PRIMARY)
+        .text(meta, MARGIN, doc.y, { width: cw });
+      gap(doc, 6);
     }
-  }
-
-  // Ratings + fit score row
-  const ratingPairs: Array<[string, number | null]> = [
-    ["Overall Fit", stop.overallFitRating],
-    ["Buyer Interest", stop.buyerInterest],
-    ["Kitchen", stop.kitchenRating],
-    ["Primary Suite", stop.primarySuiteRating],
-    ["Backyard", stop.backyardRating],
-    ["Road Noise", stop.roadNoiseRating],
-  ].filter(([, v]) => v != null) as Array<[string, number]>;
-
-  if (ratingPairs.length > 0 || rs.fitScore != null) {
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(COLOR_MUTED);
-    doc.text("RATINGS", x0 + 10, doc.y, { characterSpacing: 1.2 });
-    doc.moveDown(0.2);
-    if (rs.fitScore != null) {
-      doc.font("Helvetica-Bold").fontSize(12).fillColor(fitColor(rs.fitScore));
-      doc.text(`AI Fit Score: ${rs.fitScore}/100${rs.fitScoreVerdict ? `  ·  ${rs.fitScoreVerdict}` : ""}`, x0 + 10, doc.y);
-      doc.moveDown(0.3);
-    }
-    if (ratingPairs.length > 0) {
-      doc.font("Helvetica").fontSize(9).fillColor(COLOR_PRIMARY);
-      const ratingLine = ratingPairs.map(([k, v]) => `${k}: ${"★".repeat(v)}${"☆".repeat(5 - v)} (${v}/5)`).join("    ");
-      doc.text(ratingLine, x0 + 10, doc.y, { width: w - 20 });
-      doc.moveDown(0.4);
-    }
-  }
-
-  // Positives / negatives
-  if (rs.fitScorePositives.length > 0) {
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(COLOR_GREEN);
-    doc.text("Positives", x0 + 10, doc.y);
-    doc.moveDown(0.15);
-    bullets(doc, rs.fitScorePositives, COLOR_PRIMARY);
-  }
-  if (rs.fitScoreNegatives.length > 0) {
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(COLOR_RED);
-    doc.text("Concerns", x0 + 10, doc.y);
-    doc.moveDown(0.15);
-    bullets(doc, rs.fitScoreNegatives, COLOR_PRIMARY);
-  }
-
-  // Quick tags
-  if (stop.quickTags && stop.quickTags.length > 0) {
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(COLOR_MUTED);
-    doc.text("QUICK TAGS", x0 + 10, doc.y, { characterSpacing: 1.2 });
-    doc.moveDown(0.15);
-    doc.font("Helvetica").fontSize(9).fillColor(COLOR_ACCENT);
-    doc.text(stop.quickTags.join("  ·  "), x0 + 10, doc.y, { width: w - 20 });
-    doc.moveDown(0.4);
-  }
-
-  // Flags
-  const flags: string[] = [];
-  if (stop.followUpFlag) flags.push("Follow-up flagged");
-  if (stop.revisitFlag) flags.push("Second look requested");
-  if (flags.length > 0) {
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(COLOR_AMBER);
-    doc.text(flags.join("  ·  "), x0 + 10, doc.y);
-    doc.moveDown(0.4);
   }
 
   // Skip reason
   if (stop.skipped && stop.skipReason) {
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(COLOR_AMBER);
-    doc.text(`Skip reason: ${stop.skipReason.replace(/_/g, " ")}${stop.skipNotes ? ` — ${stop.skipNotes}` : ""}`, x0 + 10, doc.y, { width: w - 20 });
-    doc.moveDown(0.4);
+    doc.font(FONT_ITALIC).fontSize(9).fillColor(COLOR_AMBER)
+      .text(
+        `Skip reason: ${stop.skipReason.replace(/_/g, " ")}${stop.skipNotes ? ` — ${stop.skipNotes}` : ""}`,
+        MARGIN, doc.y, { width: cw },
+      );
+    gap(doc, 6);
+  }
+
+  // Fit score
+  if (rs.fitScore != null) {
+    doc.font(FONT_BOLD).fontSize(11).fillColor(fitColor(rs.fitScore))
+      .text(
+        `AI Fit Score: ${rs.fitScore}/100${rs.fitScoreVerdict ? `   ·   ${rs.fitScoreVerdict}` : ""}`,
+        MARGIN, doc.y, { width: cw },
+      );
+    gap(doc, 4);
+  }
+
+  // Ratings — plain text, no Unicode stars
+  const ratingPairs: Array<[string, number]> = [
+    ["Overall",       stop.overallFitRating],
+    ["Interest",      stop.buyerInterest],
+    ["Kitchen",       stop.kitchenRating],
+    ["Primary Suite", stop.primarySuiteRating],
+    ["Backyard",      stop.backyardRating],
+    ["Road Noise",    stop.roadNoiseRating],
+  ].filter(([, v]) => v != null) as Array<[string, number]>;
+
+  if (ratingPairs.length > 0) {
+    const ratingStr = ratingPairs.map(([k, v]) => `${k}: ${v}/5`).join("    ");
+    doc.font(FONT_BODY).fontSize(9).fillColor(COLOR_MUTED)
+      .text(ratingStr, MARGIN, doc.y, { width: cw });
+    gap(doc, 6);
+  }
+
+  // Flags
+  const flags: string[] = [];
+  if (stop.followUpFlag)  flags.push("Follow-up flagged");
+  if (stop.revisitFlag)   flags.push("Second look requested");
+  if (flags.length > 0) {
+    doc.font(FONT_BOLD).fontSize(9).fillColor(COLOR_AMBER)
+      .text(flags.join("   ·   "), MARGIN, doc.y, { width: cw });
+    gap(doc, 4);
+  }
+
+  // Quick tags
+  if (stop.quickTags && stop.quickTags.length > 0) {
+    doc.font(FONT_BODY).fontSize(9).fillColor(COLOR_ACCENT)
+      .text(stop.quickTags.join("  ·  "), MARGIN, doc.y, { width: cw });
+    gap(doc, 4);
+  }
+
+  // Positives / concerns
+  if (rs.fitScorePositives.length > 0) {
+    ensureSpace(doc, 40);
+    doc.font(FONT_BOLD).fontSize(9).fillColor(COLOR_GREEN).text("Strengths", MARGIN, doc.y);
+    gap(doc, 2);
+    bullets(doc, rs.fitScorePositives);
+  }
+  if (rs.fitScoreNegatives.length > 0) {
+    ensureSpace(doc, 40);
+    doc.font(FONT_BOLD).fontSize(9).fillColor(COLOR_RED).text("Concerns", MARGIN, doc.y);
+    gap(doc, 2);
+    bullets(doc, rs.fitScoreNegatives);
   }
 
   // AI property summary
   if (propertySummary?.summaryText) {
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(COLOR_MUTED);
-    doc.text("AI PROPERTY SUMMARY", x0 + 10, doc.y, { characterSpacing: 1.2 });
-    doc.moveDown(0.15);
-    doc.font("Helvetica").fontSize(9).fillColor(COLOR_PRIMARY);
-    doc.text(propertySummary.summaryText, x0 + 10, doc.y, { width: w - 20, lineGap: 1.5 });
-    doc.moveDown(0.4);
+    ensureSpace(doc, 50);
+    label(doc, "AI Property Summary");
+    body(doc, propertySummary.summaryText);
+    const extras: Array<[string, string[]]> = [
+      ["Positives",              propertySummary.positives ?? []],
+      ["Concerns",               propertySummary.negatives ?? []],
+      ["Questions for Seller",   propertySummary.questions ?? []],
+    ];
+    for (const [lbl, items] of extras) {
+      if (items.length > 0) {
+        doc.font(FONT_BOLD).fontSize(9).fillColor(COLOR_MUTED).text(lbl, MARGIN, doc.y);
+        gap(doc, 2);
+        bullets(doc, items);
+      }
+    }
   }
 
-  // Debrief
+  // Buyer debrief
   if (rs.debriefSummary || rs.debriefTranscript) {
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(COLOR_MUTED);
-    doc.text("BUYER DEBRIEF", x0 + 10, doc.y, { characterSpacing: 1.2 });
-    doc.moveDown(0.15);
+    ensureSpace(doc, 40);
+    label(doc, "Buyer Debrief");
     if (rs.debriefSummary) {
-      doc.font("Helvetica").fontSize(9).fillColor(COLOR_PRIMARY);
-      doc.text(rs.debriefSummary, x0 + 10, doc.y, { width: w - 20, lineGap: 1.5 });
-      doc.moveDown(0.3);
-    }
-    if (rs.debriefTranscript && !rs.debriefSummary) {
-      doc.font("Helvetica-Oblique").fontSize(9).fillColor(COLOR_MUTED);
-      doc.text(`"${rs.debriefTranscript}"`, x0 + 10, doc.y, { width: w - 20, lineGap: 1.5 });
-      doc.moveDown(0.3);
+      body(doc, rs.debriefSummary);
+    } else if (rs.debriefTranscript) {
+      body(doc, `"${rs.debriefTranscript}"`, { italic: true, color: COLOR_MUTED });
     }
   }
 
   // Notes
   if (typedNotes.length > 0) {
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(COLOR_MUTED);
-    doc.text("NOTES", x0 + 10, doc.y, { characterSpacing: 1.2 });
-    doc.moveDown(0.15);
+    ensureSpace(doc, 40);
+    label(doc, "Notes");
     bullets(doc, typedNotes);
   }
 
-  doc.moveDown(0.6);
-  hr(doc);
+  gap(doc, 4);
 }
 
 export async function renderTourReportPdf(data: TourReportData): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({
       size: "LETTER",
-      margins: { top: 56, bottom: 56, left: 56, right: 56 },
+      margins: { top: 0, bottom: 44, left: MARGIN, right: MARGIN },
       bufferPages: true,
       info: {
-        Title: `Tour Report — ${data.tour.title}`,
-        Author: data.agentName ?? "TourFlow",
+        Title:   `Tour Report — ${data.tour.title}`,
+        Author:  data.agentName ?? "TourFlow",
         Subject: "Real Estate Tour Report",
       },
     });
     const chunks: Buffer[] = [];
-    doc.on("data", (c: Buffer) => chunks.push(c));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("data",  (c: Buffer) => chunks.push(c));
+    doc.on("end",   () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
     try {
+      // Cover section (header + overview + summaries) flows continuously on page 1
       renderHeader(doc, data);
       renderOverview(doc, data);
       renderTourSummary(doc, data);
       renderCrossTour(doc, data);
 
-      doc.addPage();
-      sectionHeading(doc, "Properties Visited");
-      data.stops.forEach((s, i) => {
-        if (i > 0) doc.addPage();
-        renderStop(doc, s, i);
-      });
+      // Properties section — page-break only between stops
+      if (data.stops.length > 0) {
+        // If there's less than 200pt left on the current page, start fresh
+        if (doc.y + 200 > pageBottom(doc)) {
+          doc.addPage();
+        } else {
+          sectionTitle(doc, "Properties Visited");
+        }
 
-      // Footer with page numbers + agent contact info
+        data.stops.forEach((s, i) => {
+          if (i > 0) {
+            doc.addPage();
+          } else if (doc.y + 200 > pageBottom(doc)) {
+            doc.addPage();
+          }
+          renderStop(doc, s, i, data.stops.length);
+        });
+      }
+
+      // Footer pass — page number + agent contact
       const contactParts: string[] = [];
-      if (data.agentName) contactParts.push(data.agentName);
+      if (data.agentName)  contactParts.push(data.agentName);
       if (data.agentEmail) contactParts.push(data.agentEmail);
       if (data.agentPhone) contactParts.push(data.agentPhone);
       const agentLine = contactParts.length > 0
-        ? `Prepared by ${contactParts.join(" · ")}`
-        : `TourFlow · ${data.tour.title}`;
+        ? `Prepared by ${contactParts.join("  ·  ")}`
+        : "TourFlow";
 
       const range = doc.bufferedPageRange();
       for (let i = 0; i < range.count; i++) {
         doc.switchToPage(range.start + i);
-        doc.font("Helvetica").fontSize(8).fillColor(COLOR_MUTED);
-        doc.text(
-          agentLine,
-          doc.page.margins.left,
-          doc.page.height - 36,
-          { align: "left", width: doc.page.width - doc.page.margins.left - doc.page.margins.right },
-        );
-        doc.text(
-          `Page ${i + 1} of ${range.count}`,
-          doc.page.margins.left,
-          doc.page.height - 36,
-          { align: "right", width: doc.page.width - doc.page.margins.left - doc.page.margins.right },
-        );
+        const footerY  = doc.page.height - 28;
+        const footerW  = doc.page.width - MARGIN * 2;
+        doc.font(FONT_BODY).fontSize(7.5).fillColor(COLOR_MUTED);
+        doc.text(agentLine,               MARGIN, footerY, { width: footerW, align: "left" });
+        doc.text(`${i + 1} / ${range.count}`, MARGIN, footerY, { width: footerW, align: "right" });
       }
 
       doc.end();
