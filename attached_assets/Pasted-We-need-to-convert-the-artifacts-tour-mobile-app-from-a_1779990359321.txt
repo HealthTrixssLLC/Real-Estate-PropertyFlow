@@ -1,0 +1,184 @@
+We need to convert the `artifacts/tour-mobile` app from an Expo-managed React Native app into a native Xcode-buildable iOS app without Expo.
+
+Context:
+The repo is `Real-Estate-PropertyFlow`.
+The mobile app is located at `artifacts/tour-mobile`.
+The root workspace currently builds successfully with:
+
+```bash
+pnpm install
+pnpm run build
+```
+
+However, when attempting to build the iOS app locally with Xcode/Expo, the build fails inside the Expo native dependency `expo-file-system`:
+
+```text
+expo-file-system/ios/FileSystemModule.swift
+value of type 'any EXFileSystemInterface' has no member 'getPathPermissions'
+CommandError: Failed to build iOS project. "xcodebuild" exited with error code 65.
+```
+
+Goal:
+Remove Expo from the mobile app and make `artifacts/tour-mobile` a bare React Native iOS app that can be opened and built directly in Xcode using an `.xcworkspace`.
+
+Important:
+Do not break the rest of the monorepo.
+Do not change unrelated packages.
+Do not require Expo CLI, Expo Go, EAS, or `expo prebuild` for local iOS development.
+The final iOS app should build using Xcode and CocoaPods.
+
+Tasks:
+
+1. Audit the current `artifacts/tour-mobile` package
+
+   * Identify all Expo dependencies and Expo-specific imports.
+   * Identify all Expo-specific config files, scripts, routing, and runtime assumptions.
+   * Document what each Expo package is used for.
+
+2. Convert the app to bare React Native
+
+   * Replace Expo startup/runtime code with standard React Native entry files.
+   * Ensure the app uses a normal `index.js` or equivalent React Native entry point.
+   * Ensure the iOS project has a real committed `ios/` folder.
+   * Ensure the iOS project opens through `ios/*.xcworkspace`.
+   * Remove reliance on `expo start`, `expo run:ios`, `expo prebuild`, `expo-router`, and Expo Go.
+
+3. Replace Expo libraries with non-Expo equivalents
+   Replace or remove these if present:
+
+   * `expo-file-system`
+   * `expo-router`
+   * `expo-location`
+   * `expo-image-picker`
+   * `expo-haptics`
+   * `expo-image`
+   * `expo-linear-gradient`
+   * `expo-linking`
+   * `expo-web-browser`
+   * `expo-splash-screen`
+   * `expo-system-ui`
+   * any other `expo-*` package
+
+   Suggested replacements:
+
+   * Navigation: use React Navigation or simple React Native navigation structure.
+   * Linking: use React Native `Linking`.
+   * Images: use React Native `Image` unless advanced image handling is required.
+   * Image picker: use `react-native-image-picker` if image selection is actually used.
+   * File system: use `react-native-fs` or remove the dependency if unused.
+   * Location: use a bare React Native compatible location library or native iOS CoreLocation bridging if actually required.
+   * Haptics: use `react-native-haptic-feedback` if actually required.
+   * Linear gradient: use `react-native-linear-gradient` if actually required.
+   * Splash screen: configure native iOS LaunchScreen in Xcode.
+
+4. Update package scripts
+   In `artifacts/tour-mobile/package.json`, remove Expo scripts and add native React Native scripts, for example:
+
+   * `ios`
+   * `start`
+   * `typecheck`
+   * `build:ios` if practical
+
+   The app should be runnable locally with commands similar to:
+
+   ```bash
+   cd artifacts/tour-mobile
+   pnpm install
+   pnpm start
+   ```
+
+   Then in another terminal:
+
+   ```bash
+   cd artifacts/tour-mobile/ios
+   pod install
+   open *.xcworkspace
+   ```
+
+5. Configure iOS native project
+
+   * Ensure the iOS bundle identifier is valid.
+   * Ensure the deployment target works with the installed React Native version.
+   * Ensure CocoaPods installs successfully.
+   * Ensure the app builds in Xcode for an iPhone simulator.
+   * Ensure Hermes/new architecture settings are compatible.
+   * Ensure permissions such as Location, Photos, or Camera are only added if the app actually needs them.
+   * Add required `Info.plist` permission strings if needed.
+
+6. Preserve existing app behavior
+
+   * Keep the current screens, UI, navigation flow, and business logic as close as possible.
+   * Do not redesign the app.
+   * Do not remove functionality unless it was only Expo-specific and unused.
+   * If a feature cannot be ported safely, stub it with a clearly marked TODO and document the replacement needed.
+
+7. Update monorepo compatibility
+
+   * Ensure the root command still passes:
+
+   ```bash
+   pnpm install
+   pnpm run build
+   ```
+
+   * Ensure the mobile package still passes:
+
+   ```bash
+   pnpm --filter "./artifacts/tour-mobile" run typecheck
+   ```
+
+   * Ensure there are no Expo dependencies left in the mobile app unless explicitly justified.
+
+8. Add documentation
+   Create or update a document at:
+
+   ```text
+   artifacts/tour-mobile/README.md
+   ```
+
+   Include:
+
+   * How to install dependencies
+   * How to run Metro
+   * How to install pods
+   * How to open the app in Xcode
+   * How to build/run on iOS simulator
+   * How to build/run on a physical iPhone
+   * Any required environment variables
+   * Any known limitations
+
+9. Final verification required
+   After making the changes, run and report results for:
+
+   ```bash
+   cd /workspace/Real-Estate-PropertyFlow
+   pnpm install
+   pnpm run build
+   pnpm --filter "./artifacts/tour-mobile" run typecheck
+   ```
+
+   If the environment cannot run Xcode because Replit is Linux based, still prepare the native iOS project and provide the exact commands for me to run locally on my Mac:
+
+   ```bash
+   cd /Volumes/ExternalData/Projects/HMB-PropertyFlow/Real-Estate-PropertyFlow/artifacts/tour-mobile
+   pnpm install
+   pnpm start
+   ```
+
+   Then in a second terminal:
+
+   ```bash
+   cd /Volumes/ExternalData/Projects/HMB-PropertyFlow/Real-Estate-PropertyFlow/artifacts/tour-mobile/ios
+   pod install
+   open *.xcworkspace
+   ```
+
+Acceptance criteria:
+
+* `artifacts/tour-mobile` no longer depends on Expo.
+* The app has a real native iOS project under `artifacts/tour-mobile/ios`.
+* The app can be opened in Xcode through `.xcworkspace`.
+* The app can build locally in Xcode without `expo run:ios`.
+* Root workspace build still passes.
+* Mobile typecheck still passes.
+* README explains exactly how to build and test in Xcode.
