@@ -1,0 +1,365 @@
+jaybaker@Jays-Mac-mini tour-mobile % pnpm typecheck 2>&1 | tee typecheck-error.log
+
+> @workspace/tour-mobile@0.0.0 typecheck /Volumes/ExternalData/Projects/HMB-PropertyFlow/Real-Estate-PropertyFlow/artifacts/tour-mobile
+> tsc -p tsconfig.json --noEmit
+
+error TS2468: Cannot find global value 'Promise'.
+src/App.tsx(6,37): error TS2307: Cannot find module '@react-navigation/native' or its corresponding type declarations.
+src/App.tsx(29,7): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/App.tsx(30,7): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(36,11): error TS2550: Property 'from' does not exist on type 'ArrayConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/components/DebriefSheet.tsx(106,44): error TS2344: Type '{ createAsync: (options?: RecordingOptions) => Promise<{ recording: Recording; }>; }' does not satisfy the constraint 'abstract new (...args: any) => any'.
+  Type '{ createAsync: (options?: RecordingOptions) => Promise<{ recording: Recording; }>; }' provides no match for the signature 'new (...args: any): any'.
+src/components/DebriefSheet.tsx(126,39): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(129,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(140,26): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(145,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(157,25): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(163,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(183,22): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(194,82): error TS2550: Property 'padStart' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+src/components/ErrorFallback.tsx(4,34): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/ErrorFallback.tsx(40,25): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/OnboardingOverlay.tsx(80,19): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/OnboardingOverlay.tsx(97,19): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/TourCard.tsx(44,22): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'VarDate'.
+      Property 'VarDate_typekey' is missing in type 'Date' but required in type 'VarDate'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'string | number'.
+src/components/TourCard.tsx(47,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'VarDate'.
+      Property 'VarDate_typekey' is missing in type 'Date' but required in type 'VarDate'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'string | number'.
+src/components/ui/ActiveTourBar.tsx(18,31): error TS2550: Property 'find' does not exist on type 'Tour[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/components/ui/ActiveTourBar.tsx(18,37): error TS7006: Parameter 'x' implicitly has an 'any' type.
+src/components/ui/ActiveTourBar.tsx(24,17): error TS2550: Property 'startsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/components/ui/ActiveTourBar.tsx(25,17): error TS2550: Property 'startsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/components/ui/SyncStatusPill.tsx(22,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/ui/SyncStatusPill.tsx(24,34): error TS2585: 'Promise' only refers to a type, but is being used as a value here. Do you need to change your target library? Try changing the 'lib' compiler option to es2015 or later.
+src/components/VoiceRecorder.tsx(34,44): error TS2344: Type '{ createAsync: (options?: RecordingOptions) => Promise<{ recording: Recording; }>; }' does not satisfy the constraint 'abstract new (...args: any) => any'.
+  Type '{ createAsync: (options?: RecordingOptions) => Promise<{ recording: Recording; }>; }' provides no match for the signature 'new (...args: any): any'.
+src/components/VoiceRecorder.tsx(57,39): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(63,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(79,26): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(89,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(106,25): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(113,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(130,35): error TS2550: Property 'padStart' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+src/config.ts(16,11): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+src/config.ts(16,38): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+src/context/AuthContext.tsx(18,13): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(19,11): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(20,12): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(38,32): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(47,30): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(48,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(64,31): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/TourContext.tsx(22,20): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/TourContext.tsx(23,20): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/TourContext.tsx(34,39): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/TourContext.tsx(42,39): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/audio.ts(7,8): error TS2307: Cannot find module 'react-native-audio-recorder-player' or its corresponding type declarations.
+src/lib/audio.ts(32,44): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/audio.ts(41,31): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/audio.ts(76,43): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/audio.ts(96,5): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/file-system.ts(11,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/file-system.ts(14,14): error TS2585: 'Promise' only refers to a type, but is being used as a value here. Do you need to change your target library? Try changing the 'lib' compiler option to es2015 or later.
+src/lib/file-system.ts(14,31): error TS7006: Parameter 'resolve' implicitly has an 'any' type.
+src/lib/file-system.ts(14,40): error TS7006: Parameter 'reject' implicitly has an 'any' type.
+src/lib/haptics.ts(1,22): error TS2307: Cannot find module 'react-native-haptic-feedback' or its corresponding type declarations.
+src/lib/icon.tsx(3,40): error TS2307: Cannot find module 'react-native-sfsymbols' or its corresponding type declarations.
+src/lib/navigation.ts(8,8): error TS2307: Cannot find module '@react-navigation/native' or its corresponding type declarations.
+src/lib/splash-screen.ts(3,47): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/splash-screen.ts(4,36): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/navigation/RootNavigator.tsx(2,44): error TS2307: Cannot find module '@react-navigation/native-stack' or its corresponding type declarations.
+src/navigation/TabNavigator.tsx(3,42): error TS2307: Cannot find module '@react-navigation/bottom-tabs' or its corresponding type declarations.
+src/screens/BuyersScreen.tsx(72,24): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/BuyersScreen.tsx(339,20): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/LoginScreen.tsx(30,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/NotesScreen.tsx(44,35): error TS2550: Property 'includes' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/NotesScreen.tsx(45,47): error TS2550: Property 'includes' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/StopDetailScreen.tsx(232,31): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(297,25): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(302,37): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(316,31): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(320,44): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(355,26): error TS2550: Property 'includes' does not exist on type 'string[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2016' or later.
+src/screens/StopDetailScreen.tsx(504,21): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(519,21): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(682,42): error TS2550: Property 'includes' does not exist on type 'string[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2016' or later.
+src/screens/TodayScreen.tsx(39,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'VarDate'.
+      Property 'VarDate_typekey' is missing in type 'Date' but required in type 'VarDate'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'string | number'.
+src/screens/TodayScreen.tsx(41,30): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'VarDate'.
+      Property 'VarDate_typekey' is missing in type 'Date' but required in type 'VarDate'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'string | number'.
+src/screens/TodayScreen.tsx(51,11): error TS2550: Property 'find' does not exist on type 'Tour[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/TodayScreen.tsx(51,17): error TS7006: Parameter 'x' implicitly has an 'any' type.
+src/screens/TourDetailScreen.tsx(40,33): error TS2583: Cannot find name 'Set'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/TourDetailScreen.tsx(240,16): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourDetailScreen.tsx(286,35): error TS2550: Property 'find' does not exist on type 'TourStopWithAddress[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/TourDetailScreen.tsx(286,41): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/screens/ToursScreen.tsx(51,33): error TS2550: Property 'includes' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/ToursScreen.tsx(52,45): error TS2550: Property 'includes' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/TourSummaryScreen.tsx(48,35): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(50,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(65,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(82,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(105,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(239,24): error TS2550: Property 'repeat' does not exist on type '"⭐"'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/utils/noteQueue.ts(13,29): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/noteQueue.ts(22,50): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/noteQueue.ts(26,66): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/noteQueue.ts(37,42): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/noteQueue.ts(41,56): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(20,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(35,35): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(44,52): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(52,51): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(60,42): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(65,49): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(72,60): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(85,37): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(114,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(126,30): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(133,60): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+tsconfig.json(2,14): error TS6053: File '@react-native/typescript-config/tsconfig.json' not found.
+../../lib/api-client-react/src/custom-fetch.ts(11,28): error TS2583: Cannot find name 'Set'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(64,12): error TS2550: Property 'startsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(97,65): error TS2550: Property 'endsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(103,18): error TS2550: Property 'startsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(106,19): error TS2550: Property 'endsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(130,24): error TS2550: Property 'trimStart' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2019' or later.
+../../lib/api-client-react/src/custom-fetch.ts(187,12): error TS2550: Property 'setPrototypeOf' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(220,12): error TS2550: Property 'setPrototypeOf' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(236,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/custom-fetch.ts(251,68): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/custom-fetch.ts(294,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/custom-fetch.ts(325,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(99,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(174,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(246,10): error TS2550: Property 'entries' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+../../lib/api-client-react/src/generated/api.ts(246,42): error TS7031: Binding element 'key' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(246,47): error TS7031: Binding element 'value' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(262,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(345,10): error TS2550: Property 'entries' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+../../lib/api-client-react/src/generated/api.ts(345,42): error TS7031: Binding element 'key' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(345,47): error TS7031: Binding element 'value' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(361,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(449,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(525,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(617,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(698,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(774,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(860,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(946,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1032,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1116,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1203,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1286,10): error TS2550: Property 'entries' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+../../lib/api-client-react/src/generated/api.ts(1286,42): error TS7031: Binding element 'key' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(1286,47): error TS7031: Binding element 'value' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(1302,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1384,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1468,10): error TS2550: Property 'entries' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+../../lib/api-client-react/src/generated/api.ts(1468,42): error TS7031: Binding element 'key' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(1468,47): error TS7031: Binding element 'value' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(1484,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1573,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1661,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1747,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1827,10): error TS2550: Property 'entries' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+../../lib/api-client-react/src/generated/api.ts(1827,42): error TS7031: Binding element 'key' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(1827,47): error TS7031: Binding element 'value' implicitly has an 'any' type.
+../../lib/api-client-react/src/generated/api.ts(1843,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(1925,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2011,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2089,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2175,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2260,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2347,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2434,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2521,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2607,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2691,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2775,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2859,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(2947,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3030,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3106,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3194,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3280,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3364,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3448,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3532,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3617,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3703,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3787,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3876,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(3967,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4057,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4149,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4239,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4334,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4421,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4510,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4606,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4695,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4771,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4857,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(4943,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+../../lib/api-client-react/src/generated/api.ts(5029,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+ ELIFECYCLE  Command failed with exit code 2.
+jaybaker@Jays-Mac-mini tour-mobile % sed -n '1,140p' typecheck-error.log
+
+> @workspace/tour-mobile@0.0.0 typecheck /Volumes/ExternalData/Projects/HMB-PropertyFlow/Real-Estate-PropertyFlow/artifacts/tour-mobile
+> tsc -p tsconfig.json --noEmit
+
+error TS2468: Cannot find global value 'Promise'.
+src/App.tsx(6,37): error TS2307: Cannot find module '@react-navigation/native' or its corresponding type declarations.
+src/App.tsx(29,7): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/App.tsx(30,7): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(36,11): error TS2550: Property 'from' does not exist on type 'ArrayConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/components/DebriefSheet.tsx(106,44): error TS2344: Type '{ createAsync: (options?: RecordingOptions) => Promise<{ recording: Recording; }>; }' does not satisfy the constraint 'abstract new (...args: any) => any'.
+  Type '{ createAsync: (options?: RecordingOptions) => Promise<{ recording: Recording; }>; }' provides no match for the signature 'new (...args: any): any'.
+src/components/DebriefSheet.tsx(126,39): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(129,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(140,26): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(145,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(157,25): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(163,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(183,22): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/DebriefSheet.tsx(194,82): error TS2550: Property 'padStart' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+src/components/ErrorFallback.tsx(4,34): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/ErrorFallback.tsx(40,25): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/OnboardingOverlay.tsx(80,19): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/OnboardingOverlay.tsx(97,19): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/TourCard.tsx(44,22): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'VarDate'.
+      Property 'VarDate_typekey' is missing in type 'Date' but required in type 'VarDate'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'string | number'.
+src/components/TourCard.tsx(47,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'VarDate'.
+      Property 'VarDate_typekey' is missing in type 'Date' but required in type 'VarDate'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'string | number'.
+src/components/ui/ActiveTourBar.tsx(18,31): error TS2550: Property 'find' does not exist on type 'Tour[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/components/ui/ActiveTourBar.tsx(18,37): error TS7006: Parameter 'x' implicitly has an 'any' type.
+src/components/ui/ActiveTourBar.tsx(24,17): error TS2550: Property 'startsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/components/ui/ActiveTourBar.tsx(25,17): error TS2550: Property 'startsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/components/ui/SyncStatusPill.tsx(22,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/ui/SyncStatusPill.tsx(24,34): error TS2585: 'Promise' only refers to a type, but is being used as a value here. Do you need to change your target library? Try changing the 'lib' compiler option to es2015 or later.
+src/components/VoiceRecorder.tsx(34,44): error TS2344: Type '{ createAsync: (options?: RecordingOptions) => Promise<{ recording: Recording; }>; }' does not satisfy the constraint 'abstract new (...args: any) => any'.
+  Type '{ createAsync: (options?: RecordingOptions) => Promise<{ recording: Recording; }>; }' provides no match for the signature 'new (...args: any): any'.
+src/components/VoiceRecorder.tsx(57,39): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(63,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(79,26): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(89,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(106,25): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(113,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/components/VoiceRecorder.tsx(130,35): error TS2550: Property 'padStart' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2017' or later.
+src/config.ts(16,11): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+src/config.ts(16,38): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+src/context/AuthContext.tsx(18,13): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(19,11): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(20,12): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(38,32): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(47,30): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(48,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/AuthContext.tsx(64,31): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/TourContext.tsx(22,20): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/TourContext.tsx(23,20): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/TourContext.tsx(34,39): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/context/TourContext.tsx(42,39): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/audio.ts(7,8): error TS2307: Cannot find module 'react-native-audio-recorder-player' or its corresponding type declarations.
+src/lib/audio.ts(32,44): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/audio.ts(41,31): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/audio.ts(76,43): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/audio.ts(96,5): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/file-system.ts(11,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/file-system.ts(14,14): error TS2585: 'Promise' only refers to a type, but is being used as a value here. Do you need to change your target library? Try changing the 'lib' compiler option to es2015 or later.
+src/lib/file-system.ts(14,31): error TS7006: Parameter 'resolve' implicitly has an 'any' type.
+src/lib/file-system.ts(14,40): error TS7006: Parameter 'reject' implicitly has an 'any' type.
+src/lib/haptics.ts(1,22): error TS2307: Cannot find module 'react-native-haptic-feedback' or its corresponding type declarations.
+src/lib/icon.tsx(3,40): error TS2307: Cannot find module 'react-native-sfsymbols' or its corresponding type declarations.
+src/lib/navigation.ts(8,8): error TS2307: Cannot find module '@react-navigation/native' or its corresponding type declarations.
+src/lib/splash-screen.ts(3,47): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/lib/splash-screen.ts(4,36): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/navigation/RootNavigator.tsx(2,44): error TS2307: Cannot find module '@react-navigation/native-stack' or its corresponding type declarations.
+src/navigation/TabNavigator.tsx(3,42): error TS2307: Cannot find module '@react-navigation/bottom-tabs' or its corresponding type declarations.
+src/screens/BuyersScreen.tsx(72,24): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/BuyersScreen.tsx(339,20): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/LoginScreen.tsx(30,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/NotesScreen.tsx(44,35): error TS2550: Property 'includes' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/NotesScreen.tsx(45,47): error TS2550: Property 'includes' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/StopDetailScreen.tsx(232,31): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(297,25): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(302,37): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(316,31): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(320,44): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(355,26): error TS2550: Property 'includes' does not exist on type 'string[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2016' or later.
+src/screens/StopDetailScreen.tsx(504,21): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(519,21): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/StopDetailScreen.tsx(682,42): error TS2550: Property 'includes' does not exist on type 'string[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2016' or later.
+src/screens/TodayScreen.tsx(39,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'VarDate'.
+      Property 'VarDate_typekey' is missing in type 'Date' but required in type 'VarDate'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'string | number'.
+src/screens/TodayScreen.tsx(41,30): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'VarDate'.
+      Property 'VarDate_typekey' is missing in type 'Date' but required in type 'VarDate'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date' is not assignable to parameter of type 'string | number'.
+src/screens/TodayScreen.tsx(51,11): error TS2550: Property 'find' does not exist on type 'Tour[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/TodayScreen.tsx(51,17): error TS7006: Parameter 'x' implicitly has an 'any' type.
+src/screens/TourDetailScreen.tsx(40,33): error TS2583: Cannot find name 'Set'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/TourDetailScreen.tsx(240,16): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourDetailScreen.tsx(286,35): error TS2550: Property 'find' does not exist on type 'TourStopWithAddress[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/TourDetailScreen.tsx(286,41): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/screens/ToursScreen.tsx(51,33): error TS2550: Property 'includes' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/ToursScreen.tsx(52,45): error TS2550: Property 'includes' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/screens/TourSummaryScreen.tsx(48,35): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(50,31): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(65,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(82,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(105,18): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/screens/TourSummaryScreen.tsx(239,24): error TS2550: Property 'repeat' does not exist on type '"⭐"'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+src/utils/noteQueue.ts(13,29): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/noteQueue.ts(22,50): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/noteQueue.ts(26,66): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/noteQueue.ts(37,42): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/noteQueue.ts(41,56): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(20,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(35,35): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(44,52): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(52,51): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(60,42): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(65,49): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(72,60): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(85,37): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(114,4): error TS2705: An async function or method in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(126,30): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+src/utils/voiceUploadQueue.ts(133,60): error TS2712: A dynamic import call in ES5 requires the 'Promise' constructor.  Make sure you have a declaration for the 'Promise' constructor or include 'ES2015' in your '--lib' option.
+tsconfig.json(2,14): error TS6053: File '@react-native/typescript-config/tsconfig.json' not found.
+../../lib/api-client-react/src/custom-fetch.ts(11,28): error TS2583: Cannot find name 'Set'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(64,12): error TS2550: Property 'startsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(97,65): error TS2550: Property 'endsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+../../lib/api-client-react/src/custom-fetch.ts(103,18): error TS2550: Property 'startsWith' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later.
+jaybaker@Jays-Mac-mini tour-mobile % 
