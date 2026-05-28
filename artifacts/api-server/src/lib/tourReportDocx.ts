@@ -2,12 +2,11 @@ import {
   AlignmentType,
   Document,
   Footer,
-  PageBreak,
+  PageNumber,
   Packer,
   Paragraph,
   TextRun,
   BorderStyle,
-  UnderlineType,
 } from "docx";
 import { type TourReportData, formatPrice } from "./tourReportData";
 
@@ -112,12 +111,6 @@ function bulletList(items: string[], color = PRIMARY): Paragraph[] {
   return items.map(item => bulletItem(item, color));
 }
 
-function pageBreakPara(): Paragraph {
-  return new Paragraph({
-    spacing: { before: 0, after: 0 },
-    children: [new PageBreak()],
-  });
-}
 
 function labelRow(content: string): Paragraph {
   return new Paragraph({
@@ -136,12 +129,10 @@ function renderStopParagraphs(
   const statusText  = stop.skipped ? "SKIPPED" : stop.visited ? "VISITED" : "NOT VISITED";
   const statusColor = stop.skipped ? AMBER : stop.visited ? GREEN : MUTED;
 
-  // Page break between stops (not before the very first)
-  if (index > 0) out.push(pageBreakPara());
-
-  // Stop number + status pill
+  // Stop number + status pill — pageBreakBefore on first stop para (except stop 0)
   out.push(
     new Paragraph({
+      pageBreakBefore: index > 0,
       spacing: { before: 0, after: 40 },
       children: [
         run(`STOP ${index + 1} OF ${total}`, { bold: true, color: ACCENT, size: 16, allCaps: true }),
@@ -416,9 +407,15 @@ export async function renderTourReportDocx(data: TourReportData): Promise<Buffer
         default: new Footer({
           children: [
             new Paragraph({
-              alignment: AlignmentType.CENTER,
+              alignment: AlignmentType.LEFT,
               spacing:   { before: 0, after: 0 },
-              children:  [run(footerLine, { color: MUTED, size: 16 })],
+              children: [
+                run(footerLine, { color: MUTED, size: 16 }),
+                run("   ·   Page ", { color: MUTED, size: 16 }),
+                new TextRun({ font: FONT, color: MUTED, size: 16, children: [PageNumber.CURRENT] }),
+                run(" of ", { color: MUTED, size: 16 }),
+                new TextRun({ font: FONT, color: MUTED, size: 16, children: [PageNumber.TOTAL_PAGES] }),
+              ],
             }),
           ],
         }),
