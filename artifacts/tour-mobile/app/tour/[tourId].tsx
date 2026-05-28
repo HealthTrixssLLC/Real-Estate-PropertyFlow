@@ -904,6 +904,23 @@ const styles = StyleSheet.create({
     gap: 4,
     flexShrink: 0,
   },
+  pickerContainer: {
+    flex: 1,
+    backgroundColor: Semantic.background as unknown as string,
+  },
+  pickerGroup: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Semantic.opaqueSeparator as unknown as string,
+    overflow: "hidden",
+  },
+  pickerRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Semantic.opaqueSeparator as unknown as string,
+  },
+  stopsGroup: {
+    marginBottom: 8,
+  },
   pickerHeader: {
     flexDirection: "row",
     alignItems: "center",

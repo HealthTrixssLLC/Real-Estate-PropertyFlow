@@ -611,8 +611,6 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
   const body = parseBody(SkipTourStopBody, req, res);
   if (!body) return;
   const user = (req as Express.AuthedRequest).user;
-  const currentLat = body.currentLat ?? null;
-  const currentLng = body.currentLng ?? null;
 
   try {
     const tour = await assertTourOwner(params.tourId, user.id, res);
@@ -676,9 +674,9 @@ router.post("/tours/:tourId/skip-stop", async (req: Request, res: Response) => {
         try {
           let matrixPoints: Array<{ lat: number; lng: number }> = coords;
           let startOffset = 0;
-          const origin = currentLat != null && currentLng != null
-            ? { lat: currentLat, lng: currentLng }
-            : (tour.startLat != null && tour.startLng != null ? { lat: tour.startLat, lng: tour.startLng } : null);
+          const origin = tour.startLat != null && tour.startLng != null
+            ? { lat: tour.startLat, lng: tour.startLng }
+            : null;
 
           if (origin) {
             matrixPoints = [origin, ...coords];

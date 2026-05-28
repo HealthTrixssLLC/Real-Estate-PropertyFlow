@@ -12,7 +12,7 @@ import {
   getGetTourQueryKey,
   getGetDebriefQueryKey,
 } from "@workspace/api-client-react";
-import type { UpdateTourStopRequest } from "@workspace/api-client-react";
+import type { UpdateTourStopRequest, TourStopDetailResponse } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
 import * as Haptics from "expo-haptics";
@@ -180,7 +180,7 @@ export default function StopDetailScreen() {
       queryKey: getGetTourStopQueryKey(stopId ?? ""),
       enabled: !!stopId,
       refetchInterval: (query) => {
-        const voiceNotes = (query.state.data as typeof data)?.voiceNotes ?? [];
+        const voiceNotes = (query.state.data as TourStopDetailResponse | undefined)?.voiceNotes ?? [];
         const hasPending = voiceNotes.some(
           (vn) => vn.transcriptionStatus === "pending" || vn.transcriptionStatus === "in_progress"
         );
@@ -1242,6 +1242,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 16,
+  },
+  debriefProcessingText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  debriefFailed: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    padding: 14,
+  },
+  fitScoreRow: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  debriefVerdict: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    marginBottom: 10,
+  },
+  debriefSummaryText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  removeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
   removeBtnLabel: {
     fontSize: 13,

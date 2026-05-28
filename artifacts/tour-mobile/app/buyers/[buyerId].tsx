@@ -57,6 +57,7 @@ function StarDisplay({ value }: { value: number | null | undefined }) {
 
 const starStyles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 2 },
+  label: { fontSize: 12, fontFamily: "Inter_500Medium" },
 });
 
 type ChipStatus = React.ComponentProps<typeof StatusChip>["status"];
