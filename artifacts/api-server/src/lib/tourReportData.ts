@@ -1,4 +1,3 @@
-import { randomUUID } from "crypto";
 import {
   db,
   toursTable,
@@ -17,8 +16,8 @@ import {
   type Buyer,
 } from "@workspace/db";
 import { and, eq, inArray, desc } from "drizzle-orm";
-import { generateText } from "./ai";
 import { aiConfig } from "./aiConfig";
+import { tryGenerateAndStorePropertySummary } from "./propertySummary";
 
 export interface ReportStop {
   stop: TourStop;
@@ -56,69 +55,6 @@ export interface AgentContact {
   name?: string | null;
   email?: string | null;
   phone?: string | null;
-}
-
-async function generatePropertySummaryFor(
-  stop: TourStop,
-  property: Property | null,
-  notes: string[],
-): Promise<PropertySummary | null> {
-  try {
-    const ratings = [
-      stop.overallFitRating != null ? `Overall fit: ${stop.overallFitRating}/5` : null,
-      stop.buyerInterest != null ? `Buyer interest: ${stop.buyerInterest}/5` : null,
-      stop.kitchenRating != null ? `Kitchen: ${stop.kitchenRating}/5` : null,
-      stop.primarySuiteRating != null ? `Primary suite: ${stop.primarySuiteRating}/5` : null,
-      stop.backyardRating != null ? `Backyard: ${stop.backyardRating}/5` : null,
-      stop.roadNoiseRating != null ? `Road noise: ${stop.roadNoiseRating}/5` : null,
-    ].filter(Boolean).join(", ");
-
-    const prompt = `You are a real estate agent assistant analyzing a property showing.
-
-Property: ${property?.formattedAddress ?? "Unknown address"}
-Ratings: ${ratings || "None recorded"}
-${property?.beds ? `Beds: ${property.beds}, Baths: ${property.baths}, Sq Ft: ${property.squareFeet}` : ""}
-${property?.listPrice ? `List Price: $${property.listPrice.toLocaleString()}` : ""}
-Notes from showing: ${notes.join("\n") || "None recorded"}
-Tags: ${stop.quickTags?.join(", ") || "None"}
-Follow-up flag: ${stop.followUpFlag ? "Yes" : "No"}
-Revisit flag: ${stop.revisitFlag ? "Yes" : "No"}
-
-Generate a concise property summary with:
-1. summaryText: 2-3 sentence overview
-2. positives: list of pros (max 5)
-3. negatives: list of cons (max 5)
-4. questions: follow-up questions for listing agent (max 3)
-
-Return as JSON with those exact keys.`;
-
-    const result = await generateText(prompt, aiConfig.summarizationProvider);
-    let parsed: { summaryText?: string; positives?: string[]; negatives?: string[]; questions?: string[] } = {};
-    try {
-      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      parsed = { summaryText: result.text };
-    }
-
-    const [row] = await db
-      .insert(propertySummariesTable)
-      .values({
-        id: randomUUID(),
-        tourStopId: stop.id,
-        summaryText: parsed.summaryText ?? result.text,
-        positives: parsed.positives ?? [],
-        negatives: parsed.negatives ?? [],
-        questions: parsed.questions ?? [],
-        provider: result.provider,
-        generatedAt: new Date(),
-      })
-      .returning();
-    return row ?? null;
-  } catch {
-    // Auto-generation is best-effort; never fail the report just because AI is unavailable.
-    return null;
-  }
 }
 
 export async function assembleTourReportData(
@@ -173,7 +109,11 @@ export async function assembleTourReportData(
   if (stopsNeedingSummary.length > 0 && aiConfig.summarizationEnabled !== false) {
     const generated = await Promise.all(
       stopsNeedingSummary.map(s =>
-        generatePropertySummaryFor(s, propMap.get(s.propertyId) ?? null, notesByStopEarly.get(s.id) ?? []),
+        tryGenerateAndStorePropertySummary({
+          stop: s,
+          property: propMap.get(s.propertyId) ?? null,
+          notes: notesByStopEarly.get(s.id) ?? [],
+        }),
       ),
     );
     for (const ps of generated) {

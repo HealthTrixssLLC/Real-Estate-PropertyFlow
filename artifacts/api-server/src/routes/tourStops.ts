@@ -21,8 +21,7 @@ import {
   PropertySummaryResponseSchema,
 } from "../lib/responseSchemas";
 import { z } from "zod";
-import { generateText } from "../lib/ai";
-import { aiConfig } from "../lib/aiConfig";
+import { generateAndStorePropertySummary } from "../lib/propertySummary";
 
 const stopIdSchema = z.object({ stopId: z.string().min(1) });
 
@@ -285,60 +284,13 @@ router.post("/tour-stops/:stopId/summarize", async (req: Request, res: Response)
 
     const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, stop.propertyId));
     const voiceNotes = await db.select().from(voiceNotesTable).where(eq(voiceNotesTable.tourStopId, params.stopId));
-    const notes = voiceNotes.map(n => n.typedNote).filter(Boolean).join("\n");
+    const notes = voiceNotes.map(n => n.typedNote).filter((n): n is string => !!n);
 
-    const ratings = [
-      stop.overallFitRating != null ? `Overall fit: ${stop.overallFitRating}/5` : null,
-      stop.buyerInterest != null ? `Buyer interest: ${stop.buyerInterest}/5` : null,
-      stop.kitchenRating != null ? `Kitchen: ${stop.kitchenRating}/5` : null,
-      stop.primarySuiteRating != null ? `Primary suite: ${stop.primarySuiteRating}/5` : null,
-      stop.backyardRating != null ? `Backyard: ${stop.backyardRating}/5` : null,
-      stop.roadNoiseRating != null ? `Road noise: ${stop.roadNoiseRating}/5` : null,
-    ].filter(Boolean).join(", ");
-
-    const prompt = `You are a real estate agent assistant analyzing a property showing.
-
-Property: ${property?.formattedAddress ?? "Unknown address"}
-Ratings: ${ratings || "None recorded"}
-${property?.beds ? `Beds: ${property.beds}, Baths: ${property.baths}, Sq Ft: ${property.squareFeet}` : ""}
-${property?.listPrice ? `List Price: $${property.listPrice.toLocaleString()}` : ""}
-Notes from showing: ${notes || "None recorded"}
-Tags: ${stop.quickTags?.join(", ") || "None"}
-Follow-up flag: ${stop.followUpFlag ? "Yes" : "No"}
-Revisit flag: ${stop.revisitFlag ? "Yes" : "No"}
-
-Generate a concise property summary with:
-1. summaryText: 2-3 sentence overview
-2. positives: list of pros (max 5)
-3. negatives: list of cons (max 5)
-4. questions: follow-up questions for listing agent (max 3)
-
-Return as JSON with those exact keys.`;
-
-    const result = await generateText(prompt, aiConfig.summarizationProvider);
-
-    let parsed: { summaryText?: string; positives?: string[]; negatives?: string[]; questions?: string[] } = {};
-    try {
-      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      parsed = { summaryText: result.text };
-    }
-
-    await db.delete(propertySummariesTable).where(eq(propertySummariesTable.tourStopId, params.stopId));
-    const [summary] = await db
-      .insert(propertySummariesTable)
-      .values({
-        id: randomUUID(),
-        tourStopId: params.stopId,
-        summaryText: parsed.summaryText ?? result.text,
-        positives: parsed.positives ?? [],
-        negatives: parsed.negatives ?? [],
-        questions: parsed.questions ?? [],
-        provider: result.provider,
-        generatedAt: new Date(),
-      })
-      .returning();
+    const summary = await generateAndStorePropertySummary({
+      stop,
+      property: property ?? null,
+      notes,
+    });
 
     sendValidated(res, PropertySummaryResponseSchema, { summary });
   } catch (err) {
