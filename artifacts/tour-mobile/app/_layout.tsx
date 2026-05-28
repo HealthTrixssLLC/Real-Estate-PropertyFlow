@@ -12,7 +12,12 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { TourProvider, useTourContext } from "@/context/TourContext";
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+// EXPO_PUBLIC_API_URL takes precedence (full URL, for production builds).
+// Falls back to constructing from EXPO_PUBLIC_DOMAIN (injected by the Replit dev script).
+const apiUrl =
+  process.env.EXPO_PUBLIC_API_URL ??
+  `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+setBaseUrl(apiUrl);
 
 SplashScreen.preventAutoHideAsync();
 

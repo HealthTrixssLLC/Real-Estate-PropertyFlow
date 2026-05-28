@@ -47,7 +47,9 @@ export default function TourSummaryScreen() {
 
   async function fetchShareUrl(): Promise<{ url: string; filename: string } | null> {
     if (!tourId) return null;
-    const apiBase = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+    const apiBase =
+      process.env.EXPO_PUBLIC_API_URL ??
+      `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
     const res = await fetch(`${apiBase}/api/tours/${tourId}/report/share-url`, {
       method: "POST",
       headers: {

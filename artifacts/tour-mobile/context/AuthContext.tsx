@@ -45,7 +45,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (username: string, password: string) => {
-    const apiBase = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+    const apiBase =
+      process.env.EXPO_PUBLIC_API_URL ??
+      `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
     const res = await fetch(`${apiBase}/api/mobile-auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
