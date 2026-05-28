@@ -218,6 +218,13 @@ router.post(
         })
         .returning();
 
+      if (!stop.visited) {
+        await db
+          .update(tourStopsTable)
+          .set({ visited: true, updatedAt: new Date() })
+          .where(eq(tourStopsTable.id, params.stopId));
+      }
+
       if (isSpeechAiAvailable()) {
         setImmediate(() => {
           runDebriefJob(debrief.id, fileUrl, params.stopId, buyerId, req.log).catch(() => {});

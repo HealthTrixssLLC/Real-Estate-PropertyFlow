@@ -1578,6 +1578,55 @@ export const MarkStopCompletedResponse = zod.object({
 });
 
 /**
+ * @summary Unmark a stop as visited
+ */
+export const MarkStopUnvisitedParams = zod.object({
+  stopId: zod.coerce.string(),
+});
+
+export const MarkStopUnvisitedResponse = zod.object({
+  stop: zod.object({
+    id: zod.string(),
+    tourId: zod.string(),
+    propertyId: zod.string(),
+    sequence: zod.number(),
+    approvedStatus: zod.enum([
+      "not_requested",
+      "requested",
+      "pending",
+      "approved",
+      "declined",
+      "needs_follow_up",
+      "restricted",
+      "cancelled",
+    ]),
+    skipped: zod.boolean(),
+    skipReason: zod.string().nullish(),
+    skipNotes: zod.string().nullish(),
+    visited: zod.boolean(),
+    arrivalTime: zod.coerce.date().nullish(),
+    departureTime: zod.coerce.date().nullish(),
+    buyerInterest: zod.number().nullish(),
+    kitchenRating: zod.number().nullish(),
+    primarySuiteRating: zod.number().nullish(),
+    backyardRating: zod.number().nullish(),
+    roadNoiseRating: zod.number().nullish(),
+    overallFitRating: zod.number().nullish(),
+    followUpFlag: zod.boolean(),
+    revisitFlag: zod.boolean(),
+    quickTags: zod.array(zod.string()).nullish(),
+    predictedFitScore: zod
+      .number()
+      .nullish()
+      .describe(
+        "AI-predicted fit score (0-100) for unvisited stops based on buyer preference profile",
+      ),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+/**
  * @summary Add a typed note to a stop
  */
 export const AddStopNoteParams = zod.object({

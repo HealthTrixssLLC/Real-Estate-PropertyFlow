@@ -697,6 +697,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/TourStopResponse'
 
+  /tour-stops/{stopId}/unvisit:
+    post:
+      tags: [tourStops]
+      operationId: markStopUnvisited
+      summary: Unmark a stop as visited
+      parameters:
+        - $ref: '#/components/parameters/StopIdParam'
+      responses:
+        '200':
+          description: Stop marked as not visited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TourStopResponse'
+
   /tour-stops/{stopId}/note:
     post:
       tags: [tourStops]

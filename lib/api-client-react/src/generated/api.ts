@@ -3415,6 +3415,90 @@ export const useMarkStopCompleted = <
 };
 
 /**
+ * @summary Unmark a stop as visited
+ */
+export const getMarkStopUnvisitedUrl = (stopId: string) => {
+  return `/api/tour-stops/${stopId}/unvisit`;
+};
+
+export const markStopUnvisited = async (
+  stopId: string,
+  options?: RequestInit,
+): Promise<TourStopResponse> => {
+  return customFetch<TourStopResponse>(getMarkStopUnvisitedUrl(stopId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getMarkStopUnvisitedMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markStopUnvisited>>,
+    TError,
+    { stopId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markStopUnvisited>>,
+  TError,
+  { stopId: string },
+  TContext
+> => {
+  const mutationKey = ["markStopUnvisited"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markStopUnvisited>>,
+    { stopId: string }
+  > = (props) => {
+    const { stopId } = props ?? {};
+
+    return markStopUnvisited(stopId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkStopUnvisitedMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markStopUnvisited>>
+>;
+
+export type MarkStopUnvisitedMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Unmark a stop as visited
+ */
+export const useMarkStopUnvisited = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markStopUnvisited>>,
+    TError,
+    { stopId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markStopUnvisited>>,
+  TError,
+  { stopId: string },
+  TContext
+> => {
+  return useMutation(getMarkStopUnvisitedMutationOptions(options));
+};
+
+/**
  * @summary Add a typed note to a stop
  */
 export const getAddStopNoteUrl = (stopId: string) => {

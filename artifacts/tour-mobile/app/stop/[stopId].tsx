@@ -6,6 +6,8 @@ import {
   useDeleteTourStop,
   useGetTour,
   useGetDebrief,
+  useMarkStopCompleted,
+  useMarkStopUnvisited,
   getGetTourStopQueryKey,
   getGetTourQueryKey,
   getGetDebriefQueryKey,
@@ -223,6 +225,30 @@ export default function StopDetailScreen() {
 
   const { mutate: deleteStop, isPending: isDeletingStop } = useDeleteTourStop();
 
+  const { mutateAsync: markVisitedAsync, isPending: isMarkingVisited } = useMarkStopCompleted();
+  const { mutateAsync: markUnvisitedAsync, isPending: isMarkingUnvisited } = useMarkStopUnvisited();
+  const isTogglingVisited = isMarkingVisited || isMarkingUnvisited;
+
+  const handleToggleVisited = async () => {
+    if (!stopId || !stop) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      if (stop.visited) {
+        await markUnvisitedAsync({ stopId });
+      } else {
+        await markVisitedAsync({ stopId });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      await queryClient.invalidateQueries({ queryKey: getGetTourStopQueryKey(stopId) });
+      if (stop.tourId) {
+        await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(stop.tourId) });
+      }
+      refetch();
+    } catch {
+      Alert.alert("Update failed", "Could not change visited status. Please try again.");
+    }
+  };
+
   const { data: tourData } = useGetTour(stop?.tourId ?? "", {
     query: {
       queryKey: getGetTourQueryKey(stop?.tourId ?? ""),
@@ -399,6 +425,48 @@ export default function StopDetailScreen() {
             </View>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Pressable
+            testID="toggle-visited-btn"
+            onPress={handleToggleVisited}
+            disabled={isTogglingVisited}
+            style={({ pressed }) => [
+              styles.visitedToggle,
+              {
+                backgroundColor: stop.visited ? C.green + "15" : C.card,
+                borderColor: stop.visited ? C.green + "55" : C.border,
+              },
+              (pressed || isTogglingVisited) && { opacity: 0.7 },
+            ]}
+          >
+            {isTogglingVisited ? (
+              <ActivityIndicator color={stop.visited ? C.green : C.accent} size="small" />
+            ) : isIOS ? (
+              <SymbolView
+                name={stop.visited ? "checkmark.circle.fill" : "circle"}
+                tintColor={stop.visited ? C.green : C.textSecondary}
+                size={20}
+              />
+            ) : (
+              <Feather
+                name={stop.visited ? "check-circle" : "circle"}
+                size={20}
+                color={stop.visited ? C.green : C.textSecondary}
+              />
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.visitedToggleTitle, { color: stop.visited ? C.green : C.text }]}>
+                {stop.visited ? "Marked visited" : "Mark visited"}
+              </Text>
+              <Text style={[styles.visitedToggleSub, { color: C.textSecondary }]}>
+                {stop.visited
+                  ? "Tap to undo if this was marked by mistake."
+                  : "Confirms you showed this property to the buyer."}
+              </Text>
+            </View>
+          </Pressable>
+        </View>
 
         {showingRequest && (
           <View style={styles.section}>
@@ -1178,5 +1246,23 @@ const styles = StyleSheet.create({
   removeBtnLabel: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  visitedToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  visitedToggleTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  visitedToggleSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
   },
 });

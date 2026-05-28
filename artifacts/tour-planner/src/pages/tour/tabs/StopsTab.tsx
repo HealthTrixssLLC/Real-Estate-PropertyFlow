@@ -6,9 +6,11 @@ import {
   useOptimizeTourRoute,
   useDeleteTourStop,
   useListProperties,
+  useMarkStopCompleted,
+  useMarkStopUnvisited,
 } from "@workspace/api-client-react"
 import type { TourStop, TourStopWithAddress } from "@workspace/api-client-react"
-import { GripVertical, Plus, Route, Loader2, MapPin, Building2, Trash2, Search, CheckCircle2 } from "lucide-react"
+import { GripVertical, Plus, Route, Loader2, MapPin, Building2, Trash2, Search, CheckCircle2, Circle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -49,6 +51,9 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
   const reorder = useReorderTourStops()
   const optimize = useOptimizeTourRoute()
   const deleteStop = useDeleteTourStop()
+  const markVisited = useMarkStopCompleted()
+  const markUnvisited = useMarkStopUnvisited()
+  const [togglingStopId, setTogglingStopId] = useState<string | null>(null)
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -128,6 +133,27 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
       await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) })
     } catch {
       toast({ title: "Failed to optimize route", variant: "destructive" })
+    }
+  }
+
+  const handleToggleVisited = async (stop: TourStopWithAddress) => {
+    setTogglingStopId(stop.id)
+    const wasVisited = stop.visited
+    setStops(prev => prev.map(s => s.id === stop.id ? { ...s, visited: !wasVisited } : s))
+    try {
+      if (wasVisited) {
+        await markUnvisited.mutateAsync({ stopId: stop.id })
+        toast({ title: "Marked not visited" })
+      } else {
+        await markVisited.mutateAsync({ stopId: stop.id })
+        toast({ title: "Marked visited" })
+      }
+      await queryClient.invalidateQueries({ queryKey: getGetTourQueryKey(tourId) })
+    } catch {
+      setStops(prev => prev.map(s => s.id === stop.id ? { ...s, visited: wasVisited } : s))
+      toast({ title: "Failed to update visited status", variant: "destructive" })
+    } finally {
+      setTogglingStopId(null)
     }
   }
 
@@ -321,6 +347,27 @@ export default function StopsTab({ tourId, stops: initialStops, tourStatus }: St
                             Stop {stop.sequence + 1} · {stop.visited ? "Visited" : stop.skipped ? "Skipped" : "Pending"}
                           </div>
                         </div>
+
+                        <Button
+                          variant={stop.visited ? "secondary" : "outline"}
+                          size="sm"
+                          className={cn(
+                            "shrink-0 gap-1.5 text-xs h-8",
+                            stop.visited && "bg-green-50 text-green-700 border-green-200 hover:bg-green-100",
+                          )}
+                          onClick={() => handleToggleVisited(stop)}
+                          disabled={togglingStopId === stop.id}
+                          aria-label={stop.visited ? "Mark not visited" : "Mark visited"}
+                        >
+                          {togglingStopId === stop.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : stop.visited ? (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          ) : (
+                            <Circle className="h-3.5 w-3.5" />
+                          )}
+                          {stop.visited ? "Visited" : "Mark visited"}
+                        </Button>
 
                         {tourStatus !== "published" && (
                           <Button

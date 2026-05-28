@@ -7,6 +7,8 @@ import {
   getGetBuyerDetailQueryKey,
 } from "@workspace/api-client-react"
 import type { BuyerDetailStop, BuyerDetailTour } from "@workspace/api-client-react"
+import { ApiError } from "@workspace/api-client-react"
+import { useToast } from "@/hooks/use-toast"
 import {
   ChevronLeft,
   ChevronDown,
@@ -421,23 +423,53 @@ type PreferenceProfileData = {
 function PreferenceProfileCard({
   profile,
   buyerId,
+  tours,
   onRefreshed,
 }: {
   profile: Record<string, unknown> | null | undefined;
   buyerId: string;
+  tours: BuyerDetailTour[];
   onRefreshed: () => void;
 }) {
   const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const { mutate: generate, isPending } = useGeneratePreferenceProfile({
     mutation: {
+      onMutate: () => {
+        setErrorMessage(null)
+      },
       onSuccess: () => {
+        setErrorMessage(null)
         void queryClient.invalidateQueries({ queryKey: getGetBuyerDetailQueryKey(buyerId) })
         onRefreshed()
+      },
+      onError: (err: unknown) => {
+        let msg = "Failed to generate preference profile."
+        if (err instanceof ApiError) {
+          const data = err.data as { error?: string } | null
+          if (data?.error) msg = data.error
+          else if (err.status === 503) msg = "AI provider not configured."
+          else if (err.status === 401) msg = "Please sign in again to continue."
+          else if (err.message) msg = err.message
+        } else if (err instanceof Error && err.message) {
+          msg = err.message
+        }
+        setErrorMessage(msg)
+        toast({ title: "Profile generation failed", description: msg, variant: "destructive" })
       },
     },
   })
 
   const typed = profile as PreferenceProfileData | null | undefined
+
+  const hasVisitedDebrief = tours.some(tour =>
+    tour.stops.some(stop =>
+      stop.visited && (stop.debriefTranscript || stop.debriefSummary)
+    )
+  )
+  const canGenerate = !!profile || hasVisitedDebrief
+  const buttonDisabled = isPending || !canGenerate
 
   return (
     <Card className="border border-border/50 shadow-md shadow-black/5">
@@ -457,7 +489,8 @@ function PreferenceProfileCard({
             variant={profile ? "outline" : "default"}
             className="shrink-0 text-xs h-7"
             onClick={() => generate({ buyerId })}
-            disabled={isPending}
+            disabled={buttonDisabled}
+            title={!canGenerate ? "Complete a showing with a voice debrief to generate a profile" : undefined}
           >
             {isPending ? (
               <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Generating…</>
@@ -469,9 +502,22 @@ function PreferenceProfileCard({
           </Button>
         </div>
 
-        {!profile && !isPending && (
+        {errorMessage && (
+          <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-start gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{errorMessage}</span>
+          </p>
+        )}
+
+        {!profile && !isPending && !canGenerate && (
           <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2.5">
-            No profile yet. After completing showings with voice debriefs, click "Generate" to build an AI buyer preference profile and get predicted fit scores on upcoming stops.
+            No profile yet. Mark a stop visited and record a voice debrief — once at least one showing has been completed with a debrief, you can generate an AI buyer preference profile with predicted fit scores on upcoming stops.
+          </p>
+        )}
+
+        {!profile && !isPending && canGenerate && (
+          <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2.5">
+            Ready to build an AI buyer preference profile from this buyer's completed showings and debriefs. Click "Generate" to get predicted fit scores on upcoming stops.
           </p>
         )}
 
@@ -660,6 +706,7 @@ export default function BuyerDetail() {
       <PreferenceProfileCard
         profile={preferenceProfile}
         buyerId={buyerId}
+        tours={tours}
         onRefreshed={() => {}}
       />
 

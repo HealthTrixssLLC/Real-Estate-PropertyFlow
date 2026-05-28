@@ -203,6 +203,30 @@ router.post("/tour-stops/:stopId/complete", async (req: Request, res: Response) 
   }
 });
 
+router.post("/tour-stops/:stopId/unvisit", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const params = parseParams(stopIdSchema, req, res);
+  if (!params) return;
+  const user = (req as Express.AuthedRequest).user;
+  try {
+    const result = await assertStopOwner(params.stopId, user.id, res);
+    if (!result) return;
+
+    const [stop] = await db
+      .update(tourStopsTable)
+      .set({ visited: false, arrivalTime: null, departureTime: null, updatedAt: new Date() })
+      .where(eq(tourStopsTable.id, params.stopId))
+      .returning();
+    sendValidated(res, TourStopResponseSchema, { stop });
+  } catch (err) {
+    req.log.error({ err }, "Failed to unmark stop as visited");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/tour-stops/:stopId/note", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
