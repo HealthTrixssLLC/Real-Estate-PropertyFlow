@@ -26,6 +26,7 @@
     "expo": "~54.0.27",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.11",
+    "expo-file-system": "~19.0.20",
     "expo-font": "~14.0.10",
     "expo-glass-effect": "~0.1.4",
     "expo-haptics": "~15.0.8",
@@ -57,7 +58,6 @@
   },
   "dependencies": {
     "@react-native-community/netinfo": "^11.4.1",
-    "expo-av": "^16.0.8",
-    "expo-file-system": "^55.0.12"
+    "expo-av": "^16.0.8"
   }
 }

@@ -65,7 +65,12 @@ export async function getPendingCount(): Promise<number> {
 async function uploadItem(item: PendingUpload): Promise<boolean> {
   if (Platform.OS === "web") return false;
   try {
-    const FileSystem = await import("expo-file-system");
+    // Dynamic import keeps expo-file-system's native module off the web bundle —
+    // it has no browser implementation and the web build only runs the early
+    // Platform.OS === "web" guard above. The `/legacy` subpath is required:
+    // on expo-file-system 19.x (SDK 54) the root export marks readAsStringAsync
+    // as deprecated and throws at runtime; the legacy submodule preserves it.
+    const FileSystem = await import("expo-file-system/legacy");
     const base64 = await FileSystem.readAsStringAsync(item.uri, {
       encoding: "base64" as const,
     });
@@ -125,7 +130,8 @@ export async function tryImmediateUpload(
   }
 
   try {
-    const FileSystem = await import("expo-file-system");
+    // Dynamic import + /legacy subpath: see note in uploadItem above.
+    const FileSystem = await import("expo-file-system/legacy");
     const base64 = await FileSystem.readAsStringAsync(uri, {
       encoding: "base64" as const,
     });
