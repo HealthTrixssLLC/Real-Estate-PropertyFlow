@@ -1,276 +1,327 @@
-import { Feather } from "@expo/vector-icons";
 import { useListTours, useGetCurrentAuthUser } from "@workspace/api-client-react";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import React from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TourCard } from "@/components/TourCard";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
-import Colors from "@/constants/colors";
+import { TourCard } from "@/components/TourCard";
+import {
+  Card,
+  EmptyState,
+  ListGroup,
+  ScreenHeader,
+  SyncStatusPill,
+} from "@/components/ui";
+import { Brand, Radii, Spacing, useTheme, sem } from "@/theme";
 
 export default function TodayScreen() {
-  const scheme = useColorScheme() ?? "light";
-  const C = Colors[scheme];
+  const t = useTheme();
   const insets = useSafeAreaInsets();
-  const isIOS = Platform.OS === "ios";
-  const isWeb = Platform.OS === "web";
 
   const { data: authData } = useGetCurrentAuthUser();
-  const {
-    data,
-    isLoading,
-    refetch,
-    isRefetching,
-  } = useListTours();
+  const { data, isLoading, refetch, isRefetching } = useListTours();
 
   const tours = data?.tours ?? [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const sevenDays = new Date(today);
+  sevenDays.setDate(sevenDays.getDate() + 7);
 
-  const todayTours = tours.filter((t) => {
-    const d = new Date(t.date);
+  const dayOf = (s: string) => {
+    const d = new Date(s);
     d.setHours(0, 0, 0, 0);
-    return d.getTime() === today.getTime();
-  });
+    return d.getTime();
+  };
 
-  const activeTour = todayTours.find((t) => t.status === "active");
-  const nonCompletedTours = todayTours.filter((t) => t.status !== "completed" && t.status !== "cancelled");
-  const completedToday = todayTours.filter((t) => t.status === "completed");
+  const activeTour =
+    tours.find((x) => x.status === "active") ?? null;
+
+  const todayTours = tours.filter(
+    (x) => dayOf(x.date) === today.getTime() && x.status !== "completed" && x.status !== "cancelled"
+  );
+  const upcomingThisWeek = tours
+    .filter((x) => {
+      const d = dayOf(x.date);
+      return d > today.getTime() && d <= sevenDays.getTime() && x.status !== "cancelled" && x.status !== "completed";
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const completedToday = tours.filter(
+    (x) => dayOf(x.date) === today.getTime() && x.status === "completed"
+  );
+
   const firstName = authData?.user?.firstName ?? "Agent";
   const hour = new Date().getHours();
   const greeting =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    hour < 5
+      ? "Good evening"
+      : hour < 12
+      ? "Good morning"
+      : hour < 17
+      ? "Good afternoon"
+      : "Good evening";
+
+  const todayLabel = today.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <>
-    <OnboardingOverlay />
-    <ScrollView
-      style={{ backgroundColor: C.background }}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 80 },
-      ]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={refetch}
-          tintColor={C.accent}
+      <OnboardingOverlay />
+      <ScrollView
+        style={{ backgroundColor: sem("grouped") as string }}
+        contentContainerStyle={{
+          paddingTop: insets.top + Spacing.md,
+          paddingBottom: insets.bottom + 120,
+        }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={Brand.teal}
+          />
+        }
+      >
+        <ScreenHeader
+          title={greeting}
+          subtitle={`${firstName} · ${todayLabel}`}
+          right={<SyncStatusPill />}
         />
-      }
-    >
-      <View style={styles.greeting}>
-        <View>
-          <Text style={[styles.greetingText, { color: C.textSecondary }]}>
-            {greeting},
-          </Text>
-          <Text style={[styles.name, { color: C.text }]}>{firstName}</Text>
-        </View>
-        <Pressable
-          testID="today-notifications"
-          style={[styles.iconBtn, { backgroundColor: C.surfaceAlt }]}
-          onPress={() => {}}
-        >
-          {isIOS ? (
-            <SymbolView name="bell" tintColor={C.text} size={20} />
-          ) : (
-            <Feather name="bell" size={20} color={C.text} />
-          )}
-        </Pressable>
-      </View>
 
-      {activeTour && (
-        <Pressable
-          testID="resume-tour-btn"
-          onPress={() => router.push(`/tour/${activeTour.id}`)}
-          style={({ pressed }) => [
-            styles.resumeCard,
-            { backgroundColor: C.accent },
-            pressed && { opacity: 0.9 },
-          ]}
-        >
-          <View style={styles.resumeContent}>
-            <View>
-              <Text style={styles.resumeLabel}>Active Tour</Text>
-              <Text style={styles.resumeTitle} numberOfLines={1}>
-                {activeTour.title}
-              </Text>
+        {activeTour && (
+          <Pressable
+            testID="resume-tour-btn"
+            accessibilityRole="button"
+            accessibilityLabel={`Resume active tour ${activeTour.title}`}
+            onPress={() => {
+              if (t.isIOS) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push(`/tour/${activeTour.id}`);
+            }}
+            style={({ pressed }) => [
+              styles.hero,
+              { backgroundColor: Brand.teal, opacity: pressed ? 0.94 : 1 },
+            ]}
+          >
+            <View style={styles.heroTopRow}>
+              <View style={styles.heroBadge}>
+                <View style={styles.heroPulse} />
+                <Text style={styles.heroBadgeText}>TOUR IN PROGRESS</Text>
+              </View>
+              {t.isIOS ? (
+                <SymbolView
+                  name="arrow.up.right.circle.fill"
+                  tintColor="#FFFFFFE8"
+                  size={26}
+                />
+              ) : (
+                <Feather name="arrow-up-right" size={22} color="#FFFFFFE8" />
+              )}
             </View>
-            {isIOS ? (
-              <SymbolView name="arrow.right.circle.fill" tintColor="#FFF" size={26} />
-            ) : (
-              <Feather name="arrow-right-circle" size={26} color="#FFF" />
-            )}
+            <Text style={styles.heroTitle} numberOfLines={2}>
+              {activeTour.title}
+            </Text>
+            <View style={styles.heroStats}>
+              <Stat
+                icon="house"
+                value={`${activeTour.stopCount ?? 0}`}
+                label="stops"
+                t={t}
+              />
+              {(activeTour.approvedCount ?? 0) > 0 && (
+                <Stat
+                  icon="checkmark.circle"
+                  value={`${activeTour.approvedCount}`}
+                  label="approved"
+                  t={t}
+                />
+              )}
+              {(activeTour.pendingShowingsCount ?? 0) > 0 && (
+                <Stat
+                  icon="clock"
+                  value={`${activeTour.pendingShowingsCount}`}
+                  label="pending"
+                  t={t}
+                />
+              )}
+            </View>
+            <Text style={styles.heroCta}>Resume tour →</Text>
+          </Pressable>
+        )}
+
+        {isLoading && tours.length === 0 ? (
+          <View style={styles.loader}>
+            <ActivityIndicator color={Brand.teal} />
           </View>
-          <Text style={styles.resumeStops}>
-            {activeTour.stopCount ?? 0} stops · Tap to resume
-          </Text>
-        </Pressable>
-      )}
+        ) : null}
 
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: C.text }]}>Today</Text>
-        <Text style={[styles.sectionCount, { color: C.textSecondary }]}>
-          {todayTours.length} tour{todayTours.length !== 1 ? "s" : ""}
-        </Text>
-      </View>
-
-      {isLoading && (
-        <View style={styles.loader}>
-          <ActivityIndicator color={C.accent} />
-        </View>
-      )}
-
-      {!isLoading && todayTours.length === 0 && (
-        <View style={styles.empty}>
-          {isIOS ? (
-            <SymbolView name="calendar.badge.checkmark" tintColor={C.textTertiary} size={48} />
-          ) : (
-            <Feather name="calendar" size={48} color={C.textTertiary} />
-          )}
-          <Text style={[styles.emptyTitle, { color: C.text }]}>No tours today</Text>
-          <Text style={[styles.emptyText, { color: C.textSecondary }]}>
-            Your scheduled tours will appear here
-          </Text>
-        </View>
-      )}
-
-      {nonCompletedTours.length > 0 && (
-        <View style={[styles.group, { backgroundColor: C.surface }]}>
-          {nonCompletedTours.map((tour) => (
-            <TourCard
-              key={tour.id}
-              tour={tour}
-              buyerName={tour.buyerName ?? undefined}
-              isActive={tour.status === "active"}
-            />
-          ))}
-        </View>
-      )}
-
-      {completedToday.length > 0 && (
-        <View style={styles.sectionGap}>
-          <Text style={[styles.sectionLabel, { color: C.textSecondary }]}>Completed</Text>
-          <View style={[styles.group, { backgroundColor: C.surface }]}>
-            {completedToday.map((tour) => (
-              <TourCard key={tour.id} tour={tour} />
+        {todayTours.length > 0 && (
+          <ListGroup header={`Today · ${todayLabel}`}>
+            {todayTours.map((tour, i) => (
+              <TourCard
+                key={tour.id}
+                tour={tour}
+                buyerName={tour.buyerName ?? undefined}
+                isActive={tour.status === "active"}
+                isFirst={i === 0}
+                isLast={i === todayTours.length - 1}
+              />
             ))}
-          </View>
-        </View>
-      )}
-    </ScrollView>
+          </ListGroup>
+        )}
+
+        {upcomingThisWeek.length > 0 && (
+          <ListGroup header="Coming up this week">
+            {upcomingThisWeek.slice(0, 5).map((tour, i, arr) => (
+              <TourCard
+                key={tour.id}
+                tour={tour}
+                buyerName={tour.buyerName ?? undefined}
+                isFirst={i === 0}
+                isLast={i === arr.length - 1}
+              />
+            ))}
+          </ListGroup>
+        )}
+
+        {completedToday.length > 0 && (
+          <ListGroup header={`Completed today · ${completedToday.length}`}>
+            {completedToday.map((tour, i) => (
+              <TourCard
+                key={tour.id}
+                tour={tour}
+                buyerName={tour.buyerName ?? undefined}
+                isFirst={i === 0}
+                isLast={i === completedToday.length - 1}
+              />
+            ))}
+          </ListGroup>
+        )}
+
+        {!isLoading &&
+          !activeTour &&
+          todayTours.length === 0 &&
+          upcomingThisWeek.length === 0 &&
+          completedToday.length === 0 && (
+            <View style={{ paddingHorizontal: Spacing.lg }}>
+              <Card>
+                <EmptyState
+                  sfSymbol="calendar.badge.checkmark"
+                  featherIcon="calendar"
+                  title="No tours scheduled"
+                  message="When you publish a tour on the dashboard it shows up here so you can run it in the field."
+                />
+              </Card>
+            </View>
+          )}
+      </ScrollView>
     </>
   );
 }
 
+function Stat({
+  icon,
+  value,
+  label,
+  t,
+}: {
+  icon: string;
+  value: string;
+  label: string;
+  t: ReturnType<typeof useTheme>;
+}) {
+  return (
+    <View style={styles.stat}>
+      {t.isIOS ? (
+        <SymbolView name={icon as any} tintColor="#FFFFFFCC" size={13} />
+      ) : (
+        <Feather name="circle" size={11} color="#FFFFFFCC" />
+      )}
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  content: {
-    paddingHorizontal: 20,
+  hero: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    padding: Spacing.lg,
+    borderRadius: Radii.lg,
+    shadowColor: Brand.teal,
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  greeting: {
+  heroTopRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 14,
-  },
-  greetingText: {
-    fontSize: 15,
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginTop: 2,
-  },
-  iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.md,
   },
-  resumeCard: {
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-  },
-  resumeContent: {
+  heroBadge: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6,
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radii.sm,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
-  resumeLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.8)",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 2,
+  heroPulse: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#FFF",
   },
-  resumeTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
+  heroBadgeText: {
     color: "#FFF",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
   },
-  resumeStops: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
+  heroTitle: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    marginBottom: Spacing.md,
   },
-  sectionHeader: {
+  heroStats: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
+    flexWrap: "wrap",
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+  stat: { flexDirection: "row", alignItems: "baseline", gap: 4 },
+  statValue: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  statLabel: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 12,
+    fontWeight: "500",
   },
-  sectionCount: {
+  heroCta: {
+    color: "#FFFFFF",
     fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: -0.1,
   },
-  sectionGap: {
-    marginTop: 24,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  group: {
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  loader: {
-    paddingVertical: 40,
-    alignItems: "center",
-  },
-  empty: {
-    alignItems: "center",
-    paddingVertical: 60,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: "center",
-  },
+  loader: { paddingVertical: 40, alignItems: "center" },
 });

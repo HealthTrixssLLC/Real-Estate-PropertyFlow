@@ -1,27 +1,24 @@
+import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
-  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import Colors from "@/constants/colors";
+import { Button, TextField } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
+import { Brand, Radii, Spacing, useTheme, sem } from "@/theme";
 
 export default function LoginScreen() {
-  const scheme = useColorScheme() ?? "light";
-  const C = Colors[scheme];
+  const t = useTheme();
   const insets = useSafeAreaInsets();
-
   const { signIn } = useAuth();
 
   const [username, setUsername] = useState("");
@@ -33,14 +30,13 @@ export default function LoginScreen() {
   async function handleSignIn() {
     setError(null);
     if (!username.trim()) {
-      setError("Username is required");
+      setError("Enter your username");
       return;
     }
     if (!password) {
-      setError("Password is required");
+      setError("Enter your password");
       return;
     }
-
     setLoading(true);
     try {
       await signIn(username.trim(), password);
@@ -53,183 +49,178 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: C.background }}
+      style={{ flex: 1, backgroundColor: sem("background") as string }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 },
-        ]}
+        contentContainerStyle={{
+          paddingTop: insets.top + 56,
+          paddingBottom: insets.bottom + 24,
+          paddingHorizontal: 28,
+          flexGrow: 1,
+          justifyContent: "center",
+        }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View style={[styles.logoCircle, { backgroundColor: C.accent }]}>
-            <Feather name="map-pin" size={36} color="#FFF" />
+          <View style={[styles.logo, { backgroundColor: Brand.teal }]}>
+            {t.isIOS ? (
+              <SymbolView name="map.fill" tintColor="#FFFFFF" size={40} />
+            ) : (
+              <Feather name="map" size={36} color="#FFFFFF" />
+            )}
           </View>
-          <Text style={[styles.appName, { color: C.text }]}>Tour Flow</Text>
-          <Text style={[styles.tagline, { color: C.textSecondary }]}>
-            Sign in to your agent dashboard
+          <Text style={[styles.appName, { color: sem("label") as string }]}>TourFlow</Text>
+          <Text style={[styles.tagline, { color: sem("labelSecondary") as string }]}>
+            Run the perfect tour, in your pocket
           </Text>
         </View>
 
-        <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: C.text }]}>Username</Text>
-            <View style={[styles.inputWrap, { borderColor: C.border, backgroundColor: C.surfaceAlt }]}>
-              <Feather name="user" size={16} color={C.textTertiary} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { color: C.text }]}
-                placeholder="Enter your username"
-                placeholderTextColor={C.textTertiary}
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="username"
-                returnKeyType="next"
-                editable={!loading}
-              />
-            </View>
-          </View>
-
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: C.text }]}>Password</Text>
-            <View style={[styles.inputWrap, { borderColor: C.border, backgroundColor: C.surfaceAlt }]}>
-              <Feather name="lock" size={16} color={C.textTertiary} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { color: C.text }]}
-                placeholder="Enter your password"
-                placeholderTextColor={C.textTertiary}
+        <View style={{ gap: Spacing.md }}>
+          <TextField
+            label="Username"
+            value={username}
+            onChangeText={setUsername}
+            placeholder="username"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="username"
+            returnKeyType="next"
+            editable={!loading}
+            testID="login-username"
+          />
+          <View style={{ gap: 6 }}>
+            <Text style={[styles.label, { color: sem("labelSecondary") as string }]}>
+              Password
+            </Text>
+            <View
+              style={[
+                styles.passwordWrap,
+                { backgroundColor: sem("fillSecondary") as string, borderRadius: Radii.md },
+              ]}
+            >
+              <TextInputSecure
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="current-password"
-                returnKeyType="done"
-                onSubmitEditing={handleSignIn}
                 editable={!loading}
+                onSubmitEditing={handleSignIn}
               />
-              <Pressable onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
-                <Feather
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={16}
-                  color={C.textTertiary}
-                />
+              <Pressable
+                onPress={() => setShowPassword((v) => !v)}
+                hitSlop={10}
+                accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              >
+                {t.isIOS ? (
+                  <SymbolView
+                    name={showPassword ? "eye.slash.fill" : "eye.fill"}
+                    tintColor={sem("labelSecondary") as string}
+                    size={18}
+                  />
+                ) : (
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={18}
+                    color={sem("labelSecondary") as string}
+                  />
+                )}
               </Pressable>
             </View>
           </View>
 
           {error && (
-            <View style={[styles.errorBox, { backgroundColor: "#FEE2E2", borderColor: "#FCA5A5" }]}>
-              <Feather name="alert-circle" size={14} color="#DC2626" />
-              <Text style={styles.errorText}>{error}</Text>
+            <View
+              style={[
+                styles.errBox,
+                { backgroundColor: "#FF3B301F", borderColor: "#FF3B3055" },
+              ]}
+            >
+              {t.isIOS ? (
+                <SymbolView name="exclamationmark.circle.fill" tintColor="#FF3B30" size={14} />
+              ) : (
+                <Feather name="alert-circle" size={14} color="#FF3B30" />
+              )}
+              <Text style={styles.errText}>{error}</Text>
             </View>
           )}
 
-          <Pressable
-            onPress={handleSignIn}
-            disabled={loading}
-            style={({ pressed }) => [
-              styles.signInBtn,
-              { backgroundColor: C.accent, opacity: pressed || loading ? 0.85 : 1 },
-            ]}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <Text style={styles.signInBtnText}>Sign In</Text>
-            )}
-          </Pressable>
+          <View style={{ marginTop: Spacing.md }}>
+            <Button
+              label="Sign in"
+              onPress={handleSignIn}
+              loading={loading}
+              size="lg"
+              fullWidth
+              haptic="medium"
+              testID="login-submit"
+            />
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+// Inline secure-text input that fits inside our combo container.
+function TextInputSecure(props: {
+  value: string;
+  onChangeText: (v: string) => void;
+  secureTextEntry: boolean;
+  editable: boolean;
+  onSubmitEditing: () => void;
+}) {
+  // Local import to keep file lean.
+  const { TextInput } = require("react-native");
+  return (
+    <TextInput
+      style={[
+        { flex: 1, fontSize: 17, color: sem("label") as unknown as string, paddingVertical: 11 },
+      ]}
+      placeholder="••••••••"
+      placeholderTextColor={sem("labelTertiary") as string}
+      autoCapitalize="none"
+      autoCorrect={false}
+      autoComplete="current-password"
+      returnKeyType="done"
+      {...props}
+      testID="login-password"
+    />
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 24,
-    flexGrow: 1,
-    justifyContent: "center",
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  header: { alignItems: "center", marginBottom: 36, gap: 12 },
+  logo: {
+    width: 88,
+    height: 88,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    shadowColor: Brand.teal,
+    shadowOpacity: 0.35,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 6,
   },
-  appName: {
-    fontSize: 30,
-    fontWeight: "bold",
-    marginBottom: 6,
-  },
-  tagline: {
-    fontSize: 15,
-    textAlign: "center",
-  },
-  card: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 24,
-    gap: 16,
-  },
-  field: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  inputWrap: {
+  appName: { fontSize: 34, fontWeight: "800", letterSpacing: -0.6 },
+  tagline: { fontSize: 16, textAlign: "center" },
+  label: { fontSize: 13, fontWeight: "500" },
+  passwordWrap: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
+    paddingHorizontal: Spacing.md,
+    minHeight: 44,
+    gap: Spacing.sm,
   },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-  },
-  eyeBtn: {
-    padding: 4,
-  },
-  errorBox: {
+  errBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    padding: 10,
-    borderRadius: 8,
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    borderRadius: Radii.md,
     borderWidth: 1,
   },
-  errorText: {
-    color: "#DC2626",
-    fontSize: 13,
-    flex: 1,
-  },
-  signInBtn: {
-    height: 50,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 4,
-  },
-  signInBtnText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  errText: { color: "#FF3B30", fontSize: 13, flex: 1, fontWeight: "500" },
 });

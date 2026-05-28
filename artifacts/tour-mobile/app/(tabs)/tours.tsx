@@ -1,184 +1,143 @@
-import { Feather } from "@expo/vector-icons";
 import { useListTours } from "@workspace/api-client-react";
-import { SymbolView } from "expo-symbols";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
-  ActionSheetIOS,
   ActivityIndicator,
-  Alert,
   FlatList,
-  Platform,
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "expo-router";
 
 import { TourCard } from "@/components/TourCard";
-import Colors from "@/constants/colors";
-import { Semantic } from "@/constants/semantic";
-import { Typography } from "@/constants/typography";
+import {
+  EmptyState,
+  ScreenHeader,
+  SearchField,
+  SegmentedControl,
+  SyncStatusPill,
+} from "@/components/ui";
+import { Brand, Radii, Spacing, sem } from "@/theme";
 
-type FilterTab = "upcoming" | "active" | "completed" | "all";
+type Filter = "upcoming" | "active" | "completed" | "all";
 
-const FILTER_LABELS: Record<FilterTab, string> = {
-  upcoming: "Upcoming",
-  active: "Active",
-  completed: "Completed",
-  all: "All Tours",
-};
-
-const FILTER_ORDER: FilterTab[] = ["upcoming", "active", "completed", "all"];
+const OPTIONS: { value: Filter; label: string }[] = [
+  { value: "upcoming", label: "Upcoming" },
+  { value: "active", label: "Active" },
+  { value: "completed", label: "Done" },
+  { value: "all", label: "All" },
+];
 
 export default function ToursScreen() {
-  const scheme = useColorScheme() ?? "light";
-  const C = Colors[scheme];
   const insets = useSafeAreaInsets();
-  const isIOS = Platform.OS === "ios";
-  const isWeb = Platform.OS === "web";
-  const navigation = useNavigation();
-
-  const [filter, setFilter] = useState<FilterTab>("upcoming");
+  const [filter, setFilter] = useState<Filter>("upcoming");
+  const [search, setSearch] = useState("");
   const { data, isLoading, refetch, isRefetching } = useListTours();
 
   const all = data?.tours ?? [];
 
-  const counts: Record<FilterTab, number> = {
-    upcoming: all.filter((t) => t.status === "draft" || t.status === "published").length,
-    active: all.filter((t) => t.status === "active").length,
-    completed: all.filter((t) => t.status === "completed").length,
-    all: all.length,
-  };
-
-  const filtered = all.filter((t) => {
-    if (filter === "all") return true;
-    if (filter === "upcoming") return t.status === "draft" || t.status === "published";
-    return t.status === filter;
-  });
-
-  const showFilterSheet = useCallback(() => {
-    const options = FILTER_ORDER.map((k) => {
-      const n = counts[k];
-      return `${FILTER_LABELS[k]}${n > 0 ? ` (${n})` : ""}`;
-    });
-
-    if (isIOS) {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ["Cancel", ...options],
-          cancelButtonIndex: 0,
-          title: "Filter Tours",
-        },
-        (idx) => {
-          if (idx >= 1 && idx <= FILTER_ORDER.length) {
-            setFilter(FILTER_ORDER[idx - 1]);
-          }
-        }
-      );
-    } else {
-      Alert.alert(
-        "Filter Tours",
-        undefined,
-        [
-          ...FILTER_ORDER.map((k) => ({
-            text: `${FILTER_LABELS[k]}${counts[k] > 0 ? ` (${counts[k]})` : ""}`,
-            onPress: () => setFilter(k),
-          })),
-          { text: "Cancel", style: "cancel" as const },
-        ]
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = all;
+    if (filter === "upcoming") {
+      list = all.filter((x) => x.status === "draft" || x.status === "published");
+    } else if (filter !== "all") {
+      list = all.filter((x) => x.status === filter);
+    }
+    if (q) {
+      list = list.filter(
+        (x) =>
+          x.title.toLowerCase().includes(q) ||
+          (x.buyerName ?? "").toLowerCase().includes(q)
       );
     }
-  }, [counts, isIOS]);
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerLargeTitle: true,
-      headerRight: () => (
-        <Pressable
-          onPress={showFilterSheet}
-          hitSlop={8}
-          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginRight: 4 }]}
-          testID="tours-filter-btn"
-        >
-          {isIOS ? (
-            <SymbolView
-              name="line.3.horizontal.decrease.circle"
-              tintColor={C.accent}
-              size={24}
-            />
-          ) : (
-            <Feather name="filter" size={22} color={C.accent} />
-          )}
-        </Pressable>
-      ),
-    });
-  }, [navigation, showFilterSheet, C.accent, isIOS]);
-
-  const isFiltered = filter !== "upcoming";
+    return [...list].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [all, filter, search]);
 
   return (
-    <View style={styles.container}>
-      {isFiltered && (
-        <View style={[styles.filterBanner, { backgroundColor: C.accent + "15", borderBottomColor: C.accent + "40" }]}>
-          <Text style={[styles.filterBannerText, { color: C.accent }]}>
-            Showing: {FILTER_LABELS[filter]}
-          </Text>
-          <Pressable onPress={() => setFilter("upcoming")} hitSlop={6}>
-            {isIOS ? (
-              <SymbolView name="xmark.circle.fill" tintColor={C.accent} size={16} />
-            ) : (
-              <Feather name="x-circle" size={16} color={C.accent} />
-            )}
-          </Pressable>
-        </View>
-      )}
+    <View style={{ flex: 1, backgroundColor: sem("grouped") as string, paddingTop: insets.top }}>
+      <ScreenHeader title="Tours" right={<SyncStatusPill />} />
+      <View style={styles.controls}>
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Search tours or buyers"
+          testID="tours-search"
+        />
+        <SegmentedControl
+          options={OPTIONS}
+          value={filter}
+          onChange={setFilter}
+          testID="tours-filter"
+        />
+      </View>
 
-      {isLoading ? (
-        <View style={styles.loader}>
-          <ActivityIndicator color={C.accent} />
+      {isLoading && all.length === 0 ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={Brand.teal} />
         </View>
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={(item) => item.id}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: isWeb ? 34 : insets.bottom + 80 },
-          ]}
+          keyExtractor={(t) => t.id}
+          contentContainerStyle={{
+            paddingHorizontal: Spacing.lg,
+            paddingBottom: insets.bottom + 120,
+          }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              tintColor={C.accent}
+              tintColor={Brand.teal}
             />
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              {isIOS ? (
-                <SymbolView name="house.lodge" tintColor={Semantic.labelTertiary as string} size={48} />
-              ) : (
-                <Feather name="home" size={48} color={C.textTertiary} />
-              )}
-              <Text style={[styles.emptyTitle, { color: C.text }]}>No tours found</Text>
-              <Text style={[styles.emptyText, { color: C.textSecondary }]}>
-                {filter === "upcoming"
-                  ? "No upcoming tours scheduled"
+            <EmptyState
+              sfSymbol="magnifyingglass"
+              featherIcon="search"
+              title={
+                search
+                  ? "No matches"
+                  : filter === "upcoming"
+                  ? "No upcoming tours"
                   : filter === "active"
-                  ? "No tours are currently active"
+                  ? "No active tours"
                   : filter === "completed"
                   ? "No completed tours yet"
-                  : "Create tours from the web app"}
-              </Text>
-            </View>
+                  : "No tours"
+              }
+              message={
+                search
+                  ? "Try a different search or clear the filters."
+                  : "Create and publish tours from the dashboard to see them here."
+              }
+            />
           }
-          renderItem={({ item }) => (
-            <TourCard tour={item} buyerName={item.buyerName ?? undefined} isActive={item.status === "active"} />
+          ItemSeparatorComponent={() => (
+            <View style={styles.separator} />
+          )}
+          renderItem={({ item, index }) => (
+            <View
+              style={{
+                backgroundColor: sem("groupedSurface") as string,
+                borderTopLeftRadius: index === 0 ? Radii.lg : 0,
+                borderTopRightRadius: index === 0 ? Radii.lg : 0,
+                borderBottomLeftRadius: index === filtered.length - 1 ? Radii.lg : 0,
+                borderBottomRightRadius: index === filtered.length - 1 ? Radii.lg : 0,
+              }}
+            >
+              <TourCard
+                tour={item}
+                buyerName={item.buyerName ?? undefined}
+                isActive={item.status === "active"}
+                isFirst={index === 0}
+                isLast={index === filtered.length - 1}
+              />
+            </View>
           )}
         />
       )}
@@ -187,40 +146,15 @@ export default function ToursScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  controls: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    gap: Spacing.md,
   },
-  filterBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: Spacing.lg + 8 + Spacing.md,
+    backgroundColor: sem("separator") as string,
   },
-  filterBannerText: {
-    ...Typography.footnote,
-    fontWeight: "500",
-  },
-  loader: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  list: {
-    paddingTop: 0,
-  },
-  empty: {
-    alignItems: "center",
-    paddingTop: 80,
-    gap: 12,
-  },
-  emptyTitle: {
-    ...Typography.headline,
-  },
-  emptyText: {
-    ...Typography.subheadline,
-    textAlign: "center",
-    maxWidth: 240,
-  },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

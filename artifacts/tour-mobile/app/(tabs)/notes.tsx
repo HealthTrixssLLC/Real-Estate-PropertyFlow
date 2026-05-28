@@ -1,197 +1,157 @@
-import { Feather } from "@expo/vector-icons";
 import { useListTours } from "@workspace/api-client-react";
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
-  Platform,
-  Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
-  Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import Colors from "@/constants/colors";
-import { Semantic } from "@/constants/semantic";
-import { Typography } from "@/constants/typography";
+import {
+  EmptyState,
+  ListGroup,
+  ListRow,
+  ScreenHeader,
+  SearchField,
+  SyncStatusPill,
+} from "@/components/ui";
+import { Brand, Spacing, sem } from "@/theme";
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export default function NotesScreen() {
-  const scheme = useColorScheme() ?? "light";
-  const C = Colors[scheme];
   const insets = useSafeAreaInsets();
-  const isIOS = Platform.OS === "ios";
-
   const { data, isLoading, refetch, isRefetching } = useListTours();
+  const [search, setSearch] = useState("");
 
-  const tours = (data?.tours ?? []).filter(
-    (t) => t.status === "completed" || t.status === "active"
-  );
+  const groups = useMemo(() => {
+    const all = (data?.tours ?? []).filter(
+      (t) => t.status === "completed" || t.status === "active"
+    );
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? all.filter(
+          (t) =>
+            t.title.toLowerCase().includes(q) ||
+            (t.buyerName ?? "").toLowerCase().includes(q)
+        )
+      : all;
+    const active = filtered.filter((t) => t.status === "active");
+    const completed = filtered
+      .filter((t) => t.status === "completed")
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return { active, completed };
+  }, [data, search]);
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={C.accent} />
+      <View
+        style={[
+          styles.center,
+          { backgroundColor: sem("grouped") as string, paddingTop: insets.top },
+        ]}
+      >
+        <ActivityIndicator color={Brand.teal} />
       </View>
     );
   }
 
   return (
-    <FlatList
-      style={styles.list}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={[
-        styles.content,
-        { paddingBottom: insets.bottom + 32 },
-      ]}
+    <ScrollView
+      style={{ backgroundColor: sem("grouped") as string }}
+      contentContainerStyle={{
+        paddingTop: insets.top + Spacing.md,
+        paddingBottom: insets.bottom + 120,
+      }}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={C.accent} />
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={refetch}
+          tintColor={Brand.teal}
+        />
       }
-      data={tours}
-      keyExtractor={(t) => t.id}
-      ListHeaderComponent={
-        tours.length > 0 ? (
-          <Text style={[styles.sectionHeader, { color: C.textSecondary }]}>
-            Tours with notes
-          </Text>
-        ) : null
-      }
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-      renderItem={({ item }) => (
-        <Pressable
-          testID={`notes-tour-${item.id}`}
-          onPress={() => router.push(`/tour/${item.id}`)}
-          style={({ pressed }) => [
-            styles.row,
-            pressed && { backgroundColor: Semantic.fillTertiary as unknown as string },
-          ]}
-        >
-          <View style={[styles.tourIcon, { backgroundColor: C.accent + "20" }]}>
-            {isIOS ? (
-              <SymbolView
-                name={item.status === "active" ? "house.fill" : "checkmark.circle.fill"}
-                tintColor={C.accent}
-                size={16}
-              />
-            ) : (
-              <Feather
-                name={item.status === "active" ? "home" : "check-circle"}
-                size={16}
-                color={C.accent}
-              />
-            )}
-          </View>
-          <View style={styles.rowContent}>
-            <Text style={[styles.rowTitle, { color: C.text }]} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <Text style={[styles.rowDate, { color: C.textSecondary }]}>
-              {formatDate(item.date)}
-            </Text>
-          </View>
-          {isIOS ? (
-            <SymbolView name="chevron.right" tintColor={C.textTertiary} size={14} />
-          ) : (
-            <Feather name="chevron-right" size={14} color={C.textTertiary} />
-          )}
-        </Pressable>
+    >
+      <ScreenHeader
+        title="Notes"
+        subtitle="Voice memos & impressions per stop"
+        right={<SyncStatusPill />}
+      />
+
+      <View style={{ paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg }}>
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Search tours or buyers"
+          testID="notes-search"
+        />
+      </View>
+
+      {groups.active.length === 0 && groups.completed.length === 0 && (
+        <EmptyState
+          sfSymbol="note.text"
+          featherIcon="file-text"
+          title={search ? "No matches" : "No tour notes yet"}
+          message={
+            search
+              ? "Try a different search term."
+              : "Voice memos and typed notes you capture during a tour show up here grouped by tour."
+          }
+        />
       )}
-      ListEmptyComponent={
-        <View style={styles.empty}>
-          {isIOS ? (
-            <SymbolView name="note.text" tintColor={C.textTertiary} size={56} />
-          ) : (
-            <Feather name="file-text" size={56} color={C.textTertiary} />
-          )}
-          <Text style={[styles.emptyTitle, { color: C.text }]}>No notes yet</Text>
-          <Text style={[styles.emptyText, { color: C.textSecondary }]}>
-            Voice recordings and text notes are captured per stop during your tours.
-          </Text>
-        </View>
-      }
-    />
+
+      {groups.active.length > 0 && (
+        <ListGroup header="In progress">
+          {groups.active.map((tour, i, arr) => (
+            <ListRow
+              key={tour.id}
+              testID={`notes-tour-${tour.id}`}
+              title={tour.title}
+              subtitle={`${tour.buyerName ?? "Unassigned"} · ${formatDate(tour.date)}`}
+              sfSymbol="dot.radiowaves.up.forward"
+              featherIcon="activity"
+              iconBg={Brand.teal + "1F"}
+              iconColor={Brand.teal}
+              isFirst={i === 0}
+              isLast={i === arr.length - 1}
+              onPress={() => router.push(`/tour/${tour.id}`)}
+            />
+          ))}
+        </ListGroup>
+      )}
+
+      {groups.completed.length > 0 && (
+        <ListGroup header="Completed">
+          {groups.completed.map((tour, i, arr) => (
+            <ListRow
+              key={tour.id}
+              testID={`notes-tour-${tour.id}`}
+              title={tour.title}
+              subtitle={`${tour.buyerName ?? "Unassigned"} · ${formatDate(tour.date)}`}
+              sfSymbol="checkmark.circle.fill"
+              featherIcon="check-circle"
+              iconBg="#34C75922"
+              iconColor="#34C759"
+              isFirst={i === 0}
+              isLast={i === arr.length - 1}
+              onPress={() => router.push(`/tour/${tour.id}/summary`)}
+            />
+          ))}
+        </ListGroup>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {
-    backgroundColor: Semantic.grouped as unknown as string,
-  },
-  content: {
-    paddingTop: 8,
-    paddingHorizontal: 16,
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Semantic.background as unknown as string,
-  },
-  sectionHeader: {
-    ...Typography.sectionHeader,
-    marginBottom: 6,
-  },
-  rowsGroup: {
-    backgroundColor: Semantic.groupedSurface as unknown as string,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    backgroundColor: Semantic.groupedSurface as unknown as string,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Semantic.opaqueSeparator as unknown as string,
-    marginLeft: 60,
-  },
-  tourIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  rowContent: {
-    flex: 1,
-    gap: 2,
-  },
-  rowTitle: {
-    ...Typography.subheadline,
-    fontWeight: "500",
-  },
-  rowDate: {
-    ...Typography.footnote,
-  },
-  empty: {
-    alignItems: "center",
-    paddingTop: 80,
-    gap: 14,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

@@ -4,19 +4,20 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, useColorScheme } from "react-native";
+import { View } from "react-native";
 
-import Colors from "@/constants/colors";
+import { ActiveTourBar } from "@/components/ui/ActiveTourBar";
+import { Brand, isIOS, sem } from "@/theme";
 
 function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "calendar", selected: "calendar.badge.checkmark" }} />
+        <Icon sf={{ default: "sun.max", selected: "sun.max.fill" }} />
         <Label>Today</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="tours">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
+        <Icon sf={{ default: "map", selected: "map.fill" }} />
         <Label>Tours</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="buyers">
@@ -36,15 +37,14 @@ function NativeTabLayout() {
 }
 
 function ClassicTabLayout() {
-  const C = Colors[useColorScheme() ?? "light"];
-  const isIOS = Platform.OS === "ios";
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: C.accent,
-        tabBarInactiveTintColor: C.tabIconDefault,
-        headerTintColor: C.accent,
+        tabBarActiveTintColor: Brand.teal,
+        tabBarInactiveTintColor: sem("labelTertiary") as string,
+        headerTintColor: Brand.teal,
+        tabBarStyle: { backgroundColor: sem("groupedSurface") as string },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >
       <Tabs.Screen
@@ -52,11 +52,11 @@ function ClassicTabLayout() {
         options={{
           title: "Today",
           headerShown: false,
-          tabBarIcon: ({ color }) =>
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="calendar" tintColor={color} size={24} />
+              <SymbolView name={focused ? "sun.max.fill" : "sun.max"} tintColor={color} size={24} />
             ) : (
-              <Feather name="calendar" size={22} color={color} />
+              <Feather name="sun" size={22} color={color} />
             ),
         }}
       />
@@ -64,11 +64,12 @@ function ClassicTabLayout() {
         name="tours"
         options={{
           title: "Tours",
-          tabBarIcon: ({ color }) =>
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="house" tintColor={color} size={24} />
+              <SymbolView name={focused ? "map.fill" : "map"} tintColor={color} size={24} />
             ) : (
-              <Feather name="home" size={22} color={color} />
+              <Feather name="map" size={22} color={color} />
             ),
         }}
       />
@@ -76,9 +77,9 @@ function ClassicTabLayout() {
         name="buyers"
         options={{
           title: "Buyers",
-          tabBarIcon: ({ color }) =>
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="person.2" tintColor={color} size={24} />
+              <SymbolView name={focused ? "person.2.fill" : "person.2"} tintColor={color} size={24} />
             ) : (
               <Feather name="users" size={22} color={color} />
             ),
@@ -88,9 +89,10 @@ function ClassicTabLayout() {
         name="notes"
         options={{
           title: "Notes",
-          tabBarIcon: ({ color }) =>
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="note.text" tintColor={color} size={24} />
+              <SymbolView name={focused ? "note.text.badge.plus" : "note.text"} tintColor={color} size={24} />
             ) : (
               <Feather name="file-text" size={22} color={color} />
             ),
@@ -100,9 +102,10 @@ function ClassicTabLayout() {
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) =>
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="gearshape" tintColor={color} size={24} />
+              <SymbolView name={focused ? "gearshape.fill" : "gearshape"} tintColor={color} size={24} />
             ) : (
               <Feather name="settings" size={22} color={color} />
             ),
@@ -113,8 +116,10 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
+  return (
+    <View style={{ flex: 1, backgroundColor: sem("grouped") as string }}>
+      {isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />}
+      <ActiveTourBar />
+    </View>
+  );
 }
