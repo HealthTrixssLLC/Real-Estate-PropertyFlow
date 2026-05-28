@@ -8,10 +8,10 @@ interface IconSymbolProps {
   name: SFSymbol;
   tintColor?: string;
   size?: number;
-  weight?: "ultraLight" | "thin" | "light" | "regular" | "medium" | "semibold" | "bold" | "heavy" | "black";
+  weight?: "ultralight" | "thin" | "light" | "regular" | "medium" | "semibold" | "bold" | "heavy" | "black";
   scale?: "small" | "medium" | "large";
   style?: StyleProp<ViewStyle>;
-  resizeMode?: "center" | "scaleAspectFit" | "scaleAspectFill";
+  resizeMode?: "center" | "scale-aspect-fit" | "scale-aspect-fill";
 }
 
 /**
@@ -32,7 +32,7 @@ export function IconSymbol({
   return (
     <RNSFSymbol
       name={name}
-      weight={weight}
+      weight={weight as any}
       scale={scale}
       color={tintColor}
       size={size}

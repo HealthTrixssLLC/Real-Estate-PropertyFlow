@@ -22,10 +22,10 @@ import { PermissionsAndroid, Platform } from "react-native";
 
 class Recording {
   private uri: string | null = null;
-  private player: AudioRecorderPlayer;
+  private player: typeof AudioRecorderPlayer;
   private started = false;
 
-  constructor(player: AudioRecorderPlayer) {
+  constructor(player: typeof AudioRecorderPlayer) {
     this.player = player;
   }
 
@@ -63,7 +63,7 @@ const HIGH_QUALITY: RecordingOptions = {
   ios: {
     AVEncoderAudioQualityKeyIOS: AVEncoderAudioQualityIOSType.high,
     AVNumberOfChannelsKeyIOS: 2,
-    AVFormatIDKeyIOS: AVEncodingOption.aac,
+    AVFormatIDKeyIOS: "aac" as AVEncodingOption,
     AVSampleRateKeyIOS: 44100,
   },
   android: {
@@ -100,11 +100,11 @@ async function setAudioModeAsync(_opts: {
   return;
 }
 
-// Lazy-construct a single shared player per app lifetime; create new
-// Recording wrappers per createAsync call so each owns its own uri state.
-let _player: AudioRecorderPlayer | null = null;
-function getPlayer(): AudioRecorderPlayer {
-  if (!_player) _player = new AudioRecorderPlayer();
+// AudioRecorderPlayer is a Nitro module singleton; use it directly.
+// Create new Recording wrappers per createAsync call so each owns its own uri state.
+let _player: typeof AudioRecorderPlayer | null = null;
+function getPlayer(): typeof AudioRecorderPlayer {
+  if (!_player) _player = AudioRecorderPlayer;
   return _player;
 }
 

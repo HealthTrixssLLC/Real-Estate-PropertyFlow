@@ -1,5 +1,5 @@
 import { Feather } from "@/lib/icon";
-import type { Audio } from "@/lib/audio";
+import type { Audio, Recording } from "@/lib/audio";
 import * as Haptics from "@/lib/haptics";
 import { SymbolView } from "@/lib/icon";
 import React, { useEffect, useRef, useState } from "react";
@@ -31,7 +31,7 @@ export function VoiceRecorder({ onRecordingComplete, isUploading }: VoiceRecorde
   const [elapsed, setElapsed] = useState(0);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
-  const recordingRef = useRef<InstanceType<typeof Audio.Recording> | null>(null);
+  const recordingRef = useRef<Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startTimer = () => {

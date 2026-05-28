@@ -93,7 +93,7 @@ export const router = {
   push(href: Href) {
     const r = resolveHref(href);
     if (!r) return;
-    dispatchNav(CommonActions.navigate({ name: r.name as string, params: r.params }));
+    dispatchNav(CommonActions.navigate(r.name as string, r.params));
   },
   replace(href: Href) {
     const r = resolveHref(href);
@@ -161,7 +161,7 @@ export function usePathname(): string {
     case "NotFound":
       return "/not-found";
     default:
-      return `/${r.name}`;
+      return `/${(r as { name: string }).name}`;
   }
 }
 
