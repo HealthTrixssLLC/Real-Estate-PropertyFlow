@@ -1,0 +1,71 @@
+Fix the local build for the Real-Estate-PropertyFlow pnpm monorepo.
+
+Current status:
+
+* TypeScript typecheck passes.
+* The previous Rollup native dependency issue is fixed.
+* The build now fails during the Vite build for `artifacts/mockup-sandbox`.
+* Running `PORT=5173 pnpm run build` gets past the PORT error but then fails with:
+
+Error: BASE_PATH environment variable is required but was not provided.
+
+Known grep results:
+
+* `artifacts/api-server/src/index.ts` requires `PORT`
+* `artifacts/mockup-sandbox/vite.config.ts` requires `PORT`
+* `artifacts/tour-planner/vite.config.ts` requires `PORT`
+
+Please make the smallest safe code changes so `pnpm run build` works locally without manually setting environment variables.
+
+Requirements:
+
+1. Inspect:
+
+   * `artifacts/mockup-sandbox/vite.config.ts`
+   * `artifacts/tour-planner/vite.config.ts`
+   * any shared config files used by those Vite configs
+   * `artifacts/api-server/src/index.ts`
+
+2. For Vite app builds, do not hard fail when `PORT` or `BASE_PATH` are missing.
+
+3. Use safe local defaults:
+
+   * `PORT` default: `5173` for mockup-sandbox
+   * `PORT` default: `5174` for tour-planner if both apps need separate dev ports
+   * `BASE_PATH` default: `/`
+
+4. Only require `PORT` in the API server if it is truly needed at runtime. The API server should not break unrelated frontend production builds unless that package is actually being executed.
+
+5. The likely fix in the Vite configs should look conceptually like this:
+
+```ts
+const port = Number(process.env.PORT ?? 5173);
+const base = process.env.BASE_PATH ?? "/";
+```
+
+And the config should use:
+
+```ts
+base,
+server: {
+  host: "0.0.0.0",
+  port,
+}
+```
+
+6. Do not rewrite the app. Do not change UI code. Do not change business logic. This is a build/config fix only.
+
+7. After making the fix, run:
+
+```bash
+pnpm run build
+```
+
+8. If another environment variable error appears, inspect whether it is truly required for production build or should also have a safe local default.
+
+9. Report exactly:
+
+   * which files changed
+   * what default values were added
+   * why the build was failing
+   * whether `pnpm run build` now succeeds
