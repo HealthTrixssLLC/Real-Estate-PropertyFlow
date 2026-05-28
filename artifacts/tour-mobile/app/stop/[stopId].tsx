@@ -174,7 +174,17 @@ export default function StopDetailScreen() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useGetTourStop(stopId ?? "", {
-    query: { queryKey: getGetTourStopQueryKey(stopId ?? ""), enabled: !!stopId },
+    query: {
+      queryKey: getGetTourStopQueryKey(stopId ?? ""),
+      enabled: !!stopId,
+      refetchInterval: (query) => {
+        const voiceNotes = (query.state.data as typeof data)?.voiceNotes ?? [];
+        const hasPending = voiceNotes.some(
+          (vn) => vn.transcriptionStatus === "pending" || vn.transcriptionStatus === "in_progress"
+        );
+        return hasPending ? 3000 : false;
+      },
+    },
   });
 
   const stop = data?.stop;

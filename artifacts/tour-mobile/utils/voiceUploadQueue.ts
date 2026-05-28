@@ -72,12 +72,13 @@ async function uploadItem(item: PendingUpload): Promise<boolean> {
     const blob = await fetch(`data:audio/m4a;base64,${base64}`).then((r) =>
       r.blob()
     );
-    const { uploadVoiceNote } = await import("@workspace/api-client-react");
-    await uploadVoiceNote({
+    const { uploadVoiceNote, transcribeVoiceNote } = await import("@workspace/api-client-react");
+    const result = await uploadVoiceNote({
       tourStopId: item.tourStopId,
       audio: blob,
       durationSeconds: item.durationSeconds,
     });
+    transcribeVoiceNote(result.voiceNote.id).catch(() => undefined);
     return true;
   } catch {
     return false;
@@ -131,8 +132,9 @@ export async function tryImmediateUpload(
     const blob = await fetch(`data:audio/m4a;base64,${base64}`).then((r) =>
       r.blob()
     );
-    const { uploadVoiceNote } = await import("@workspace/api-client-react");
-    await uploadVoiceNote({ tourStopId, audio: blob, durationSeconds });
+    const { uploadVoiceNote, transcribeVoiceNote } = await import("@workspace/api-client-react");
+    const result = await uploadVoiceNote({ tourStopId, audio: blob, durationSeconds });
+    transcribeVoiceNote(result.voiceNote.id).catch(() => undefined);
     return "uploaded";
   } catch {
     await enqueueVoiceUpload(uri, tourStopId, durationSeconds);
