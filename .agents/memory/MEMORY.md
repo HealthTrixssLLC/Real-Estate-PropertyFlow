@@ -1,1 +1,1 @@
-- [iOS native UI overhaul](ios-ui-overhaul.md) — PlatformColor tokens, Typography scale, ActionSheetIOS filter, haptics, inset-grouped sections, native nav/tab rules, sentence-case section headers
+- [TourFlow visited semantics](tourflow-visited-semantics.md) — voice note OR debrief upload auto-marks tour_stop.visited; Generate Profile only requires visited+!skipped, not a debrief.

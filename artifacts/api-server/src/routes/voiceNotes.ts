@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import type { Logger } from "pino";
 import { randomUUID } from "crypto";
 import multer from "multer";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   db,
   voiceNotesTable,
@@ -146,10 +146,24 @@ export async function runTranscriptionJob(voiceNoteId: string, fileUrl: string, 
       confidence: result.confidence ?? null,
     });
 
-    await db
+    const [updatedNote] = await db
       .update(voiceNotesTable)
       .set({ transcriptionStatus: "completed", typedNote: result.text, updatedAt: new Date() })
-      .where(eq(voiceNotesTable.id, voiceNoteId));
+      .where(eq(voiceNotesTable.id, voiceNoteId))
+      .returning();
+
+    if (updatedNote?.tourStopId) {
+      const now = new Date();
+      await db
+        .update(tourStopsTable)
+        .set({
+          visited: true,
+          arrivalTime: sql`COALESCE(${tourStopsTable.arrivalTime}, ${now})`,
+          updatedAt: now,
+        })
+        .where(and(eq(tourStopsTable.id, updatedNote.tourStopId), eq(tourStopsTable.visited, false)))
+        .catch(() => {});
+    }
   } catch (err) {
     log.error({ err, voiceNoteId }, "Background transcription job failed");
     await db

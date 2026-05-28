@@ -309,6 +309,14 @@ router.post("/buyers/:buyerId/preference-profile", async (req: Request, res: Res
       for (const stop of stops) {
         const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, stop.propertyId));
         const [debrief] = await db.select().from(debriefVoiceNotesTable).where(eq(debriefVoiceNotesTable.tourStopId, stop.id));
+        const stopVoiceNotes = await db
+          .select()
+          .from(voiceNotesTable)
+          .where(eq(voiceNotesTable.tourStopId, stop.id));
+        const voiceNotesText = stopVoiceNotes
+          .map((v) => v.typedNote)
+          .filter((t): t is string => !!t && t.trim().length > 0)
+          .join(" ");
 
         const ratings = [
           stop.overallFitRating != null ? `Overall fit: ${stop.overallFitRating}/5` : null,
@@ -319,12 +327,14 @@ router.post("/buyers/:buyerId/preference-profile", async (req: Request, res: Res
           stop.roadNoiseRating != null ? `Road noise: ${stop.roadNoiseRating}/5` : null,
         ].filter(Boolean).join(", ");
 
+        const debriefText = debrief?.transcript ?? debrief?.aiSummary ?? "";
+        const combinedNotes = [debriefText, voiceNotesText].filter((t) => t && t.trim().length > 0).join(" ");
         allStopData.push({
           stopId: stop.id,
           address: property?.formattedAddress ?? "Unknown",
           ratings,
           tags: stop.quickTags ?? [],
-          debrief: debrief?.transcript ?? debrief?.aiSummary ?? "",
+          debrief: combinedNotes,
           fitScore: debrief?.fitScore ?? null,
           visited: stop.visited,
           property: property ?? null,

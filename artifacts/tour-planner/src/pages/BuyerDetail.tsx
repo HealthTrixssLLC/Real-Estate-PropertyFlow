@@ -463,12 +463,10 @@ function PreferenceProfileCard({
 
   const typed = profile as PreferenceProfileData | null | undefined
 
-  const hasVisitedDebrief = tours.some(tour =>
-    tour.stops.some(stop =>
-      stop.visited && (stop.debriefTranscript || stop.debriefSummary)
-    )
+  const hasVisitedStop = tours.some(tour =>
+    tour.stops.some(stop => stop.visited && !stop.skipped)
   )
-  const canGenerate = !!profile || hasVisitedDebrief
+  const canGenerate = !!profile || hasVisitedStop
   const buttonDisabled = isPending || !canGenerate
 
   return (
@@ -490,7 +488,7 @@ function PreferenceProfileCard({
             className="shrink-0 text-xs h-7"
             onClick={() => generate({ buyerId })}
             disabled={buttonDisabled}
-            title={!canGenerate ? "Complete a showing with a voice debrief to generate a profile" : undefined}
+            title={!canGenerate ? "Mark a stop visited (or record a voice note / debrief) to generate a profile" : undefined}
           >
             {isPending ? (
               <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Generating…</>
@@ -511,7 +509,7 @@ function PreferenceProfileCard({
 
         {!profile && !isPending && !canGenerate && (
           <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2.5">
-            No profile yet. Mark a stop visited and record a voice debrief — once at least one showing has been completed with a debrief, you can generate an AI buyer preference profile with predicted fit scores on upcoming stops.
+            No profile yet. Mark a stop visited (or add a voice note — that marks it visited automatically). Once at least one showing has been completed, you can generate an AI buyer preference profile with predicted fit scores on upcoming stops.
           </p>
         )}
 
