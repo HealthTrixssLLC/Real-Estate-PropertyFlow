@@ -1,0 +1,372 @@
+We need to fully remove Expo from the `artifacts/tour-mobile` app and convert it into a bare React Native iOS app that builds directly in Xcode.
+
+Repository:
+`Real-Estate-PropertyFlow`
+
+Mobile app location:
+`artifacts/tour-mobile`
+
+Current problem:
+The app still contains Expo throughout the package. Our local verification showed these Expo dependencies and references are still present:
+
+* `main: "expo-router/entry"`
+* `expo`
+* `expo-router`
+* `expo-file-system`
+* `expo-haptics`
+* `expo-symbols`
+* `expo-av`
+* `expo-linking`
+* `expo-location`
+* `expo-splash-screen`
+* `expo-image`
+* `expo-image-picker`
+* `expo-linear-gradient`
+* `expo-web-browser`
+* `expo-system-ui`
+* `expo-font`
+* `expo-constants`
+* `expo-blur`
+* `expo-glass-effect`
+* `@expo/vector-icons`
+* `@expo-google-fonts/inter`
+* `.expo`
+* `app.json` with Expo config
+* `tsconfig.json` extending `expo/tsconfig.base`
+* many source imports from `expo-router`, `expo-symbols`, `expo-haptics`, `expo-linking`, `expo-av`, and other Expo modules
+
+Important:
+Do not use `expo prebuild`.
+Do not use `expo run:ios`.
+Do not keep Expo as a dependency.
+Do not leave `expo-router/entry` as the app entry point.
+Do not leave any `expo-*` imports in source code.
+The final app must be built directly in Xcode using the committed native iOS project.
+
+Goal:
+Convert `artifacts/tour-mobile` from an Expo-managed React Native app into a bare React Native app with a native iOS project under:
+
+`artifacts/tour-mobile/ios`
+
+The app should open and build using:
+
+`artifacts/tour-mobile/ios/*.xcworkspace`
+
+Tasks:
+
+1. Remove Expo dependencies from `artifacts/tour-mobile/package.json`
+
+Remove all Expo-related dependencies and dev dependencies, including but not limited to:
+
+* `expo`
+* `expo-router`
+* `expo-file-system`
+* `expo-haptics`
+* `expo-symbols`
+* `expo-av`
+* `expo-linking`
+* `expo-location`
+* `expo-splash-screen`
+* `expo-image`
+* `expo-image-picker`
+* `expo-linear-gradient`
+* `expo-web-browser`
+* `expo-system-ui`
+* `expo-font`
+* `expo-constants`
+* `expo-blur`
+* `expo-glass-effect`
+* `@expo/vector-icons`
+* `@expo-google-fonts/inter`
+* `@expo/cli`
+* `@expo/ngrok`
+
+Replace the package entry point:
+
+From:
+
+```json
+"main": "expo-router/entry"
+```
+
+To a normal React Native entry point, such as:
+
+```json
+"main": "index.js"
+```
+
+2. Replace Expo Router with React Navigation or a simple native React Native navigation setup
+
+The app currently uses file-based routes under `artifacts/tour-mobile/app`.
+
+Replace all `expo-router` usage with React Navigation.
+
+Remove imports such as:
+
+```ts
+import { router } from "expo-router";
+import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router";
+import { Tabs } from "expo-router";
+import { Redirect } from "expo-router";
+import { Link } from "expo-router";
+```
+
+Implement equivalent navigation using:
+
+* `@react-navigation/native`
+* `@react-navigation/native-stack`
+* `@react-navigation/bottom-tabs`
+
+Create a normal app structure such as:
+
+```text
+artifacts/tour-mobile/src/App.tsx
+artifacts/tour-mobile/src/navigation/RootNavigator.tsx
+artifacts/tour-mobile/src/navigation/TabNavigator.tsx
+artifacts/tour-mobile/src/screens/LoginScreen.tsx
+artifacts/tour-mobile/src/screens/HomeScreen.tsx
+artifacts/tour-mobile/src/screens/BuyersScreen.tsx
+artifacts/tour-mobile/src/screens/BuyerDetailScreen.tsx
+artifacts/tour-mobile/src/screens/TourScreen.tsx
+artifacts/tour-mobile/src/screens/TourSummaryScreen.tsx
+artifacts/tour-mobile/src/screens/StopScreen.tsx
+artifacts/tour-mobile/src/screens/SkipStopScreen.tsx
+artifacts/tour-mobile/src/screens/NotesScreen.tsx
+artifacts/tour-mobile/src/screens/SettingsScreen.tsx
+artifacts/tour-mobile/src/screens/HelpScreen.tsx
+artifacts/tour-mobile/src/screens/NotFoundScreen.tsx
+```
+
+Preserve existing screens, UI, business logic, and flow as much as possible.
+
+3. Replace Expo-specific APIs
+
+Replace these patterns:
+
+A. `expo-haptics`
+
+Replace with `react-native-haptic-feedback`, or create a safe wrapper:
+
+```ts
+export function triggerHaptic() {
+  try {
+    // native haptic call here
+  } catch {
+    // no-op
+  }
+}
+```
+
+B. `expo-symbols`
+
+Replace `SymbolView` usage with either:
+
+* `react-native-vector-icons`
+* simple text/icon fallback
+* local icon mapping component
+
+Create a reusable replacement component if needed:
+
+```tsx
+<IconSymbol name="house" size={24} />
+```
+
+Do not import from `expo-symbols`.
+
+C. `expo-linking`
+
+Replace with React Native:
+
+```ts
+import { Linking } from "react-native";
+```
+
+D. `expo-av`
+
+If audio recording/playback is needed, replace with a bare React Native compatible library, such as `react-native-audio-recorder-player` or another maintained native audio library.
+
+If audio cannot be safely migrated now, stub the recorder behind a clear interface with TODO comments, but do not leave `expo-av`.
+
+E. `expo-splash-screen`
+
+Remove usage and configure splash behavior natively through Xcode LaunchScreen.
+
+F. `expo-location`
+
+Replace with a bare React Native compatible geolocation library only if location is actually used. Otherwise remove it.
+
+G. `expo-image`, `expo-image-picker`, `expo-linear-gradient`, `expo-web-browser`, `expo-font`, `expo-constants`, `expo-blur`, `expo-glass-effect`, `expo-system-ui`
+
+Replace with bare React Native compatible alternatives or remove if unused.
+
+4. Remove Expo config files and generated Expo artifacts
+
+Remove or replace:
+
+```text
+artifacts/tour-mobile/app.json
+artifacts/tour-mobile/.expo
+artifacts/tour-mobile/expo-env.d.ts
+```
+
+Update `tsconfig.json` so it no longer extends:
+
+```json
+"expo/tsconfig.base"
+```
+
+Use a normal React Native TypeScript config.
+
+5. Create or update native entry files
+
+Create:
+
+```text
+artifacts/tour-mobile/index.js
+```
+
+Example:
+
+```js
+import { AppRegistry } from "react-native";
+import App from "./src/App";
+import { name as appName } from "./app.json";
+
+AppRegistry.registerComponent(appName, () => App);
+```
+
+If `app.json` is removed due to Expo config, replace it with a simple React Native compatible app config or hardcode/register the app name safely.
+
+6. Create a committed bare React Native iOS project
+
+Create and commit a real native iOS project at:
+
+```text
+artifacts/tour-mobile/ios
+```
+
+The iOS project must include:
+
+```text
+ios/Podfile
+ios/*.xcworkspace
+ios/*.xcodeproj
+ios/[AppName]/Info.plist
+ios/[AppName]/AppDelegate.*
+ios/[AppName]/LaunchScreen.storyboard
+```
+
+The app should build directly in Xcode.
+
+Do not require Expo CLI to generate the `ios` folder.
+
+7. Update scripts
+
+Update `artifacts/tour-mobile/package.json` scripts to use bare React Native commands.
+
+Suggested scripts:
+
+```json
+{
+  "scripts": {
+    "start": "react-native start",
+    "ios": "react-native run-ios",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint ."
+  }
+}
+```
+
+Do not include Expo scripts.
+
+8. Update root workspace compatibility
+
+Ensure the root still works:
+
+```bash
+pnpm install
+pnpm run build
+pnpm --filter @workspace/tour-mobile run typecheck
+```
+
+Do not break other workspace packages.
+
+9. Add README instructions
+
+Create or update:
+
+```text
+artifacts/tour-mobile/README.md
+```
+
+Include exact Mac/Xcode instructions:
+
+```bash
+cd /Volumes/ExternalData/Projects/HMB-PropertyFlow/Real-Estate-PropertyFlow
+pnpm install
+pnpm run build
+
+cd artifacts/tour-mobile
+pnpm run typecheck
+pnpm start
+```
+
+Second terminal:
+
+```bash
+cd /Volumes/ExternalData/Projects/HMB-PropertyFlow/Real-Estate-PropertyFlow/artifacts/tour-mobile/ios
+pod install --repo-update
+open *.xcworkspace
+```
+
+Then in Xcode:
+
+1. Select the app scheme.
+
+2. Select an iPhone simulator.
+
+3. Product > Clean Build Folder.
+
+4. Press Run.
+
+5. Add verification commands
+
+After conversion, run these checks and include the output in your response:
+
+```bash
+cd /workspace/Real-Estate-PropertyFlow
+
+grep -R "\"expo" artifacts/tour-mobile/package.json artifacts/tour-mobile/*.json 2>/dev/null || true
+grep -R "from 'expo" artifacts/tour-mobile --exclude-dir=node_modules --exclude-dir=ios --exclude-dir=android 2>/dev/null || true
+grep -R "from \"expo" artifacts/tour-mobile --exclude-dir=node_modules --exclude-dir=ios --exclude-dir=android 2>/dev/null || true
+pnpm --filter @workspace/tour-mobile list --depth 0 | grep expo || true
+
+pnpm install
+pnpm run build
+pnpm --filter @workspace/tour-mobile run typecheck
+```
+
+Expected result:
+
+* No Expo dependencies in `artifacts/tour-mobile/package.json`
+* No Expo imports in source code
+* No `expo-router/entry`
+* No `expo/tsconfig.base`
+* No `.expo` dependency on generated router types
+* Root build passes
+* Mobile typecheck passes
+* Native iOS project exists and is ready to open in Xcode
+
+Acceptance criteria:
+
+* `artifacts/tour-mobile` has zero Expo dependencies.
+* `artifacts/tour-mobile` has zero Expo imports.
+* `artifacts/tour-mobile` no longer uses Expo Router.
+* `artifacts/tour-mobile` has a committed native `ios` project.
+* The iOS app opens using `ios/*.xcworkspace`.
+* The app can be built in Xcode without Expo.
+* Root monorepo build still passes.
+* Mobile typecheck still passes.
+* README includes exact build and test instructions.
