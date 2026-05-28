@@ -11,6 +11,7 @@ import debriefVoiceNotesRouter from "./debriefVoiceNotes";
 import adminRouter from "./admin";
 import storageRouter from "./storage";
 import listingAgentContactsRouter from "./listingAgentContacts";
+import tourReportsRouter from "./tourReports";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(voiceNotesRouter);
 router.use(debriefVoiceNotesRouter);
 router.use(adminRouter);
 router.use(listingAgentContactsRouter);
+router.use(tourReportsRouter);
 
 export default router;

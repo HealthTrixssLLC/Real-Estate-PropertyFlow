@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useGetTour, useListProperties, useArchiveTour, useRestoreTour, useDeleteTour, getListToursQueryKey } from "@workspace/api-client-react"
 import { useRoute, useLocation } from "wouter"
-import { Calendar, MapPin, User, ChevronLeft, Building2, Map as MapIcon, ListChecks, CheckCircle2, Loader2, Archive, Trash2, AlertTriangle, RotateCcw, MoreHorizontal, NotebookPen } from "lucide-react"
+import { Calendar, MapPin, User, ChevronLeft, Building2, Map as MapIcon, ListChecks, CheckCircle2, Loader2, Archive, Trash2, AlertTriangle, RotateCcw, MoreHorizontal, NotebookPen, FileText } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ import MapTab from "./tabs/MapTab"
 import ShowingsTab from "./tabs/ShowingsTab"
 import ReadinessTab from "./tabs/ReadinessTab"
 import NotesTab from "./tabs/NotesTab"
+import ReportTab from "./tabs/ReportTab"
 import EditTourDialog from "./EditTourDialog"
 
 export default function TourDetail() {
@@ -241,7 +242,7 @@ export default function TourDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="stops" className="w-full">
-        <TabsList className="grid grid-cols-5 w-full h-auto p-1 bg-muted/50 rounded-xl mb-6 shadow-inner">
+        <TabsList className="grid grid-cols-6 w-full h-auto p-1 bg-muted/50 rounded-xl mb-6 shadow-inner">
           <TabsTrigger value="stops" className="data-[state=active]:bg-background data-[state=active]:shadow-sm py-2.5 rounded-lg text-xs sm:text-sm transition-all">
             <Building2 className="h-4 w-4 sm:mr-1.5 shrink-0" />
             <span className="hidden sm:inline">Stops ({stops.length})</span>
@@ -261,6 +262,10 @@ export default function TourDetail() {
           <TabsTrigger value="notes" className="data-[state=active]:bg-background data-[state=active]:shadow-sm py-2.5 rounded-lg text-xs sm:text-sm transition-all">
             <NotebookPen className="h-4 w-4 sm:mr-1.5 shrink-0" />
             <span className="hidden sm:inline">Notes</span>
+          </TabsTrigger>
+          <TabsTrigger value="report" className="data-[state=active]:bg-background data-[state=active]:shadow-sm py-2.5 rounded-lg text-xs sm:text-sm transition-all">
+            <FileText className="h-4 w-4 sm:mr-1.5 shrink-0" />
+            <span className="hidden sm:inline">Report</span>
           </TabsTrigger>
         </TabsList>
 
@@ -285,6 +290,9 @@ export default function TourDetail() {
           </TabsContent>
           <TabsContent value="notes" className="m-0 p-0 outline-none">
             <NotesTab stops={stops} />
+          </TabsContent>
+          <TabsContent value="report" className="m-0 p-0 outline-none">
+            <ReportTab tourId={tourId} />
           </TabsContent>
         </div>
       </Tabs>

@@ -12,3 +12,4 @@ export * from "./transcripts";
 export * from "./propertySummaries";
 export * from "./tourSummaries";
 export * from "./debriefVoiceNotes";
+export * from "./tourReportDeliveries";
