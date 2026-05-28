@@ -1,11 +1,13 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { loadAiConfigFromDb } from "./lib/aiConfig";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, voiceNotesTable } from "@workspace/db";
+import { eq, inArray, isNotNull, and } from "drizzle-orm";
 import { hashPassword } from "./lib/auth";
 import { geocodeMissingProperties } from "./routes/properties";
 import { isGeocodeAvailable } from "./lib/geocode";
+import { runTranscriptionJob } from "./routes/voiceNotes";
+import { isSpeechAiAvailable } from "./lib/ai";
 
 const rawPort = process.env["PORT"];
 
@@ -65,6 +67,45 @@ async function batchGeocodeOnStartup() {
   }
 }
 
+async function resumeStuckTranscriptions() {
+  if (!isSpeechAiAvailable()) {
+    logger.info("Skipping stuck transcription recovery: no speech provider configured");
+    return;
+  }
+  try {
+    const stuck = await db
+      .select()
+      .from(voiceNotesTable)
+      .where(
+        and(
+          inArray(voiceNotesTable.transcriptionStatus, ["pending", "in_progress"]),
+          isNotNull(voiceNotesTable.fileUrl),
+        ),
+      );
+    if (stuck.length === 0) {
+      logger.info("No stuck voice notes to recover");
+      return;
+    }
+    logger.info({ count: stuck.length }, "Resuming transcription for stuck voice notes");
+    for (const note of stuck) {
+      if (note.transcriptionStatus === "pending") {
+        await db
+          .update(voiceNotesTable)
+          .set({ transcriptionStatus: "in_progress", updatedAt: new Date() })
+          .where(eq(voiceNotesTable.id, note.id))
+          .catch(() => {});
+      }
+      const noteId = note.id;
+      const url = note.fileUrl!;
+      setImmediate(() => {
+        runTranscriptionJob(noteId, url, logger).catch(() => {});
+      });
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to resume stuck transcriptions");
+  }
+}
+
 loadAiConfigFromDb().then(async () => {
   await seedAdminUser();
 
@@ -76,5 +117,6 @@ loadAiConfigFromDb().then(async () => {
 
     logger.info({ port }, "Server listening");
     void batchGeocodeOnStartup();
+    void resumeStuckTranscriptions();
   });
 });

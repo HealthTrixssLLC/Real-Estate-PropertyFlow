@@ -99,6 +99,7 @@ router.post(
         return;
       }
 
+      const canTranscribe = isSpeechAiAvailable() && !!fileUrl;
       const [voiceNote] = await db
         .insert(voiceNotesTable)
         .values({
@@ -107,10 +108,19 @@ router.post(
           fileUrl,
           durationSeconds:
             durationSeconds !== null && !isNaN(durationSeconds) ? durationSeconds : null,
-          transcriptionStatus: "pending",
+          transcriptionStatus: canTranscribe ? "in_progress" : "pending",
           typedNote: null,
         })
         .returning();
+
+      if (canTranscribe) {
+        const noteId = voiceNote.id;
+        const url = fileUrl;
+        const log = req.log;
+        setImmediate(() => {
+          runTranscriptionJob(noteId, url, log).catch(() => {});
+        });
+      }
 
       sendValidated(res, VoiceNoteResponseSchema, { voiceNote }, 201);
     } catch (err) {
@@ -120,7 +130,7 @@ router.post(
   },
 );
 
-async function runTranscriptionJob(voiceNoteId: string, fileUrl: string, log: Logger): Promise<void> {
+export async function runTranscriptionJob(voiceNoteId: string, fileUrl: string, log: Logger): Promise<void> {
   try {
     const audioFile = await storageService.getObjectEntityFile(fileUrl);
     const [metadata] = await audioFile.getMetadata();

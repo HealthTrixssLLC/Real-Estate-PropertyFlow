@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react"
-import { useUploadVoiceNote } from "@workspace/api-client-react"
+import { useUploadVoiceNote, transcribeVoiceNote } from "@workspace/api-client-react"
 import { Mic, Square, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -74,6 +74,7 @@ export function WebVoiceRecorder({ stopId, onUploaded }: WebVoiceRecorderProps) 
           const res = await upload.mutateAsync({
             data: { tourStopId: stopId, audio: file, durationSeconds },
           })
+          transcribeVoiceNote(res.voiceNote.id).catch(() => undefined)
           onUploaded(res.voiceNote.id)
         } finally {
           setIsUploading(false)
