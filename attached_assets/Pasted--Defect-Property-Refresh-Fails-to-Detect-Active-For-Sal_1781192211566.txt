@@ -1,0 +1,144 @@
+# Defect: Property Refresh Fails to Detect Active For-Sale Listing
+
+## Summary
+
+The property refresh process failed to identify that **4920 Naphill Rd, McKinney, TX 75070** is currently listed for sale. The property’s status was not updated after the refresh completed.
+
+## Property
+
+* **Address:** 4920 Naphill Rd, McKinney, TX 75070
+* **Expected status:** For Sale / Active
+* **Current application status:** Not For Sale, Off Market, or unchanged
+* **Known listing source:** Redfin
+* **Known list price:** Approximately $620,000
+
+## Steps to Reproduce
+
+1. Open the property record for:
+   `4920 Naphill Rd, McKinney, TX 75070`
+2. Review the existing property listing status.
+3. Run the property refresh or listing-status refresh process.
+4. Wait for the refresh to complete.
+5. Reopen or reload the property record.
+6. Review the property’s listing status and listing details.
+
+## Actual Result
+
+The refresh completes but does not detect the active for-sale listing.
+
+The property record is not updated to show that the property is currently for sale. Available listing details, such as price, listing URL, MLS number, and listing date, are also not populated or updated.
+
+## Expected Result
+
+The refresh process should find the active listing and update the property record with the latest available information, including:
+
+* Listing status: `For Sale` or `Active`
+* List price
+* Listing source
+* Listing URL
+* MLS number, when available
+* Listing date, when available
+* Last verified date and time
+* Property details returned by the listing source
+
+## Business Impact
+
+Users may receive inaccurate property-status information and may incorrectly believe that an actively listed property is unavailable or off market. This reduces confidence in the refresh process and may cause users to miss active listings.
+
+## Required Fix
+
+Update the property refresh logic so that it:
+
+1. Normalizes the address before searching.
+2. Searches using the full street address, city, state, and ZIP code.
+3. Recognizes equivalent address formats, including:
+
+   * `4920 Naphill Rd`
+   * `4920 Naphill Road`
+   * `4920 Naphill Rd, McKinney, TX`
+   * `4920 Naphill Rd, McKinney, TX 75070`
+4. Checks all configured listing-data providers instead of stopping after the first provider returns no match.
+5. Matches listings using normalized address components rather than requiring an exact full-string match.
+6. Updates the property when any reliable source confirms that the listing is active.
+7. Records which source confirmed the listing.
+8. Stores the raw provider response or diagnostic information for troubleshooting.
+9. Displays an error or warning when the refresh cannot confidently determine the listing status.
+10. Does not overwrite a confirmed active listing with stale or lower-confidence off-market data.
+
+## Matching Rules
+
+The refresh should normalize:
+
+* `Road` and `Rd`
+* Uppercase and lowercase characters
+* Commas and punctuation
+* Extra spaces
+* ZIP+4 versus five-digit ZIP codes
+* Directional abbreviations
+* Unit or suite formatting, when applicable
+
+The property should primarily be matched using:
+
+* Street number
+* Normalized street name
+* City
+* State
+* ZIP code
+
+## Data-Source Priority
+
+When sources disagree, use the following priority:
+
+1. Current MLS or licensed listing-data provider
+2. Active brokerage listing
+3. Redfin or another major listing portal
+4. Historical or public-record property data
+
+A current active listing must take precedence over older off-market or public-record status data.
+
+## Logging Requirements
+
+Add structured logs for every refresh attempt containing:
+
+* Property ID
+* Original address
+* Normalized address
+* Providers queried
+* Search query sent to each provider
+* Number of matches returned
+* Selected match
+* Match confidence
+* Listing status returned
+* Listing price returned
+* Reason a result was accepted or rejected
+* Refresh completion status
+* Any provider errors or rate-limit responses
+
+## Acceptance Criteria
+
+1. Running refresh for **4920 Naphill Rd, McKinney, TX 75070** identifies the property as actively for sale.
+2. The property status is updated to `For Sale` or `Active`.
+3. The current listing price is saved when returned by the source.
+4. The listing URL and source are saved.
+5. The refresh date and time are updated.
+6. Address abbreviations and punctuation differences do not prevent a match.
+7. A failed lookup from one provider does not stop searches through the remaining configured providers.
+8. Diagnostic logs clearly show why a property was or was not matched.
+9. Stale off-market data does not override a newer active listing.
+10. Automated tests are added for this address and for common address-format variations.
+
+## Regression Tests
+
+Add automated tests covering:
+
+* Exact full-address match
+* `Rd` versus `Road`
+* Address without ZIP code
+* Address with ZIP+4
+* Mixed capitalization
+* Extra spaces and punctuation
+* First provider returns no result, second provider finds an active listing
+* One provider reports off market while a newer source reports active
+* Multiple similar addresses returned
+* Provider timeout or rate-limit response
+* Refresh of an already active property with an updated price
