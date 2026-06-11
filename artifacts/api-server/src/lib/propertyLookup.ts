@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import { aiMatchProperty } from "./aiPropertyMatcher";
 
 export interface PropertyLookupResult {
   source: "realtor" | "redfin" | null;
@@ -11,10 +12,12 @@ export interface PropertyLookupResult {
   listingUrl: string | null;
   listingDate: string | null;
   lastVerifiedAt: string;
+  matchConfidence?: "high" | "medium" | "low" | null;
 }
 
 interface ProviderOutcome {
   result: PropertyLookupResult | null;
+  candidates: PropertyLookupResult[];
   searchQuery: string;
   matchCount: number;
   error?: string;
@@ -152,7 +155,7 @@ async function lookupRealtor(originalAddress: string): Promise<ProviderOutcome> 
       signal: controller.signal,
     });
     clearTimeout(timeout);
-    if (!res.ok) return { result: null, searchQuery: originalAddress, matchCount: 0, error: `HTTP ${res.status}` };
+    if (!res.ok) return { result: null, candidates: [], searchQuery: originalAddress, matchCount: 0, error: `HTTP ${res.status}` };
 
     const data = (await res.json()) as {
       data?: {
@@ -175,30 +178,24 @@ async function lookupRealtor(originalAddress: string): Promise<ProviderOutcome> 
 
     const results = data?.data?.home_search?.results ?? [];
     const matchCount = results.length;
-    if (!matchCount) return { result: null, searchQuery: originalAddress, matchCount: 0 };
+    if (!matchCount) return { result: null, candidates: [], searchQuery: originalAddress, matchCount: 0 };
 
-    const active = results.find(r => {
-      const s = r.listing?.status?.toLowerCase() ?? "";
-      return s === "for_sale" || s === "for sale" || s === "active";
-    });
-    const best = active ?? results[0];
-    const prop = best.property;
-    if (!prop) return { result: null, searchQuery: originalAddress, matchCount };
+    const now = new Date().toISOString();
 
-    const beds = prop.beds ?? null;
-    const baths = prop.baths_consolidated ?? null;
-    const squareFeet = prop.sqft ?? null;
-    const listPrice = prop.list_price ?? null;
-    const mlsId = best.listing_id ?? prop.mpr_id ?? null;
-    const listingStatus = mapRealtorStatus(best.listing?.status);
-    const listingUrl = best.href ?? null;
-    const listingDate = best.listing?.list_date ?? null;
-
-    if (beds == null && baths == null && squareFeet == null && listPrice == null && mlsId == null) {
-      return { result: null, searchQuery: originalAddress, matchCount };
-    }
-    return {
-      result: {
+    const candidates: PropertyLookupResult[] = [];
+    for (const r of results) {
+      const prop = r.property;
+      if (!prop) continue;
+      const beds = prop.beds ?? null;
+      const baths = prop.baths_consolidated ?? null;
+      const squareFeet = prop.sqft ?? null;
+      const listPrice = prop.list_price ?? null;
+      const mlsId = r.listing_id ?? prop.mpr_id ?? null;
+      const listingStatus = mapRealtorStatus(r.listing?.status);
+      const listingUrl = r.href ?? null;
+      const listingDate = r.listing?.list_date ?? null;
+      if (beds == null && baths == null && squareFeet == null && listPrice == null && mlsId == null) continue;
+      const candidate: PropertyLookupResult = {
         source: "realtor",
         beds,
         baths,
@@ -208,15 +205,26 @@ async function lookupRealtor(originalAddress: string): Promise<ProviderOutcome> 
         listingStatus,
         listingUrl,
         listingDate,
-        lastVerifiedAt: new Date().toISOString(),
-      },
+        lastVerifiedAt: now,
+      };
+      candidates.push(candidate);
+    }
+
+    if (!candidates.length) return { result: null, candidates: [], searchQuery: originalAddress, matchCount };
+
+    const active = candidates.find(c => c.listingStatus === "active");
+    const best = active ?? candidates[0];
+
+    return {
+      result: best,
+      candidates,
       searchQuery: originalAddress,
       matchCount,
     };
   } catch (err: unknown) {
     clearTimeout(timeout);
     const message = err instanceof Error ? err.message : String(err);
-    return { result: null, searchQuery: originalAddress, matchCount: 0, error: message };
+    return { result: null, candidates: [], searchQuery: originalAddress, matchCount: 0, error: message };
   }
 }
 
@@ -293,7 +301,7 @@ async function lookupRedfin(originalAddress: string): Promise<ProviderOutcome> {
       signal: controller1.signal,
     });
     clearTimeout(timeout1);
-    if (!autocompleteRes.ok) return { result: null, searchQuery: autocompleteUrl, matchCount: 0, error: `Autocomplete HTTP ${autocompleteRes.status}` };
+    if (!autocompleteRes.ok) return { result: null, candidates: [], searchQuery: autocompleteUrl, matchCount: 0, error: `Autocomplete HTTP ${autocompleteRes.status}` };
 
     const text = await autocompleteRes.text();
     const json = JSON.parse(text.replace(/^{}&&/, "")) as {
@@ -309,7 +317,7 @@ async function lookupRedfin(originalAddress: string): Promise<ProviderOutcome> {
 
     const rows = json?.payload?.sections?.flatMap(s => s.rows ?? []) ?? [];
     const homeRow = rows.find(r => r.id?.type === "2" || r.id?.url?.includes("/home/"));
-    if (!homeRow?.id) return { result: null, searchQuery: autocompleteUrl, matchCount: 0 };
+    if (!homeRow?.id) return { result: null, candidates: [], searchQuery: autocompleteUrl, matchCount: 0 };
 
     if (homeRow.id.tableId) {
       propertyId = homeRow.id.tableId;
@@ -320,10 +328,10 @@ async function lookupRedfin(originalAddress: string): Promise<ProviderOutcome> {
   } catch (err: unknown) {
     clearTimeout(timeout1);
     const message = err instanceof Error ? err.message : String(err);
-    return { result: null, searchQuery: autocompleteUrl, matchCount: 0, error: message };
+    return { result: null, candidates: [], searchQuery: autocompleteUrl, matchCount: 0, error: message };
   }
 
-  if (!propertyId && !propertyUrl) return { result: null, searchQuery: autocompleteUrl, matchCount: 0 };
+  if (!propertyId && !propertyUrl) return { result: null, candidates: [], searchQuery: autocompleteUrl, matchCount: 0 };
 
   const listingUrl = propertyUrl ? `https://www.redfin.com${propertyUrl}` : null;
   const isSold = propertyUrl?.includes("/sold/") ?? false;
@@ -380,19 +388,21 @@ async function lookupRedfin(originalAddress: string): Promise<ProviderOutcome> {
           const listingStatus = mapRedfinStatus(rawStatus, isSold, listPrice);
 
           if (beds != null || baths != null || squareFeet != null || listPrice != null || mlsId != null) {
+            const result: PropertyLookupResult = {
+              source: "redfin",
+              beds,
+              baths,
+              squareFeet,
+              listPrice,
+              mlsId,
+              listingStatus,
+              listingUrl,
+              listingDate,
+              lastVerifiedAt: new Date().toISOString(),
+            };
             return {
-              result: {
-                source: "redfin",
-                beds,
-                baths,
-                squareFeet,
-                listPrice,
-                mlsId,
-                listingStatus,
-                listingUrl,
-                listingDate,
-                lastVerifiedAt: new Date().toISOString(),
-              },
+              result,
+              candidates: [result],
               searchQuery: autocompleteUrl,
               matchCount: 1,
             };
@@ -409,16 +419,25 @@ async function lookupRedfin(originalAddress: string): Promise<ProviderOutcome> {
   if (listingUrl) {
     const scraped = await scrapeRedfinPage(listingUrl, isSold);
     if (scraped) {
-      return { result: scraped, searchQuery: autocompleteUrl, matchCount: 1 };
+      return { result: scraped, candidates: [scraped], searchQuery: autocompleteUrl, matchCount: 1 };
     }
   }
 
-  return { result: null, searchQuery: autocompleteUrl, matchCount: propertyId || propertyUrl ? 1 : 0 };
+  return { result: null, candidates: [], searchQuery: autocompleteUrl, matchCount: propertyId || propertyUrl ? 1 : 0 };
+}
+
+export interface StoredPropertyHint {
+  lat?: number | null;
+  lng?: number | null;
+  beds?: number | null;
+  baths?: number | null;
+  sqft?: number | null;
 }
 
 export async function lookupPropertyDetails(
   address: string,
   propertyId?: string,
+  storedHint?: StoredPropertyHint,
 ): Promise<PropertyLookupResult> {
   const lastVerifiedAt = new Date().toISOString();
   const empty: PropertyLookupResult = {
@@ -444,16 +463,14 @@ export async function lookupPropertyDetails(
 
   const realtorPkg: ProviderOutcome = realtorSettled.status === "fulfilled"
     ? realtorSettled.value
-    : { result: null, searchQuery: address, matchCount: 0, error: String((realtorSettled as PromiseRejectedResult).reason) };
+    : { result: null, candidates: [], searchQuery: address, matchCount: 0, error: String((realtorSettled as PromiseRejectedResult).reason) };
 
   const redfinPkg: ProviderOutcome = redfinSettled.status === "fulfilled"
     ? redfinSettled.value
-    : { result: null, searchQuery: address, matchCount: 0, error: String((redfinSettled as PromiseRejectedResult).reason) };
+    : { result: null, candidates: [], searchQuery: address, matchCount: 0, error: String((redfinSettled as PromiseRejectedResult).reason) };
 
   const realtorResult = realtorPkg.result;
   const redfinResult = redfinPkg.result;
-  const realtorConf = confidenceOf(realtorResult);
-  const redfinConf = confidenceOf(redfinResult);
 
   if (!realtorResult && !redfinResult) {
     logger.warn(
@@ -471,27 +488,80 @@ export async function lookupPropertyDetails(
     return { ...empty, lastVerifiedAt };
   }
 
+  const aiResult = await aiMatchProperty({
+    stored: {
+      address,
+      lat: storedHint?.lat,
+      lng: storedHint?.lng,
+      beds: storedHint?.beds,
+      baths: storedHint?.baths,
+      sqft: storedHint?.sqft,
+    },
+    realtorCandidates: realtorPkg.candidates,
+    redfinCandidate: redfinPkg.result,
+  });
+
   let selected: PropertyLookupResult;
   let acceptedReason: string;
   let rejectedProvider: string | undefined;
   let rejectedReason: string | undefined;
+  let aiMatchConfidence: string | undefined;
+  let aiSelectedRealtor: number | null | undefined;
+  let aiSelectedRedfin: boolean | undefined;
+  let aiFallbackUsed: boolean;
 
-  if (realtorConf >= redfinConf) {
-    selected = realtorResult ?? (redfinResult as PropertyLookupResult);
-    if (realtorResult) {
-      acceptedReason = `realtor confidence=${realtorConf} >= redfin confidence=${redfinConf}`;
-      if (redfinResult && redfinConf < realtorConf) {
-        rejectedProvider = "redfin";
-        rejectedReason = `redfin confidence=${redfinConf} lower than realtor=${realtorConf}`;
-      }
+  if (!aiResult.fallbackUsed) {
+    const decision = aiResult;
+    aiFallbackUsed = false;
+    aiMatchConfidence = decision.matchConfidence;
+    aiSelectedRealtor = decision.realtorIndex;
+    aiSelectedRedfin = decision.redfinMatch;
+
+    const mergedHasData =
+      decision.mergedResult.beds != null ||
+      decision.mergedResult.baths != null ||
+      decision.mergedResult.squareFeet != null ||
+      decision.mergedResult.listPrice != null ||
+      decision.mergedResult.mlsId != null ||
+      decision.mergedResult.listingUrl != null;
+
+    if (mergedHasData) {
+      selected = decision.mergedResult;
+      acceptedReason = `ai_match confidence=${decision.matchConfidence} realtorIdx=${decision.realtorIndex ?? "none"} redfinMatch=${decision.redfinMatch}`;
     } else {
-      acceptedReason = "realtor returned null; using redfin fallback";
+      logger.warn(
+        { propertyId, originalAddress: address, aiDecision: { realtorIndex: decision.realtorIndex, redfinMatch: decision.redfinMatch } },
+        "property_refresh_ai_no_match",
+      );
+      return { ...empty, lastVerifiedAt };
     }
   } else {
-    selected = redfinResult as PropertyLookupResult;
-    acceptedReason = `redfin confidence=${redfinConf} > realtor confidence=${realtorConf}`;
-    rejectedProvider = "realtor";
-    rejectedReason = `realtor confidence=${realtorConf} lower than redfin=${redfinConf}`;
+    aiFallbackUsed = true;
+    logger.warn(
+      { propertyId, originalAddress: address, fallbackReason: aiResult.fallbackReason },
+      "property_refresh_ai_fallback",
+    );
+
+    const realtorConf = confidenceOf(realtorResult);
+    const redfinConf = confidenceOf(redfinResult);
+
+    if (realtorConf >= redfinConf) {
+      selected = realtorResult ?? (redfinResult as PropertyLookupResult);
+      if (realtorResult) {
+        acceptedReason = `realtor confidence=${realtorConf} >= redfin confidence=${redfinConf}`;
+        if (redfinResult && redfinConf < realtorConf) {
+          rejectedProvider = "redfin";
+          rejectedReason = `redfin confidence=${redfinConf} lower than realtor=${realtorConf}`;
+        }
+      } else {
+        acceptedReason = "realtor returned null; using redfin fallback";
+      }
+    } else {
+      selected = redfinResult as PropertyLookupResult;
+      acceptedReason = `redfin confidence=${redfinConf} > realtor confidence=${realtorConf}`;
+      rejectedProvider = "realtor";
+      rejectedReason = `realtor confidence=${realtorConf} lower than redfin=${redfinConf}`;
+    }
   }
 
   logger.info(
@@ -504,6 +574,7 @@ export async function lookupPropertyDetails(
           name: "realtor",
           searchQuery: realtorPkg.searchQuery,
           matchCount: realtorPkg.matchCount,
+          candidateCount: realtorPkg.candidates.length,
           listingStatus: realtorResult?.listingStatus ?? null,
           listPrice: realtorResult?.listPrice ?? null,
           mlsId: realtorResult?.mlsId ?? null,
@@ -513,6 +584,7 @@ export async function lookupPropertyDetails(
           name: "redfin",
           searchQuery: redfinPkg.searchQuery,
           matchCount: redfinPkg.matchCount,
+          candidateCount: redfinPkg.candidates.length,
           listingStatus: redfinResult?.listingStatus ?? null,
           listPrice: redfinResult?.listPrice ?? null,
           mlsId: redfinResult?.mlsId ?? null,
@@ -536,9 +608,15 @@ export async function lookupPropertyDetails(
       acceptedReason,
       rejectedProvider,
       rejectedReason,
+      aiMatchConfidence,
+      aiSelectedRealtor,
+      aiSelectedRedfin,
+      aiFallbackUsed,
     },
     "property_refresh_complete",
   );
+
+  selected.matchConfidence = (aiMatchConfidence as "high" | "medium" | "low" | undefined) ?? null;
 
   return selected;
 }
