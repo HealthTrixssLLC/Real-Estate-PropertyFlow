@@ -1,0 +1,739 @@
+Fix and redesign the Realtor.com property lookup integration.
+
+## Objective
+
+The current Realtor.com integration is failing because the application posts to:
+
+`https://www.realtor.com/api/v1/rdc_search_srp?client_id=rdc-search-new-communities&schema=vesta`
+
+That endpoint is returning HTTP 404, and the current GraphQL query uses an outdated schema.
+
+Update the Realtor.com lookup design so that property searches are resolved by exact address first, then listing details are retrieved using a layered fallback strategy.
+
+The implementation must update:
+
+* `lookupRealtor` in `propertyLookup.ts`
+* `browserFetchRealtor` in `propertyFetch.ts`
+* any shared Realtor parsing or HTTP utilities needed to avoid duplicate logic
+
+Do not change the existing Redfin integration except where necessary to preserve fallback behavior.
+
+---
+
+# Required design
+
+Implement Realtor.com lookup as a staged workflow:
+
+1. Resolve the address using Realtor.com's autocomplete service.
+2. Validate that the returned address matches the requested property.
+3. Use the returned Realtor property ID, `mpr_id`, to query listing details.
+4. Try the `hulk_main_srp` GraphQL endpoint as a best-effort source.
+5. If GraphQL fails, use an HTML page fallback.
+6. If Realtor.com fails completely, preserve the existing Redfin fallback.
+7. Never accept a nearby or similarly named property without exact address validation.
+
+---
+
+# Stage 1: Resolve the address
+
+Create a shared function such as:
+
+```ts
+resolveRealtorAddress(address: string): Promise<RealtorAddressResolution | null>
+```
+
+Use:
+
+```text
+GET https://parser-external.geo.moveaws.com/suggest
+```
+
+Query parameters:
+
+```text
+input=<full property address>
+client_id=rdc-home
+limit=5
+area_types=address
+```
+
+Example:
+
+```ts
+const url = new URL(
+  "https://parser-external.geo.moveaws.com/suggest",
+);
+
+url.search = new URLSearchParams({
+  input: originalAddress,
+  client_id: "rdc-home",
+  limit: "5",
+  area_types: "address",
+}).toString();
+```
+
+Expected response structure:
+
+```ts
+interface RealtorAutocompleteResponse {
+  autocomplete?: RealtorAddressSuggestion[];
+}
+
+interface RealtorAddressSuggestion {
+  area_type?: string;
+  mpr_id?: string;
+  line?: string;
+  city?: string;
+  state_code?: string;
+  postal_code?: string;
+  full_address?: string;
+  centroid?: {
+    lat?: number;
+    lon?: number;
+  };
+}
+```
+
+Only accept results where:
+
+```ts
+suggestion.area_type === "address"
+```
+
+and:
+
+```ts
+suggestion.mpr_id
+```
+
+is present.
+
+---
+
+# Address validation
+
+Before accepting an autocomplete result, compare it against the requested address.
+
+Use the existing `normalizeAddress` function or extend it as needed.
+
+Compare:
+
+* street number
+* street name
+* city
+* state
+* ZIP code
+
+The lookup must reject:
+
+* neighboring properties
+* different unit numbers
+* similarly named streets
+* properties in a different ZIP code
+* properties with only partial address matches
+
+Create a match helper such as:
+
+```ts
+isExactRealtorAddressMatch(
+  requestedAddress: string,
+  suggestion: RealtorAddressSuggestion,
+): boolean
+```
+
+Allow normal formatting differences such as:
+
+* `Rd` versus `Road`
+* `St` versus `Street`
+* punctuation differences
+* ZIP+4 versus five-digit ZIP
+* capitalization differences
+
+Do not use fuzzy matching alone to select an address.
+
+---
+
+# Stage 2: Realtor GraphQL lookup
+
+Replace the failing `rdc_search_srp` URL with:
+
+```text
+POST https://www.realtor.com/api/v1/hulk_main_srp
+```
+
+This is an undocumented internal Realtor.com endpoint and must be treated as best-effort.
+
+Use this GraphQL request:
+
+```ts
+const REALTOR_HOME_SEARCH_QUERY = `
+  query ConsumerSearchMainQuery(
+    $query: HomeSearchCriteria!
+    $limit: Int
+    $offset: Int
+    $sort_type: SearchSortType
+    $client_data: JSON
+  ) {
+    home_search(
+      query: $query
+      limit: $limit
+      offset: $offset
+      sort_type: $sort_type
+      client_data: $client_data
+    ) {
+      count
+      total
+      results {
+        property_id
+        listing_id
+        status
+        list_price
+        permalink
+        list_date
+        last_update_date
+        description {
+          beds
+          baths
+          baths_full
+          baths_half
+          sqft
+        }
+        location {
+          address {
+            line
+            city
+            state
+            state_code
+            postal_code
+          }
+        }
+      }
+    }
+  }
+`;
+```
+
+Use the resolved `mpr_id` as the property search criterion.
+
+Do not pass the raw address into the GraphQL criteria.
+
+Payload:
+
+```ts
+const payload = {
+  operationName: "ConsumerSearchMainQuery",
+  query: REALTOR_HOME_SEARCH_QUERY,
+  variables: {
+    query: {
+      property_id: [mprId],
+    },
+    client_data: {
+      device_data: {
+        device_type: "web",
+      },
+      user_data: {},
+    },
+    limit: 5,
+    offset: 0,
+    sort_type: "relevant",
+  },
+  callfrom: "SRP",
+  nrQueryType: "MAIN_SRP",
+  isClient: true,
+};
+```
+
+Headers:
+
+```ts
+{
+  "Content-Type": "application/json",
+  Accept: "application/json",
+  "User-Agent": BROWSER_UA,
+  Origin: "https://www.realtor.com",
+  Referer: "https://www.realtor.com/"
+}
+```
+
+Use an AbortController timeout between six and eight seconds.
+
+---
+
+# GraphQL response parsing
+
+The response fields are mostly flat.
+
+Expected structure:
+
+```ts
+interface RealtorHomeSearchResponse {
+  data?: {
+    home_search?: {
+      count?: number;
+      total?: number;
+      results?: RealtorHomeSearchResult[];
+    };
+  };
+  errors?: Array<{
+    message?: string;
+  }>;
+}
+
+interface RealtorHomeSearchResult {
+  property_id?: string;
+  listing_id?: string;
+  status?: string;
+  list_price?: number;
+  permalink?: string;
+  list_date?: string;
+  last_update_date?: string;
+  description?: {
+    beds?: number;
+    baths?: number;
+    baths_full?: number;
+    baths_half?: number;
+    sqft?: number;
+  };
+  location?: {
+    address?: {
+      line?: string;
+      city?: string;
+      state?: string;
+      state_code?: string;
+      postal_code?: string;
+    };
+  };
+}
+```
+
+Map the selected result into the existing `PropertyLookupResult`:
+
+```ts
+{
+  source: "realtor",
+  beds: result.description?.beds ?? null,
+  baths:
+    result.description?.baths ??
+    calculateBaths(
+      result.description?.baths_full,
+      result.description?.baths_half,
+    ),
+  squareFeet: result.description?.sqft ?? null,
+  listPrice: result.list_price ?? null,
+  mlsId:
+    result.listing_id ??
+    result.property_id ??
+    mprId ??
+    null,
+  listingStatus: mapRealtorStatus(result.status),
+  listingUrl: makeAbsoluteRealtorUrl(result.permalink),
+  listingDate: result.list_date ?? null,
+  lastVerifiedAt: new Date().toISOString(),
+}
+```
+
+Before accepting the GraphQL result, validate the returned address against the original address.
+
+---
+
+# GraphQL failure handling
+
+Treat all of the following as a provider failure and continue to the HTML fallback:
+
+* HTTP 403
+* HTTP 404
+* HTTP 429
+* HTTP 500 or higher
+* invalid JSON
+* response body containing GraphQL `errors`
+* `data` is missing
+* `home_search` is missing
+* no results
+* property address does not match
+* response schema differs from the expected schema
+
+Do not throw an unhandled application error.
+
+Return or log a structured failure reason.
+
+Example:
+
+```ts
+{
+  stage: "realtor_hulk_search",
+  status: response.status,
+  reason: "graphql_schema_error"
+}
+```
+
+---
+
+# Stage 3: Realtor HTML fallback
+
+If the GraphQL lookup fails, implement a server-side HTML fallback.
+
+Do not perform this directly from a frontend browser because of CORS and browser security restrictions.
+
+Create shared functions such as:
+
+```ts
+findRealtorPropertyPage(
+  originalAddress: string,
+  resolution: RealtorAddressSuggestion | null,
+): Promise<string | null>
+```
+
+and:
+
+```ts
+parseRealtorPropertyPage(
+  propertyUrl: string,
+  originalAddress: string,
+): Promise<PropertyLookupResult | null>
+```
+
+The fallback should:
+
+1. Construct a Realtor.com search page URL from the normalized address.
+2. Fetch the search page with browser-like headers.
+3. Locate candidate links containing:
+
+```text
+/realestateandhomes-detail/
+```
+
+4. Extract the displayed property address for each candidate.
+5. Select only the candidate whose full address matches the requested property.
+6. Fetch the matching detail page.
+7. Parse property data from:
+
+   * JSON-LD
+   * embedded application JSON
+   * Next.js data
+   * structured script tags
+   * visible page metadata as a final fallback
+
+Extract where available:
+
+* listing status
+* list price
+* beds
+* baths
+* square feet
+* listing ID
+* MLS ID
+* list date
+* canonical URL
+* property address
+
+Do not depend on one specific script element name. Realtor.com may change its page structure.
+
+---
+
+# Listing-status safety rules
+
+Do not mark a property as active only because a price exists.
+
+An active result requires an explicit status indicator such as:
+
+* `for_sale`
+* `for sale`
+* `active`
+* `new listing`
+* `pending`
+* `contingent`
+
+Map pending and contingent listings to `active` if that matches the application's existing status behavior.
+
+Map explicit sold status to:
+
+```ts
+"recently_sold"
+```
+
+Map explicit off-market or not-for-sale status to:
+
+```ts
+"off_market"
+```
+
+When no reliable status exists, return:
+
+```ts
+"unknown"
+```
+
+Do not infer `active` from:
+
+* list price alone
+* page URL alone
+* presence of photos
+* presence of an MLS ID
+* property existence alone
+
+---
+
+# Shared implementation
+
+Avoid maintaining separate Realtor implementations in:
+
+* `propertyLookup.ts`
+* `propertyFetch.ts`
+
+Create a shared module where appropriate, such as:
+
+```text
+src/lib/realtorProvider.ts
+```
+
+Possible shared exports:
+
+```ts
+resolveRealtorAddress
+fetchRealtorGraphql
+findRealtorPropertyPage
+parseRealtorPropertyPage
+lookupRealtorProperty
+isExactRealtorAddressMatch
+mapRealtorStatus
+```
+
+Both `lookupRealtor` and `browserFetchRealtor` should use this shared logic.
+
+---
+
+# browserFetchRealtor design
+
+Determine whether `browserFetchRealtor` runs:
+
+* in the user's frontend browser, or
+* in a server-side browser automation environment
+
+## If it runs in the frontend browser
+
+Do not call Realtor.com directly.
+
+Replace the implementation so it calls the application's backend endpoint:
+
+```ts
+export async function browserFetchRealtor(address: string) {
+  const response = await fetch(
+    `/api/property-lookup/realtor?address=${encodeURIComponent(address)}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Realtor lookup failed: HTTP ${response.status}`,
+    );
+  }
+
+  return response.json();
+}
+```
+
+The backend endpoint must execute the shared server-side Realtor lookup.
+
+## If it runs through Playwright or Puppeteer
+
+Navigate to Realtor.com first and perform requests within the Realtor.com browser context so normal site cookies, origin headers, and same-origin behavior are available.
+
+Still use the same shared parsers and result mapping.
+
+---
+
+# Logging
+
+Add structured logs for each Realtor lookup stage.
+
+Log events:
+
+```text
+realtor_autocomplete
+realtor_address_match
+realtor_hulk_search
+realtor_html_search
+realtor_detail_fetch
+realtor_detail_parse
+realtor_lookup_complete
+```
+
+Include:
+
+* normalized requested address
+* HTTP status
+* elapsed time
+* number of autocomplete results
+* selected `mpr_id`
+* candidate count
+* selected property address
+* listing status
+* provider stage used
+* fallback reason
+* final success or failure
+
+Do not log:
+
+* cookies
+* authorization headers
+* session tokens
+* complete response bodies
+* sensitive request headers
+
+Example:
+
+```ts
+logger.info("realtor_lookup_complete", {
+  address: normalizeAddress(originalAddress),
+  success: Boolean(result),
+  sourceStage: "html_detail",
+  mprId,
+  listingStatus: result?.listingStatus ?? null,
+});
+```
+
+---
+
+# Provider behavior
+
+The final Realtor provider should follow this order:
+
+```ts
+async function lookupRealtor(
+  originalAddress: string,
+): Promise<ProviderOutcome> {
+  // 1. Resolve address
+  // 2. Validate exact match
+  // 3. Try hulk_main_srp using mpr_id
+  // 4. Validate returned property address
+  // 5. Try Realtor HTML fallback
+  // 6. Return structured failure when no result exists
+}
+```
+
+The existing overall property lookup should remain:
+
+```text
+Realtor lookup
+    ↓
+Redfin lookup
+    ↓
+AI or deterministic candidate selection
+    ↓
+Return best verified property
+```
+
+Do not let a Realtor failure prevent Redfin from running.
+
+---
+
+# Tests
+
+Add unit and integration-style tests using stored fixtures.
+
+Do not make live Realtor.com calls from the normal test suite.
+
+Create fixtures for:
+
+1. Exact Realtor autocomplete address
+2. Autocomplete with no results
+3. Autocomplete with multiple similar addresses
+4. Autocomplete result missing `mpr_id`
+5. Exact address with ZIP+4 formatting
+6. Valid `hulk_main_srp` active listing response
+7. Valid sold listing response
+8. GraphQL HTTP 404
+9. GraphQL HTTP 403
+10. GraphQL HTTP 429
+11. GraphQL schema error
+12. Invalid GraphQL JSON
+13. Empty GraphQL results
+14. GraphQL result for the wrong property
+15. HTML active listing page
+16. HTML recently sold page
+17. HTML off-market page
+18. HTML page with missing listing status
+19. HTML search page with several nearby properties
+20. Realtor failure followed by successful Redfin fallback
+
+Include a regression fixture for:
+
+```text
+4920 Naphill Rd, McKinney, TX 75070
+```
+
+The regression test must verify that the property is returned as active only when the fixture contains an explicit active or for-sale status.
+
+---
+
+# Acceptance criteria
+
+The implementation is complete when:
+
+1. `rdc_search_srp` is no longer used.
+2. A 404 from Realtor.com GraphQL does not end the full property lookup.
+3. Realtor autocomplete resolves addresses before listing retrieval.
+4. The resolved `mpr_id` is used for property lookup.
+5. `hulk_main_srp` uses `HomeSearchCriteria!`.
+6. GraphQL response parsing uses the flat Realtor result structure.
+7. Every Realtor result is validated against the requested address.
+8. Similar or neighboring properties are rejected.
+9. The Realtor HTML fallback works with stored fixtures.
+10. Frontend code does not call Realtor.com directly.
+11. Redfin continues to run when Realtor lookup fails.
+12. Provider errors are logged with a useful stage and reason.
+13. `4920 Naphill Rd, McKinney, TX 75070` is detected as active when the source explicitly indicates it is for sale.
+14. Existing property refresh functionality continues to work.
+15. Existing AI property matching behavior is preserved.
+16. TypeScript builds without errors.
+17. Existing tests continue to pass.
+18. New Realtor tests pass.
+
+---
+
+# Important constraints
+
+Realtor.com's autocomplete, GraphQL, and HTML endpoints are undocumented site internals.
+
+Design the code so endpoints and parsing strategies can be changed centrally.
+
+Use constants such as:
+
+```ts
+const REALTOR_AUTOCOMPLETE_URL =
+  "https://parser-external.geo.moveaws.com/suggest";
+
+const REALTOR_HULK_URL =
+  "https://www.realtor.com/api/v1/hulk_main_srp";
+
+const REALTOR_BASE_URL =
+  "https://www.realtor.com";
+```
+
+Do not scatter endpoint URLs across multiple files.
+
+Do not add CAPTCHA bypasses, proxy rotation, cookie theft, authentication bypasses, or anti-bot circumvention.
+
+When Realtor.com blocks the request, return a controlled provider failure and continue to Redfin.
+
+---
+
+# Deliverables
+
+After implementation, provide:
+
+1. Summary of files changed
+2. Explanation of the new Realtor lookup flow
+3. Example logs for:
+
+   * autocomplete success
+   * GraphQL 404 with HTML fallback success
+   * complete Realtor failure with Redfin success
+4. List of tests added
+5. Any remaining risks caused by Realtor.com's undocumented endpoints
+6. Confirmation that `rdc_search_srp` is no longer referenced anywhere in the repository
