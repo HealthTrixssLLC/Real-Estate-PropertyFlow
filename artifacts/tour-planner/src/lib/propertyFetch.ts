@@ -26,17 +26,6 @@ export interface BrowserFetchResult {
   redfinCandidate: PropertyCandidate | null
 }
 
-function mapRealtorStatus(
-  raw: string | undefined | null,
-): PropertyCandidate["listingStatus"] {
-  if (!raw) return "unknown"
-  const lower = raw.toLowerCase()
-  if (lower === "for_sale" || lower === "for sale" || lower === "active") return "active"
-  if (lower === "recently_sold" || lower === "sold") return "recently_sold"
-  if (lower === "off_market" || lower === "not_for_sale") return "off_market"
-  return "unknown"
-}
-
 function mapRedfinStatus(
   rawStatus: string | undefined | null,
   isSold: boolean,
@@ -67,94 +56,27 @@ function mapRedfinStatus(
 }
 
 async function browserFetchRealtor(address: string): Promise<PropertyCandidate[]> {
-  const url =
-    "https://www.realtor.com/api/v1/rdc_search_srp?client_id=rdc-search-new-communities&schema=vesta"
-  const body = JSON.stringify({
-    query: `query HomeSearch($query: home_search_criteria, $limit: Int) {
-      home_search(query: $query, limit: $limit) {
-        results {
-          listing_id
-          listing { status list_date }
-          property { beds baths_consolidated sqft list_price mpr_id }
-          href
-        }
-      }
-    }`,
-    variables: {
-      query: { status: ["for_sale", "recently_sold"], address },
-      limit: 3,
-    },
-  })
-
+  const encoded = encodeURIComponent(address)
+  const url = `/api/property-lookup/realtor?address=${encoded}`
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 8000)
+  const timeout = setTimeout(() => controller.abort(), 12000)
   try {
     const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body,
+      headers: { Accept: "application/json" },
+      credentials: "include",
       signal: controller.signal,
     })
     clearTimeout(timeout)
     if (!res.ok) return []
 
-    const data = (await res.json()) as {
-      data?: {
-        home_search?: {
-          results?: Array<{
-            listing_id?: string
-            listing?: { status?: string; list_date?: string }
-            property?: {
-              beds?: number
-              baths_consolidated?: number
-              sqft?: number
-              list_price?: number
-              mpr_id?: string
-            }
-            href?: string
-          }>
-        }
-      }
+    const outcome = (await res.json()) as {
+      result?: PropertyCandidate | null
+      candidates?: PropertyCandidate[]
     }
 
-    const results = data?.data?.home_search?.results ?? []
-    const now = new Date().toISOString()
-    const candidates: PropertyCandidate[] = []
-
-    for (const r of results) {
-      const prop = r.property
-      if (!prop) continue
-      const beds = prop.beds ?? null
-      const baths = prop.baths_consolidated ?? null
-      const squareFeet = prop.sqft ?? null
-      const listPrice = prop.list_price ?? null
-      const mlsId = r.listing_id ?? prop.mpr_id ?? null
-      const listingStatus = mapRealtorStatus(r.listing?.status)
-      const listingUrl = r.href ?? null
-      const listingDate = r.listing?.list_date ?? null
-      if (
-        beds == null &&
-        baths == null &&
-        squareFeet == null &&
-        listPrice == null &&
-        mlsId == null
-      )
-        continue
-      candidates.push({
-        source: "realtor",
-        beds,
-        baths,
-        squareFeet,
-        listPrice,
-        mlsId,
-        listingStatus,
-        listingUrl,
-        listingDate,
-        lastVerifiedAt: now,
-      })
-    }
-
-    return candidates
+    if (outcome.candidates?.length) return outcome.candidates
+    if (outcome.result) return [outcome.result]
+    return []
   } catch {
     clearTimeout(timeout)
     return []

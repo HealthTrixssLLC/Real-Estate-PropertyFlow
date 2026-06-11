@@ -7,7 +7,7 @@ import { idParams, parseParams, parseBody } from "../lib/validate";
 import { sendValidated, PropertyResponseSchema, PropertyListResponseSchema } from "../lib/responseSchemas";
 import { geocodeAddress } from "../lib/geocode";
 import { logger } from "../lib/logger";
-import { lookupPropertyDetails, processLookupCandidates } from "../lib/propertyLookup";
+import { lookupPropertyDetails, processLookupCandidates, lookupRealtor } from "../lib/propertyLookup";
 import type { PropertyLookupResult } from "../lib/propertyLookup";
 
 const router: IRouter = Router();
@@ -59,6 +59,20 @@ router.post("/properties/process-lookup", async (req: Request, res: Response) =>
   );
 
   res.json(result);
+});
+
+router.get("/property-lookup/realtor", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const address = typeof req.query.address === "string" ? req.query.address.trim() : "";
+  if (!address) {
+    res.status(400).json({ error: "address is required" });
+    return;
+  }
+  const outcome = await lookupRealtor(address);
+  res.json(outcome);
 });
 
 router.get("/properties/lookup", async (req: Request, res: Response) => {

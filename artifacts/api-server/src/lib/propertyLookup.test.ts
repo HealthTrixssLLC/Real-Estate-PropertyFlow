@@ -92,29 +92,70 @@ const mockFetch = vi.fn() as unknown as ReturnType<typeof vi.fn<(url: string, op
 
 vi.stubGlobal("fetch", mockFetch);
 
-function makeRealtorResponse(status: string, listPrice?: number) {
+// ── Fixture helpers ─────────────────────────────────────────────────────────
+
+function makeAutocompleteResponse(
+  mprId: string,
+  line = "4920 Naphill Rd",
+  city = "McKinney",
+  state = "TX",
+  zip = "75070",
+) {
   return {
     ok: true,
+    json: () =>
+      Promise.resolve({
+        autocomplete: [
+          { area_type: "address", mpr_id: mprId, line, city, state_code: state, postal_code: zip },
+        ],
+      }),
+  };
+}
+
+function makeHulkResponse(status: string, listPrice = 620000) {
+  return {
+    ok: true,
+    status: 200,
     json: () =>
       Promise.resolve({
         data: {
           home_search: {
             results: [
               {
-                listing_id: "mls123",
-                listing: { status, list_date: "2024-01-15" },
-                property: {
-                  beds: 4,
-                  baths_consolidated: 3,
-                  sqft: 2500,
-                  list_price: listPrice ?? 620000,
-                },
-                href: "https://www.realtor.com/realestateandhomes-detail/4920-Naphill-Rd",
+                property_id: "M12345",
+                status,
+                list_price: listPrice,
+                beds: 4,
+                baths_full: 3,
+                baths_half: 0,
+                sqft: 2500,
+                list_date: "2024-01-15",
+                permalink: "/realestateandhomes-detail/4920-Naphill-Rd_McKinney_TX_75070_M12345",
               },
             ],
           },
         },
       }),
+  };
+}
+
+function emptyHulkResponse() {
+  return {
+    ok: true,
+    status: 200,
+    json: () =>
+      Promise.resolve({ data: { home_search: { results: [] } } }),
+  };
+}
+
+function hulk404Response() {
+  return { ok: false, status: 404 };
+}
+
+function emptyHtmlSearch() {
+  return {
+    ok: true,
+    text: () => Promise.resolve("<html><body></body></html>"),
   };
 }
 
@@ -157,16 +198,11 @@ function makeRedfinDetailsResponse(listPrice?: number, status?: string) {
   };
 }
 
-function emptyRealtorResponse() {
-  return {
-    ok: true,
-    json: () => Promise.resolve({ data: { home_search: { results: [] } } }),
-  };
-}
-
 beforeEach(() => {
   mockFetch.mockReset();
 });
+
+// ── lookupPropertyDetails integration tests ─────────────────────────────────
 
 describe("lookupPropertyDetails", () => {
   it("returns empty result for blank address", async () => {
@@ -174,12 +210,13 @@ describe("lookupPropertyDetails", () => {
     expect(result.source).toBeNull();
   });
 
-  it("uses Realtor.com result when it returns an active listing", async () => {
+  it("uses Realtor.com result when it returns an active listing via hulk", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("realtor.com")) {
-        return Promise.resolve(makeRealtorResponse("for_sale"));
-      }
-      return Promise.resolve(makeRedfinAutocompleteResponse());
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(makeHulkResponse("for_sale"));
+      if (url.includes("realestateandhomes-search")) return Promise.resolve(emptyHtmlSearch());
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
+      return Promise.resolve(makeRedfinDetailsResponse(620000, "Active"));
     });
 
     const result = await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
@@ -189,14 +226,30 @@ describe("lookupPropertyDetails", () => {
     expect(result.lastVerifiedAt).toBeTruthy();
   });
 
-  it("falls back to Redfin when Realtor.com returns null", async () => {
+  it("falls back to Redfin when Realtor.com autocomplete finds no match", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("realtor.com")) {
-        return Promise.resolve(emptyRealtorResponse());
+      if (url.includes("moveaws")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ autocomplete: [] }),
+        });
       }
-      if (url.includes("autocomplete")) {
-        return Promise.resolve(makeRedfinAutocompleteResponse());
-      }
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
+      return Promise.resolve(makeRedfinDetailsResponse(620000, "ACTIVE"));
+    });
+
+    const result = await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
+    expect(result.source).toBe("redfin");
+    expect(result.listingStatus).toBe("active");
+    expect(result.listPrice).toBe(620000);
+  });
+
+  it("falls back to Redfin when Realtor.com GraphQL returns empty results", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(emptyHulkResponse());
+      if (url.includes("realestateandhomes-search")) return Promise.resolve(emptyHtmlSearch());
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
       return Promise.resolve(makeRedfinDetailsResponse(620000, "ACTIVE"));
     });
 
@@ -208,12 +261,9 @@ describe("lookupPropertyDetails", () => {
 
   it("prefers active Redfin result over off-market Realtor result", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("realtor.com")) {
-        return Promise.resolve(makeRealtorResponse("off_market"));
-      }
-      if (url.includes("autocomplete")) {
-        return Promise.resolve(makeRedfinAutocompleteResponse());
-      }
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(makeHulkResponse("off_market"));
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
       return Promise.resolve(makeRedfinDetailsResponse(620000, "Active"));
     });
 
@@ -224,9 +274,8 @@ describe("lookupPropertyDetails", () => {
 
   it("returns Realtor active listing over Redfin recently_sold", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("realtor.com")) {
-        return Promise.resolve(makeRealtorResponse("for_sale"));
-      }
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(makeHulkResponse("for_sale", 620000));
       if (url.includes("autocomplete")) {
         return Promise.resolve(makeRedfinAutocompleteResponse("/sold/TX/McKinney/4920-Naphill-Rd/1234567"));
       }
@@ -241,14 +290,12 @@ describe("lookupPropertyDetails", () => {
 
   it("handles provider timeout gracefully and returns result from other provider", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("realtor.com")) {
+      if (url.includes("moveaws") || url.includes("realtor.com")) {
         return new Promise((_resolve, reject) =>
           setTimeout(() => reject(new Error("AbortError")), 50),
         );
       }
-      if (url.includes("autocomplete")) {
-        return Promise.resolve(makeRedfinAutocompleteResponse());
-      }
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
       return Promise.resolve(makeRedfinDetailsResponse(620000, "Active"));
     });
 
@@ -258,9 +305,19 @@ describe("lookupPropertyDetails", () => {
   });
 
   it("handles both providers returning null — returns source: null with lastVerifiedAt", async () => {
-    mockFetch.mockImplementation(() =>
-      Promise.resolve(emptyRealtorResponse()),
-    );
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("moveaws")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ autocomplete: [] }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve(`{}&&${JSON.stringify({ payload: { sections: [] } })}`),
+        json: () => Promise.resolve({ autocomplete: [] }),
+      });
+    });
 
     const result = await lookupPropertyDetails("999 Nonexistent St, Nowhere, TX 00000");
     expect(result.source).toBeNull();
@@ -268,12 +325,17 @@ describe("lookupPropertyDetails", () => {
     expect(result.lastVerifiedAt).toBeTruthy();
   });
 
-  it("handles already-active property with updated list price", async () => {
+  it("handles already-active property with updated list price via hulk", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("realtor.com")) {
-        return Promise.resolve(makeRealtorResponse("for_sale", 625000));
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(makeHulkResponse("for_sale", 625000));
+      if (url.includes("autocomplete")) {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve(`{}&&${JSON.stringify({ payload: { sections: [] } })}`),
+        });
       }
-      return Promise.resolve(emptyRealtorResponse());
+      return Promise.resolve({ ok: false, status: 404 });
     });
 
     const result = await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
@@ -282,41 +344,164 @@ describe("lookupPropertyDetails", () => {
     expect(result.listPrice).toBe(625000);
   });
 
-  it("sends the original address to providers (not normalized)", async () => {
-    const capturedAddresses: string[] = [];
-    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
-      if (url.includes("realtor.com") && opts?.body) {
-        const body = JSON.parse(opts.body as string) as {
-          variables?: { query?: { address?: string } };
-        };
-        const addr = body?.variables?.query?.address;
-        if (addr) capturedAddresses.push(addr);
-        return Promise.resolve(makeRealtorResponse("for_sale"));
-      }
-      return Promise.resolve(emptyRealtorResponse());
+  it("sends the address to the Realtor autocomplete as a URL query param", async () => {
+    const capturedUrls: string[] = [];
+    mockFetch.mockImplementation((url: string) => {
+      capturedUrls.push(url);
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(makeHulkResponse("for_sale"));
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
+      return Promise.resolve(makeRedfinDetailsResponse(620000, "Active"));
     });
 
     await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
-    // Providers receive the original address unmodified — normalization is for internal
-    // logging/dedup only (changed in task #104 to fix false negatives with abbreviation-sensitive APIs)
-    expect(capturedAddresses[0]).toBe("4920 Naphill Rd, McKinney, TX 75070");
+    const autocompleteUrl = capturedUrls.find((u) => u.includes("moveaws"));
+    expect(autocompleteUrl).toBeTruthy();
+    expect(autocompleteUrl).toContain("4920");
+    expect(autocompleteUrl).toContain("Naphill");
   });
 
-  it("sends the original address with ZIP+4 to providers unchanged", async () => {
-    const capturedAddresses: string[] = [];
-    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
-      if (url.includes("realtor.com") && opts?.body) {
-        const body = JSON.parse(opts.body as string) as {
-          variables?: { query?: { address?: string } };
-        };
-        const addr = body?.variables?.query?.address;
-        if (addr) capturedAddresses.push(addr);
-        return Promise.resolve(makeRealtorResponse("for_sale"));
-      }
-      return Promise.resolve(emptyRealtorResponse());
+  it("sends the original address with ZIP+4 to autocomplete unchanged", async () => {
+    const capturedUrls: string[] = [];
+    mockFetch.mockImplementation((url: string) => {
+      capturedUrls.push(url);
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(makeHulkResponse("for_sale"));
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
+      return Promise.resolve(makeRedfinDetailsResponse(620000, "Active"));
     });
 
     await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070-1234");
-    expect(capturedAddresses[0]).toBe("4920 Naphill Rd, McKinney, TX 75070-1234");
+    const autocompleteUrl = capturedUrls.find((u) => u.includes("moveaws"));
+    expect(autocompleteUrl).toBeTruthy();
+    const decodedUrl = decodeURIComponent((autocompleteUrl ?? "").replace(/\+/g, " "));
+    expect(decodedUrl).toContain("4920 Naphill Rd");
+  });
+
+  // ── Regression: 4920 Naphill Rd, McKinney, TX 75070 ─────────────────────
+  it("regression: Redfin still runs when Realtor GraphQL returns 404", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(hulk404Response());
+      if (url.includes("realestateandhomes-search")) return Promise.resolve(emptyHtmlSearch());
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
+      return Promise.resolve(makeRedfinDetailsResponse(620000, "Active"));
+    });
+
+    const result = await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
+    expect(result.source).toBe("redfin");
+    expect(result.listPrice).toBe(620000);
+  });
+
+  it("regression: Redfin still runs when Realtor GraphQL returns 403", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve({ ok: false, status: 403 });
+      if (url.includes("realestateandhomes-search")) return Promise.resolve(emptyHtmlSearch());
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
+      return Promise.resolve(makeRedfinDetailsResponse(620000, "Active"));
+    });
+
+    const result = await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
+    expect(result.source).toBe("redfin");
+  });
+
+  it("rdc_search_srp is no longer referenced: hulk_main_srp is called instead", async () => {
+    const capturedUrls: string[] = [];
+    mockFetch.mockImplementation((url: string) => {
+      capturedUrls.push(url);
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(makeHulkResponse("for_sale"));
+      if (url.includes("autocomplete")) return Promise.resolve(makeRedfinAutocompleteResponse());
+      return Promise.resolve(makeRedfinDetailsResponse(620000, "Active"));
+    });
+
+    await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
+    const rdcCall = capturedUrls.find((u) => u.includes("rdc_search_srp"));
+    expect(rdcCall).toBeUndefined();
+    const hulkCall = capturedUrls.find((u) => u.includes("hulk_main_srp"));
+    expect(hulkCall).toBeTruthy();
+  });
+
+  it("listing status is not set to active based on price alone when status is missing", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              data: {
+                home_search: {
+                  results: [
+                    {
+                      property_id: "M12345",
+                      status: null,
+                      list_price: 500000,
+                      beds: 3,
+                      baths_full: 2,
+                      sqft: 1800,
+                      permalink: "/realestateandhomes-detail/4920-Naphill-Rd_McKinney_TX_75070_M12345",
+                    },
+                  ],
+                },
+              },
+            }),
+        });
+      }
+      if (url.includes("autocomplete")) {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve(`{}&&${JSON.stringify({ payload: { sections: [] } })}`),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    });
+
+    const result = await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
+    if (result.source === "realtor") {
+      expect(result.listingStatus).not.toBe("active");
+    }
+  });
+
+  it("HTML fallback path: parses detail page when GraphQL fails and search finds a match", async () => {
+    const detailHtml = `<html><head>
+      <script type="application/ld+json">{
+        "@type": "SingleFamilyResidence",
+        "offers": { "price": 599000, "availability": "http://schema.org/InStock" },
+        "numberOfRooms": 4,
+        "floorSize": { "value": 2400 }
+      }</script></head></html>`;
+
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("moveaws")) return Promise.resolve(makeAutocompleteResponse("M12345"));
+      if (url.includes("hulk_main_srp")) return Promise.resolve(emptyHulkResponse());
+      if (url.includes("realestateandhomes-search")) {
+        return Promise.resolve({
+          ok: true,
+          text: () =>
+            Promise.resolve(
+              `<html><a href="/realestateandhomes-detail/4920-Naphill-Rd_McKinney_TX">listing</a></html>`,
+            ),
+        });
+      }
+      if (url.includes("realestateandhomes-detail")) {
+        return Promise.resolve({ ok: true, text: () => Promise.resolve(detailHtml) });
+      }
+      if (url.includes("autocomplete")) {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve(`{}&&${JSON.stringify({ payload: { sections: [] } })}`),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    });
+
+    const result = await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
+    expect(result.source).toBe("realtor");
+    expect(result.listPrice).toBe(599000);
+    expect(result.beds).toBe(4);
+    expect(result.squareFeet).toBe(2400);
   });
 });

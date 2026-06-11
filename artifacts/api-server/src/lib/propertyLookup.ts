@@ -1,5 +1,15 @@
 import { logger } from "./logger";
 import { aiMatchProperty } from "./aiPropertyMatcher";
+import {
+  resolveRealtorAddress,
+  fetchRealtorGraphql,
+  findRealtorPropertyPage,
+  fetchAndParseRealtorDetailPage,
+  mapRealtorStatus,
+  calculateBaths,
+  makeAbsoluteRealtorUrl,
+  detailUrlAddressMatches,
+} from "./realtorProvider";
 
 export interface PropertyLookupResult {
   source: "realtor" | "redfin" | null;
@@ -64,15 +74,6 @@ export function normalizeAddress(raw: string): string {
   return s;
 }
 
-function mapRealtorStatus(raw: string | undefined | null): PropertyLookupResult["listingStatus"] {
-  if (!raw) return "unknown";
-  const lower = raw.toLowerCase();
-  if (lower === "for_sale" || lower === "for sale" || lower === "active") return "active";
-  if (lower === "recently_sold" || lower === "sold") return "recently_sold";
-  if (lower === "off_market" || lower === "not_for_sale") return "off_market";
-  return "unknown";
-}
-
 function mapRedfinStatus(
   rawStatus: string | undefined | null,
   isSold: boolean,
@@ -108,93 +109,54 @@ function mapRedfinStatus(
   return isSold ? "recently_sold" : listPrice != null ? "active" : "unknown";
 }
 
-async function lookupRealtor(originalAddress: string): Promise<ProviderOutcome> {
-  const url = `https://www.realtor.com/api/v1/rdc_search_srp?client_id=rdc-search-new-communities&schema=vesta`;
-  const body = JSON.stringify({
-    query: `query HomeSearch($query: home_search_criteria, $limit: Int) {
-      home_search(query: $query, limit: $limit) {
-        results {
-          listing_id
-          listing {
-            status
-            list_date
-          }
-          property {
-            beds
-            baths_consolidated
-            sqft
-            list_price
-            mpr_id
-          }
-          href
-        }
-      }
-    }`,
-    variables: {
-      query: {
-        status: ["for_sale", "recently_sold"],
-        address: originalAddress,
-      },
-      limit: 3,
-    },
-  });
+export async function lookupRealtor(originalAddress: string): Promise<ProviderOutcome> {
+  const now = new Date().toISOString();
+  const empty: ProviderOutcome = {
+    result: null,
+    candidates: [],
+    searchQuery: originalAddress,
+    matchCount: 0,
+  };
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6000);
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": BROWSER_UA,
-        Accept: "application/json",
-        Origin: "https://www.realtor.com",
-        Referer: "https://www.realtor.com/",
-      },
-      body,
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!res.ok) return { result: null, candidates: [], searchQuery: originalAddress, matchCount: 0, error: `HTTP ${res.status}` };
+  const suggestion = await resolveRealtorAddress(originalAddress);
+  if (!suggestion?.mpr_id) {
+    logger.info(
+      { originalAddress, stage: "autocomplete", reason: "no_match" },
+      "realtor_lookup_complete",
+    );
+    return { ...empty, error: "autocomplete_no_match" };
+  }
 
-    const data = (await res.json()) as {
-      data?: {
-        home_search?: {
-          results?: Array<{
-            listing_id?: string;
-            listing?: { status?: string; list_date?: string };
-            property?: {
-              beds?: number;
-              baths_consolidated?: number;
-              sqft?: number;
-              list_price?: number;
-              mpr_id?: string;
-            };
-            href?: string;
-          }>;
-        };
-      };
-    };
+  const mprId = suggestion.mpr_id;
 
-    const results = data?.data?.home_search?.results ?? [];
-    const matchCount = results.length;
-    if (!matchCount) return { result: null, candidates: [], searchQuery: originalAddress, matchCount: 0 };
+  const graphqlResult = await fetchRealtorGraphql(mprId, originalAddress);
+  const isGraphqlFailure =
+    "stage" in graphqlResult && "reason" in graphqlResult;
 
-    const now = new Date().toISOString();
+  if (!isGraphqlFailure) {
+    const hit = graphqlResult;
+    const listPrice = hit.list_price ?? null;
+    const beds = hit.beds ?? null;
+    const baths = calculateBaths(hit.baths_full, hit.baths_half);
+    const squareFeet = hit.sqft ?? null;
+    const mlsId = hit.property_id ?? mprId;
+    const rawStatus = hit.status ?? null;
 
-    const candidates: PropertyLookupResult[] = [];
-    for (const r of results) {
-      const prop = r.property;
-      if (!prop) continue;
-      const beds = prop.beds ?? null;
-      const baths = prop.baths_consolidated ?? null;
-      const squareFeet = prop.sqft ?? null;
-      const listPrice = prop.list_price ?? null;
-      const mlsId = r.listing_id ?? prop.mpr_id ?? null;
-      const listingStatus = mapRealtorStatus(r.listing?.status);
-      const listingUrl = r.href ?? null;
-      const listingDate = r.listing?.list_date ?? null;
-      if (beds == null && baths == null && squareFeet == null && listPrice == null && mlsId == null) continue;
+    const listingStatus =
+      rawStatus != null
+        ? mapRealtorStatus(rawStatus)
+        : "unknown";
+
+    const listingUrl = makeAbsoluteRealtorUrl(hit.permalink);
+    const listingDate = hit.list_date ?? null;
+
+    if (
+      beds != null ||
+      baths != null ||
+      squareFeet != null ||
+      listPrice != null ||
+      mlsId != null
+    ) {
       const candidate: PropertyLookupResult = {
         source: "realtor",
         beds,
@@ -207,25 +169,77 @@ async function lookupRealtor(originalAddress: string): Promise<ProviderOutcome> 
         listingDate,
         lastVerifiedAt: now,
       };
-      candidates.push(candidate);
+
+      logger.info(
+        {
+          originalAddress,
+          stage: "hulk",
+          listingStatus,
+          listPrice,
+          beds,
+          baths,
+          squareFeet,
+        },
+        "realtor_lookup_complete",
+      );
+
+      return {
+        result: candidate,
+        candidates: [candidate],
+        searchQuery: originalAddress,
+        matchCount: 1,
+      };
     }
-
-    if (!candidates.length) return { result: null, candidates: [], searchQuery: originalAddress, matchCount };
-
-    const active = candidates.find(c => c.listingStatus === "active");
-    const best = active ?? candidates[0];
-
-    return {
-      result: best,
-      candidates,
-      searchQuery: originalAddress,
-      matchCount,
-    };
-  } catch (err: unknown) {
-    clearTimeout(timeout);
-    const message = err instanceof Error ? err.message : String(err);
-    return { result: null, candidates: [], searchQuery: originalAddress, matchCount: 0, error: message };
   }
+
+  logger.info(
+    {
+      originalAddress,
+      stage: "html_fallback",
+      graphqlFailure: isGraphqlFailure
+        ? (graphqlResult as { reason: string }).reason
+        : "no_data",
+    },
+    "realtor_lookup_complete",
+  );
+
+  const pageUrl = await findRealtorPropertyPage(originalAddress);
+  if (!pageUrl) {
+    return { ...empty, error: "html_fallback_no_page" };
+  }
+
+  if (!detailUrlAddressMatches(pageUrl, originalAddress)) {
+    logger.warn(
+      { originalAddress, pageUrl, stage: "html_fallback" },
+      "realtor_lookup_complete",
+    );
+    return { ...empty, error: "html_fallback_address_mismatch" };
+  }
+
+  const parsed = await fetchAndParseRealtorDetailPage(pageUrl);
+  if (!parsed) {
+    return { ...empty, error: "html_fallback_parse_failed" };
+  }
+
+  const candidate: PropertyLookupResult = {
+    source: "realtor",
+    beds: parsed.beds,
+    baths: parsed.baths,
+    squareFeet: parsed.squareFeet,
+    listPrice: parsed.listPrice,
+    mlsId: parsed.mlsId ?? mprId,
+    listingStatus: parsed.listingStatus,
+    listingUrl: pageUrl,
+    listingDate: parsed.listingDate,
+    lastVerifiedAt: now,
+  };
+
+  return {
+    result: candidate,
+    candidates: [candidate],
+    searchQuery: originalAddress,
+    matchCount: 1,
+  };
 }
 
 async function scrapeRedfinPage(
