@@ -21,6 +21,9 @@ import {
   Pencil,
   ChevronLeft,
   X,
+  RefreshCw,
+  Check,
+  DatabaseZap,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -253,6 +256,8 @@ interface PropertyFormProps {
   onAddressValidationChange: (v: boolean) => void
 }
 
+type RefreshStatus = "idle" | "loading" | "not-found" | "done"
+
 function PropertyForm({ form, onChange, addressValidated, onAddressValidationChange }: PropertyFormProps) {
   const { hasApiKey } = useGoogleMaps()
   const [isLookingUp, setIsLookingUp] = useState(false)
@@ -261,6 +266,11 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
   const autofilledRef = useRef<Set<string>>(new Set())
   const formRef = useRef(form)
   const lookupTokenRef = useRef(0)
+
+  const [pendingUpdates, setPendingUpdates] = useState<Record<string, string>>({})
+  const [refreshStatus, setRefreshStatus] = useState<RefreshStatus>("idle")
+  const refreshTokenRef = useRef(0)
+
   useEffect(() => { formRef.current = form }, [form])
 
   const handlePlaceSelected = (place: PlaceResult) => {
@@ -282,6 +292,8 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
     setLookupSource(null)
     setBadgeDismissed(false)
     autofilledRef.current = new Set()
+    setPendingUpdates({})
+    setRefreshStatus("idle")
 
     const token = ++lookupTokenRef.current
     setIsLookingUp(true)
@@ -318,6 +330,8 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
       setLookupSource(null)
       setBadgeDismissed(false)
       autofilledRef.current = new Set()
+      setPendingUpdates({})
+      setRefreshStatus("idle")
     } else {
       onChange({ ...form, addressInput: value })
     }
@@ -329,11 +343,92 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
       setLookupSource(null)
       autofilledRef.current = new Set()
     }
+    if (pendingUpdates[field] !== undefined) {
+      const next = { ...pendingUpdates }
+      delete next[field]
+      setPendingUpdates(next)
+    }
+  }
+
+  const handleRefreshListing = async () => {
+    const address = form.placeData.formattedAddress ?? (form.addressInput || "")
+    if (!address) return
+    const token = ++refreshTokenRef.current
+    setRefreshStatus("loading")
+    setPendingUpdates({})
+    try {
+      const result = await lookupPropertyDetails({ address })
+      if (token !== refreshTokenRef.current) return
+      if (!result.source) {
+        setRefreshStatus("not-found")
+        return
+      }
+      const current = formRef.current
+      const next = { ...current }
+      const newPending: Record<string, string> = {}
+      let anyFilled = false
+
+      const tryField = (field: keyof PropertyFormData & string, value: number | string | null | undefined) => {
+        if (value == null) return
+        const strVal = String(value)
+        if (!current[field]) {
+          (next as Record<string, string>)[field] = strVal
+          anyFilled = true
+        } else if (current[field] !== strVal) {
+          newPending[field] = strVal
+        }
+      }
+
+      tryField("beds", result.beds)
+      tryField("baths", result.baths)
+      tryField("squareFeet", result.squareFeet)
+      tryField("listPrice", result.listPrice)
+      tryField("mlsId", result.mlsId)
+
+      if (anyFilled) onChange(next)
+      setPendingUpdates(newPending)
+      setLookupSource(result.source)
+      setBadgeDismissed(false)
+      setRefreshStatus("done")
+    } catch {
+      if (token === refreshTokenRef.current) setRefreshStatus("idle")
+    }
+  }
+
+  const acceptPending = (field: string) => {
+    onChange({ ...form, [field]: pendingUpdates[field] })
+    const next = { ...pendingUpdates }
+    delete next[field]
+    setPendingUpdates(next)
+  }
+
+  const dismissPending = (field: string) => {
+    const next = { ...pendingUpdates }
+    delete next[field]
+    setPendingUpdates(next)
   }
 
   const showBadge = lookupSource != null && !badgeDismissed
-
   const sourceName = lookupSource === "realtor" ? "Realtor.com" : lookupSource === "redfin" ? "Redfin" : null
+  const canRefresh = !!(form.placeData.formattedAddress ?? form.addressInput)
+
+  const PendingChip = ({ field }: { field: string }) => {
+    if (!pendingUpdates[field]) return null
+    const label = field === "listPrice" ? `$${Number(pendingUpdates[field]).toLocaleString()}` : pendingUpdates[field]
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 flex items-center gap-1.5">
+          Update to {label}?
+          <button type="button" onClick={() => acceptPending(field)} className="hover:text-green-700" aria-label="Accept">
+            <Check className="h-3 w-3" />
+          </button>
+          <button type="button" onClick={() => dismissPending(field)} className="hover:text-red-600" aria-label="Dismiss">
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -380,68 +475,101 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
           </p>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>MLS ID</Label>
-          <Input
-            value={form.mlsId}
-            onChange={e => handleAutofilledFieldChange("mlsId", prev => ({ ...prev, mlsId: e.target.value }))}
-            placeholder="#1234567"
-          />
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Listing Data</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 gap-1.5 text-xs"
+            onClick={handleRefreshListing}
+            disabled={!canRefresh || refreshStatus === "loading"}
+            title="Re-fetch listing details from Realtor.com / Redfin"
+          >
+            {refreshStatus === "loading"
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <RefreshCw className="h-3 w-3" />}
+            Refresh Listing Data
+          </Button>
         </div>
-        <div className="space-y-2">
-          <Label>List Price</Label>
-          <Input
-            value={form.listPrice}
-            onChange={e => handleAutofilledFieldChange("listPrice", prev => ({ ...prev, listPrice: e.target.value }))}
-            type="number"
-            placeholder="500000"
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Beds</Label>
-          <Input
-            value={form.beds}
-            onChange={e => handleAutofilledFieldChange("beds", prev => ({ ...prev, beds: e.target.value }))}
-            type="number"
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Baths</Label>
-          <Input
-            value={form.baths}
-            onChange={e => handleAutofilledFieldChange("baths", prev => ({ ...prev, baths: e.target.value }))}
-            type="number"
-            step="0.5"
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Sq. Feet</Label>
-          <Input
-            value={form.squareFeet}
-            onChange={e => handleAutofilledFieldChange("squareFeet", prev => ({ ...prev, squareFeet: e.target.value }))}
-            type="number"
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Nickname</Label>
-          <Input
-            value={form.nickname}
-            onChange={e => onChange({ ...form, nickname: e.target.value })}
-            placeholder="Corner unit, etc."
-          />
-        </div>
-        <div className="space-y-2 col-span-2">
-          <Label>Agent Notes</Label>
-          <Textarea
-            value={form.notes}
-            onChange={e => onChange({ ...form, notes: e.target.value })}
-            rows={2}
-          />
+
+        {refreshStatus === "not-found" && (
+          <div className="flex items-start gap-2 rounded-md bg-muted/60 border border-border px-3 py-2 text-xs text-muted-foreground">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
+            <span>No listing data found on Realtor.com or Redfin — please enter details manually.</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>MLS ID</Label>
+            <Input
+              value={form.mlsId}
+              onChange={e => handleAutofilledFieldChange("mlsId", prev => ({ ...prev, mlsId: e.target.value }))}
+              placeholder="#1234567"
+            />
+            <PendingChip field="mlsId" />
+          </div>
+          <div className="space-y-2">
+            <Label>List Price</Label>
+            <Input
+              value={form.listPrice}
+              onChange={e => handleAutofilledFieldChange("listPrice", prev => ({ ...prev, listPrice: e.target.value }))}
+              type="number"
+              placeholder="500000"
+              min="0"
+            />
+            <PendingChip field="listPrice" />
+          </div>
+          <div className="space-y-2">
+            <Label>Beds</Label>
+            <Input
+              value={form.beds}
+              onChange={e => handleAutofilledFieldChange("beds", prev => ({ ...prev, beds: e.target.value }))}
+              type="number"
+              min="0"
+            />
+            <PendingChip field="beds" />
+          </div>
+          <div className="space-y-2">
+            <Label>Baths</Label>
+            <Input
+              value={form.baths}
+              onChange={e => handleAutofilledFieldChange("baths", prev => ({ ...prev, baths: e.target.value }))}
+              type="number"
+              step="0.5"
+              min="0"
+            />
+            <PendingChip field="baths" />
+          </div>
+          <div className="space-y-2">
+            <Label>Sq. Feet</Label>
+            <Input
+              value={form.squareFeet}
+              onChange={e => handleAutofilledFieldChange("squareFeet", prev => ({ ...prev, squareFeet: e.target.value }))}
+              type="number"
+              min="0"
+            />
+            <PendingChip field="squareFeet" />
+          </div>
+          <div className="space-y-2">
+            <Label>Nickname</Label>
+            <Input
+              value={form.nickname}
+              onChange={e => onChange({ ...form, nickname: e.target.value })}
+              placeholder="Corner unit, etc."
+            />
+          </div>
+          <div className="space-y-2 col-span-2">
+            <Label>Agent Notes</Label>
+            <Textarea
+              value={form.notes}
+              onChange={e => onChange({ ...form, notes: e.target.value })}
+              rows={2}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -462,6 +590,53 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
   const [view, setView] = useState<DetailView>("detail")
   const [editForm, setEditForm] = useState<PropertyFormData>(formFromProperty(property))
   const [editAddressValidated, setEditAddressValidated] = useState(true)
+
+  const [refreshStatus, setRefreshStatus] = useState<RefreshStatus>("idle")
+  const [refreshResult, setRefreshResult] = useState<{
+    source: "realtor" | "redfin"
+    beds?: number | null
+    baths?: number | null
+    squareFeet?: number | null
+    listPrice?: number | null
+    mlsId?: string | null
+  } | null>(null)
+
+  const handleRefreshFromDetail = async () => {
+    if (!property.formattedAddress) return
+    setRefreshStatus("loading")
+    setRefreshResult(null)
+    try {
+      const result = await lookupPropertyDetails({ address: property.formattedAddress })
+      if (!result.source) {
+        setRefreshStatus("not-found")
+        return
+      }
+      setRefreshResult(result as typeof refreshResult)
+      setRefreshStatus("done")
+    } catch {
+      setRefreshStatus("idle")
+      toast({ title: "Refresh failed", variant: "destructive" })
+    }
+  }
+
+  const handleApplyRefreshResult = async () => {
+    if (!refreshResult) return
+    const data: Record<string, unknown> = {}
+    if (refreshResult.beds != null) data.beds = refreshResult.beds
+    if (refreshResult.baths != null) data.baths = refreshResult.baths
+    if (refreshResult.squareFeet != null) data.squareFeet = refreshResult.squareFeet
+    if (refreshResult.listPrice != null) data.listPrice = refreshResult.listPrice
+    if (refreshResult.mlsId != null) data.mlsId = refreshResult.mlsId
+    try {
+      await updateProperty.mutateAsync({ propertyId: property.id, data })
+      toast({ title: "Listing data updated" })
+      setRefreshStatus("idle")
+      setRefreshResult(null)
+      onUpdated()
+    } catch {
+      toast({ title: "Failed to save listing data", variant: "destructive" })
+    }
+  }
 
   const handleArchive = async () => {
     try {
@@ -626,6 +801,60 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
         </div>
       )}
 
+      {refreshStatus === "not-found" && (
+        <div className="flex items-start gap-2 rounded-md bg-muted/60 border border-border px-3 py-2 text-xs text-muted-foreground">
+          <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
+          <span>No listing data found on Realtor.com or Redfin — please enter details manually via Edit.</span>
+        </div>
+      )}
+
+      {refreshStatus === "done" && refreshResult && (
+        <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-indigo-700 flex items-center gap-1.5">
+              <RefreshCw className="h-3 w-3" />
+              Found via {refreshResult.source === "realtor" ? "Realtor.com" : "Redfin"}
+            </span>
+            <button
+              type="button"
+              onClick={() => { setRefreshStatus("idle"); setRefreshResult(null) }}
+              className="text-indigo-400 hover:text-indigo-700"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            {refreshResult.beds != null && (
+              <span className="bg-white border border-indigo-100 rounded px-2 py-0.5 text-indigo-800">{refreshResult.beds} bd</span>
+            )}
+            {refreshResult.baths != null && (
+              <span className="bg-white border border-indigo-100 rounded px-2 py-0.5 text-indigo-800">{refreshResult.baths} ba</span>
+            )}
+            {refreshResult.squareFeet != null && (
+              <span className="bg-white border border-indigo-100 rounded px-2 py-0.5 text-indigo-800">{refreshResult.squareFeet.toLocaleString()} sqft</span>
+            )}
+            {refreshResult.listPrice != null && (
+              <span className="bg-white border border-indigo-100 rounded px-2 py-0.5 text-indigo-800 font-semibold">${refreshResult.listPrice.toLocaleString()}</span>
+            )}
+            {refreshResult.mlsId != null && (
+              <span className="bg-white border border-indigo-100 rounded px-2 py-0.5 text-indigo-800">MLS: {refreshResult.mlsId}</span>
+            )}
+          </div>
+          <Button
+            size="sm"
+            className="h-7 text-xs w-full gap-1.5"
+            onClick={handleApplyRefreshResult}
+            disabled={updateProperty.isPending}
+          >
+            {updateProperty.isPending
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <Check className="h-3 w-3" />}
+            Apply &amp; Save
+          </Button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2 pt-2 border-t flex-wrap">
         <div className="flex gap-2">
           {property.archived ? (
@@ -655,6 +884,19 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
               Archive
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-muted-foreground"
+            onClick={handleRefreshFromDetail}
+            disabled={refreshStatus === "loading" || updateProperty.isPending}
+            title="Re-fetch listing details from Realtor.com / Redfin"
+          >
+            {refreshStatus === "loading"
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <RefreshCw className="h-3.5 w-3.5" />}
+            Refresh Data
+          </Button>
         </div>
         <Button size="sm" className="gap-1.5" onClick={() => setView("edit")}>
           <Pencil className="h-3.5 w-3.5" />
@@ -847,6 +1089,14 @@ export default function Properties() {
                         </Badge>
                       )}
                     </div>
+                    {!prop.archived && prop.beds == null && prop.baths == null && prop.squareFeet == null && prop.listPrice == null && !prop.mlsId && (
+                      <div className="absolute bottom-2 right-2">
+                        <Badge variant="outline" className="bg-amber-50/90 backdrop-blur-sm text-xs border-amber-200 text-amber-700 gap-1">
+                          <DatabaseZap className="h-2.5 w-2.5" />
+                          Missing data
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                   <CardContent className="p-5 space-y-4">
                     <div>
