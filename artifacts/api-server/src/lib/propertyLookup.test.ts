@@ -282,7 +282,7 @@ describe("lookupPropertyDetails", () => {
     expect(result.listPrice).toBe(625000);
   });
 
-  it("normalizes Rd → road and lowercases before sending to providers", async () => {
+  it("sends the original address to providers (not normalized)", async () => {
     const capturedAddresses: string[] = [];
     mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
       if (url.includes("realtor.com") && opts?.body) {
@@ -297,12 +297,12 @@ describe("lookupPropertyDetails", () => {
     });
 
     await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070");
-    expect(capturedAddresses[0]).toContain("road");
-    expect(capturedAddresses[0]).not.toMatch(/\brd\b/i);
-    expect(capturedAddresses[0]).toBe(capturedAddresses[0].toLowerCase());
+    // Providers receive the original address unmodified — normalization is for internal
+    // logging/dedup only (changed in task #104 to fix false negatives with abbreviation-sensitive APIs)
+    expect(capturedAddresses[0]).toBe("4920 Naphill Rd, McKinney, TX 75070");
   });
 
-  it("normalizes ZIP+4 to 5-digit ZIP before lookup", async () => {
+  it("sends the original address with ZIP+4 to providers unchanged", async () => {
     const capturedAddresses: string[] = [];
     mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
       if (url.includes("realtor.com") && opts?.body) {
@@ -317,7 +317,6 @@ describe("lookupPropertyDetails", () => {
     });
 
     await lookupPropertyDetails("4920 Naphill Rd, McKinney, TX 75070-1234");
-    expect(capturedAddresses[0]).toContain("75070");
-    expect(capturedAddresses[0]).not.toContain("75070-1234");
+    expect(capturedAddresses[0]).toBe("4920 Naphill Rd, McKinney, TX 75070-1234");
   });
 });

@@ -446,6 +446,7 @@ export const GetPropertyResponse = zod.object({
     listingUrl: zod.string().nullish(),
     listingDate: zod.string().nullish(),
     lastVerifiedAt: zod.coerce.date().nullish(),
+    matchConfidence: zod.enum(["high", "medium", "low"]).nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -478,6 +479,7 @@ export const UpdatePropertyBody = zod.object({
   listingUrl: zod.string().optional(),
   listingDate: zod.string().optional(),
   lastVerifiedAt: zod.string().optional(),
+  matchConfidence: zod.enum(["high", "medium", "low"]).nullish(),
 });
 
 export const UpdatePropertyResponse = zod.object({
@@ -502,6 +504,7 @@ export const UpdatePropertyResponse = zod.object({
     listingUrl: zod.string().nullish(),
     listingDate: zod.string().nullish(),
     lastVerifiedAt: zod.coerce.date().nullish(),
+    matchConfidence: zod.enum(["high", "medium", "low"]).nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),

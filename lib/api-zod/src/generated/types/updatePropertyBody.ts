@@ -26,4 +26,5 @@ export interface UpdatePropertyBody {
   listingUrl?: string;
   listingDate?: string;
   lastVerifiedAt?: string;
+  matchConfidence?: "high" | "medium" | "low" | null;
 }

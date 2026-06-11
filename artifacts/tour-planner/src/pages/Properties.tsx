@@ -603,6 +603,7 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
     listingUrl?: string | null
     listingDate?: string | null
     lastVerifiedAt?: string
+    matchConfidence?: "high" | "medium" | "low" | null
   } | null>(null)
 
   const handleRefreshFromDetail = async () => {
@@ -610,7 +611,7 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
     setRefreshStatus("loading")
     setRefreshResult(null)
     try {
-      const result = await lookupPropertyDetails({ address: property.formattedAddress })
+      const result = await lookupPropertyDetails({ address: property.formattedAddress, propertyId: property.id })
       if (!result.source) {
         try {
           await updateProperty.mutateAsync({
@@ -645,6 +646,7 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
     if (refreshResult.listingUrl != null) data.listingUrl = refreshResult.listingUrl
     if (refreshResult.listingDate != null) data.listingDate = refreshResult.listingDate
     if (refreshResult.lastVerifiedAt != null) data.lastVerifiedAt = refreshResult.lastVerifiedAt
+    if (refreshResult.matchConfidence !== undefined) data.matchConfidence = refreshResult.matchConfidence ?? null
     try {
       await updateProperty.mutateAsync({ propertyId: property.id, data })
       toast({ title: "Listing data updated" })

@@ -25,6 +25,7 @@ export const propertiesTable = pgTable("properties", {
   listingUrl: text("listing_url"),
   listingDate: varchar("listing_date", { length: 20 }),
   lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+  matchConfidence: varchar("match_confidence", { length: 10 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

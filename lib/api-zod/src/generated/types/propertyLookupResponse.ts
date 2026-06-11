@@ -19,4 +19,6 @@ export interface PropertyLookupResponse {
   listingUrl?: string | null;
   listingDate?: string | null;
   lastVerifiedAt?: string;
+  /** @nullable */
+  matchConfidence?: "high" | "medium" | "low" | null;
 }

@@ -44,6 +44,8 @@ export interface Property {
   listingDate?: string | null;
   /** @nullable */
   lastVerifiedAt?: Date | null;
+  /** @nullable */
+  matchConfidence?: "high" | "medium" | "low" | null;
   createdAt: Date;
   updatedAt: Date;
 }

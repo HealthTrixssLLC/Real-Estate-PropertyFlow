@@ -18,7 +18,31 @@ router.get("/properties/lookup", async (req: Request, res: Response) => {
   }
   const address = typeof req.query.address === "string" ? req.query.address.trim() : "";
   const propertyId = typeof req.query.propertyId === "string" ? req.query.propertyId.trim() : undefined;
-  const result = await lookupPropertyDetails(address, propertyId);
+
+  let storedHint: { lat?: number | null; lng?: number | null; beds?: number | null; baths?: number | null; sqft?: number | null } | undefined;
+  if (propertyId) {
+    const [stored] = await db
+      .select({
+        lat: propertiesTable.lat,
+        lng: propertiesTable.lng,
+        beds: propertiesTable.beds,
+        baths: propertiesTable.baths,
+        squareFeet: propertiesTable.squareFeet,
+      })
+      .from(propertiesTable)
+      .where(eq(propertiesTable.id, propertyId));
+    if (stored) {
+      storedHint = {
+        lat: stored.lat,
+        lng: stored.lng,
+        beds: stored.beds,
+        baths: stored.baths,
+        sqft: stored.squareFeet,
+      };
+    }
+  }
+
+  const result = await lookupPropertyDetails(address, propertyId, storedHint);
   res.json(result);
 });
 

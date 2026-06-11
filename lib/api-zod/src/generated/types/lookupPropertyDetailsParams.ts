@@ -11,4 +11,8 @@ export type LookupPropertyDetailsParams = {
    * Formatted address to look up
    */
   address: string;
+  /**
+   * Optional property ID to load stored beds/baths/sqft/coordinates as AI matching hints
+   */
+  propertyId?: string;
 };

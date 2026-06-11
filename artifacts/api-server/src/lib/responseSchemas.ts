@@ -123,6 +123,7 @@ export const PropertySchema = z.object({
   listingUrl: z.string().nullable().optional(),
   listingDate: z.string().nullable().optional(),
   lastVerifiedAt: z.date().nullable().optional(),
+  matchConfidence: z.enum(["high", "medium", "low"]).nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
