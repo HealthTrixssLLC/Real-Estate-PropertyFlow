@@ -21,6 +21,10 @@ export const propertiesTable = pgTable("properties", {
   nickname: varchar("nickname", { length: 255 }),
   notes: text("notes"),
   archived: boolean("archived").notNull().default(false),
+  listingStatus: varchar("listing_status", { length: 20 }),
+  listingUrl: text("listing_url"),
+  listingDate: varchar("listing_date", { length: 20 }),
+  lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -94,6 +94,14 @@ export interface Property {
   /** @nullable */
   notes?: string | null;
   archived: boolean;
+  /** @nullable */
+  listingStatus?: "active" | "recently_sold" | "off_market" | "unknown" | null;
+  /** @nullable */
+  listingUrl?: string | null;
+  /** @nullable */
+  listingDate?: string | null;
+  /** @nullable */
+  lastVerifiedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -139,6 +147,10 @@ export interface UpdatePropertyBody {
   nickname?: string;
   notes?: string;
   archived?: boolean;
+  listingStatus?: "active" | "recently_sold" | "off_market" | "unknown";
+  listingUrl?: string;
+  listingDate?: string;
+  lastVerifiedAt?: string;
 }
 
 /**
@@ -161,6 +173,10 @@ export interface PropertyLookupResponse {
   squareFeet?: number | null;
   listPrice?: number | null;
   mlsId?: string | null;
+  listingStatus?: "active" | "recently_sold" | "off_market" | "unknown" | null;
+  listingUrl?: string | null;
+  listingDate?: string | null;
+  lastVerifiedAt?: string;
 }
 
 export interface Buyer {

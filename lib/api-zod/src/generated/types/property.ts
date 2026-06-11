@@ -36,6 +36,14 @@ export interface Property {
   /** @nullable */
   notes?: string | null;
   archived: boolean;
+  /** @nullable */
+  listingStatus?: "active" | "recently_sold" | "off_market" | "unknown" | null;
+  /** @nullable */
+  listingUrl?: string | null;
+  /** @nullable */
+  listingDate?: string | null;
+  /** @nullable */
+  lastVerifiedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

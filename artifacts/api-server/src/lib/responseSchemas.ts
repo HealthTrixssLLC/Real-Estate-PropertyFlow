@@ -119,6 +119,10 @@ export const PropertySchema = z.object({
   nickname: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   archived: z.boolean(),
+  listingStatus: z.enum(["active", "recently_sold", "off_market", "unknown"]).nullable().optional(),
+  listingUrl: z.string().nullable().optional(),
+  listingDate: z.string().nullable().optional(),
+  lastVerifiedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

@@ -361,6 +361,10 @@ export const ListPropertiesResponse = zod.object({
       nickname: zod.string().nullish(),
       notes: zod.string().nullish(),
       archived: zod.boolean(),
+      listingStatus: zod.enum(["active", "recently_sold", "off_market", "unknown"]).nullish(),
+      listingUrl: zod.string().nullish(),
+      listingDate: zod.string().nullish(),
+      lastVerifiedAt: zod.coerce.date().nullish(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -404,6 +408,13 @@ export const LookupPropertyDetailsResponse = zod.object({
   squareFeet: zod.number().nullish(),
   listPrice: zod.number().nullish(),
   mlsId: zod.string().nullish(),
+  listingStatus: zod
+    .enum(["active", "recently_sold", "off_market", "unknown"])
+    .nullable()
+    .optional(),
+  listingUrl: zod.string().nullable().optional(),
+  listingDate: zod.string().nullable().optional(),
+  lastVerifiedAt: zod.string().optional(),
 });
 
 /**
@@ -431,6 +442,10 @@ export const GetPropertyResponse = zod.object({
     nickname: zod.string().nullish(),
     notes: zod.string().nullish(),
     archived: zod.boolean(),
+    listingStatus: zod.enum(["active", "recently_sold", "off_market", "unknown"]).nullish(),
+    listingUrl: zod.string().nullish(),
+    listingDate: zod.string().nullish(),
+    lastVerifiedAt: zod.coerce.date().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -459,6 +474,10 @@ export const UpdatePropertyBody = zod.object({
   nickname: zod.string().optional(),
   notes: zod.string().optional(),
   archived: zod.boolean().optional(),
+  listingStatus: zod.enum(["active", "recently_sold", "off_market", "unknown"]).optional(),
+  listingUrl: zod.string().optional(),
+  listingDate: zod.string().optional(),
+  lastVerifiedAt: zod.string().optional(),
 });
 
 export const UpdatePropertyResponse = zod.object({
@@ -479,6 +498,10 @@ export const UpdatePropertyResponse = zod.object({
     nickname: zod.string().nullish(),
     notes: zod.string().nullish(),
     archived: zod.boolean(),
+    listingStatus: zod.enum(["active", "recently_sold", "off_market", "unknown"]).nullish(),
+    listingUrl: zod.string().nullish(),
+    listingDate: zod.string().nullish(),
+    lastVerifiedAt: zod.coerce.date().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),

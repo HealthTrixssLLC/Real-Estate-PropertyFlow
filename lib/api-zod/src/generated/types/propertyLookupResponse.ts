@@ -15,4 +15,8 @@ export interface PropertyLookupResponse {
   squareFeet?: number | null;
   listPrice?: number | null;
   mlsId?: string | null;
+  listingStatus?: "active" | "recently_sold" | "off_market" | "unknown" | null;
+  listingUrl?: string | null;
+  listingDate?: string | null;
+  lastVerifiedAt?: string;
 }

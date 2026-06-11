@@ -17,7 +17,8 @@ router.get("/properties/lookup", async (req: Request, res: Response) => {
     return;
   }
   const address = typeof req.query.address === "string" ? req.query.address.trim() : "";
-  const result = await lookupPropertyDetails(address);
+  const propertyId = typeof req.query.propertyId === "string" ? req.query.propertyId.trim() : undefined;
+  const result = await lookupPropertyDetails(address, propertyId);
   res.json(result);
 });
 
@@ -169,6 +170,9 @@ router.put("/properties/:propertyId", async (req: Request, res: Response) => {
     if (lat != null) updatePayload.lat = lat;
     if (lng != null) updatePayload.lng = lng;
     if (placeId != null) updatePayload.placeId = placeId;
+    if (typeof updatePayload.lastVerifiedAt === "string") {
+      updatePayload.lastVerifiedAt = new Date(updatePayload.lastVerifiedAt);
+    }
     const [property] = await db
       .update(propertiesTable)
       .set(updatePayload)

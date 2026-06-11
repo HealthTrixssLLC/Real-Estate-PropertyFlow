@@ -22,4 +22,8 @@ export interface UpdatePropertyBody {
   nickname?: string;
   notes?: string;
   archived?: boolean;
+  listingStatus?: "active" | "recently_sold" | "off_market" | "unknown";
+  listingUrl?: string;
+  listingDate?: string;
+  lastVerifiedAt?: string;
 }

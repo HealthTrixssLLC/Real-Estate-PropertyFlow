@@ -599,6 +599,10 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
     squareFeet?: number | null
     listPrice?: number | null
     mlsId?: string | null
+    listingStatus?: "active" | "recently_sold" | "off_market" | "unknown" | null
+    listingUrl?: string | null
+    listingDate?: string | null
+    lastVerifiedAt?: string
   } | null>(null)
 
   const handleRefreshFromDetail = async () => {
@@ -608,7 +612,17 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
     try {
       const result = await lookupPropertyDetails({ address: property.formattedAddress })
       if (!result.source) {
+        try {
+          await updateProperty.mutateAsync({
+            propertyId: property.id,
+            data: { lastVerifiedAt: result.lastVerifiedAt },
+          })
+          onUpdated()
+        } catch {
+          // best-effort — not blocking the UX
+        }
         setRefreshStatus("not-found")
+        toast({ title: "No active listing found", description: "Property verified — no matching listing detected on any provider.", variant: "destructive" })
         return
       }
       setRefreshResult(result as typeof refreshResult)
@@ -627,6 +641,10 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
     if (refreshResult.squareFeet != null) data.squareFeet = refreshResult.squareFeet
     if (refreshResult.listPrice != null) data.listPrice = refreshResult.listPrice
     if (refreshResult.mlsId != null) data.mlsId = refreshResult.mlsId
+    if (refreshResult.listingStatus != null) data.listingStatus = refreshResult.listingStatus
+    if (refreshResult.listingUrl != null) data.listingUrl = refreshResult.listingUrl
+    if (refreshResult.listingDate != null) data.listingDate = refreshResult.listingDate
+    if (refreshResult.lastVerifiedAt != null) data.lastVerifiedAt = refreshResult.lastVerifiedAt
     try {
       await updateProperty.mutateAsync({ propertyId: property.id, data })
       toast({ title: "Listing data updated" })
