@@ -4,7 +4,9 @@ import {
   useCreateProperty,
   useUpdateProperty,
   lookupPropertyDetails,
+  processPropertyLookup,
 } from "@workspace/api-client-react"
+import { browserFetchPropertyCandidates } from "@/lib/propertyFetch"
 import type { Property, CreatePropertyBody } from "@workspace/api-client-react"
 import {
   Building2,
@@ -297,8 +299,15 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
 
     const token = ++lookupTokenRef.current
     setIsLookingUp(true)
-    lookupPropertyDetails({ address: place.formattedAddress })
-      .then(result => {
+    ;(async () => {
+      try {
+        const { realtorCandidates, redfinCandidate } = await browserFetchPropertyCandidates(place.formattedAddress)
+        let result
+        if (realtorCandidates.length > 0 || redfinCandidate) {
+          result = await processPropertyLookup({ address: place.formattedAddress, realtorCandidates, redfinCandidate })
+        } else {
+          result = await lookupPropertyDetails({ address: place.formattedAddress })
+        }
         if (token !== lookupTokenRef.current) return
         setIsLookingUp(false)
         if (!result.source) return
@@ -315,10 +324,10 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
           setLookupSource(result.source)
           onChange(next)
         }
-      })
-      .catch(() => {
+      } catch {
         if (token === lookupTokenRef.current) setIsLookingUp(false)
-      })
+      }
+    })()
   }
 
   const handleAddressChange = (value: string) => {
@@ -357,7 +366,13 @@ function PropertyForm({ form, onChange, addressValidated, onAddressValidationCha
     setRefreshStatus("loading")
     setPendingUpdates({})
     try {
-      const result = await lookupPropertyDetails({ address })
+      const { realtorCandidates, redfinCandidate } = await browserFetchPropertyCandidates(address)
+      let result
+      if (realtorCandidates.length > 0 || redfinCandidate) {
+        result = await processPropertyLookup({ address, realtorCandidates, redfinCandidate })
+      } else {
+        result = await lookupPropertyDetails({ address })
+      }
       if (token !== refreshTokenRef.current) return
       if (!result.source) {
         setRefreshStatus("not-found")
@@ -611,7 +626,13 @@ function PropertyDetail({ property, onClose, onUpdated }: PropertyDetailProps) {
     setRefreshStatus("loading")
     setRefreshResult(null)
     try {
-      const result = await lookupPropertyDetails({ address: property.formattedAddress, propertyId: property.id })
+      const { realtorCandidates, redfinCandidate } = await browserFetchPropertyCandidates(property.formattedAddress)
+      let result
+      if (realtorCandidates.length > 0 || redfinCandidate) {
+        result = await processPropertyLookup({ address: property.formattedAddress, propertyId: property.id, realtorCandidates, redfinCandidate })
+      } else {
+        result = await lookupPropertyDetails({ address: property.formattedAddress, propertyId: property.id })
+      }
       if (!result.source) {
         try {
           await updateProperty.mutateAsync({

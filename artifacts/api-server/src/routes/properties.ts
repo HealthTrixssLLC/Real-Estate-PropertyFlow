@@ -2,14 +2,64 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
 import { and, eq, or, ilike, isNull, isNotNull } from "drizzle-orm";
 import { db, propertiesTable } from "@workspace/db";
-import { CreatePropertyBody, UpdatePropertyBody } from "@workspace/api-zod";
+import { CreatePropertyBody, UpdatePropertyBody, ProcessPropertyLookupBody } from "@workspace/api-zod";
 import { idParams, parseParams, parseBody } from "../lib/validate";
 import { sendValidated, PropertyResponseSchema, PropertyListResponseSchema } from "../lib/responseSchemas";
 import { geocodeAddress } from "../lib/geocode";
 import { logger } from "../lib/logger";
-import { lookupPropertyDetails } from "../lib/propertyLookup";
+import { lookupPropertyDetails, processLookupCandidates } from "../lib/propertyLookup";
+import type { PropertyLookupResult } from "../lib/propertyLookup";
 
 const router: IRouter = Router();
+
+router.post("/properties/process-lookup", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const body = parseBody(ProcessPropertyLookupBody, req, res);
+  if (!body) return;
+
+  const { address, propertyId, realtorCandidates, redfinCandidate } = body;
+
+  let storedHint: { lat?: number | null; lng?: number | null; beds?: number | null; baths?: number | null; sqft?: number | null } | undefined;
+  if (propertyId) {
+    const [stored] = await db
+      .select({
+        lat: propertiesTable.lat,
+        lng: propertiesTable.lng,
+        beds: propertiesTable.beds,
+        baths: propertiesTable.baths,
+        squareFeet: propertiesTable.squareFeet,
+      })
+      .from(propertiesTable)
+      .where(eq(propertiesTable.id, propertyId));
+    if (stored) {
+      storedHint = {
+        lat: stored.lat,
+        lng: stored.lng,
+        beds: stored.beds,
+        baths: stored.baths,
+        sqft: stored.squareFeet,
+      };
+    }
+  }
+
+  logger.info(
+    { propertyId, originalAddress: address, source: "browser-proxy", realtorCount: realtorCandidates.length, hasRedfin: !!redfinCandidate },
+    "property_refresh_start",
+  );
+
+  const result = await processLookupCandidates(
+    address,
+    realtorCandidates as PropertyLookupResult[],
+    redfinCandidate as PropertyLookupResult | null,
+    propertyId,
+    storedHint,
+  );
+
+  res.json(result);
+});
 
 router.get("/properties/lookup", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {

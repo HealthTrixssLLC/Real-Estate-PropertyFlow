@@ -417,6 +417,29 @@ export const LookupPropertyDetailsResponse = zod.object({
   lastVerifiedAt: zod.string().optional(),
 });
 
+export const PropertyCandidateItem = zod.object({
+  source: zod.enum(["realtor", "redfin"]),
+  beds: zod.number().nullish(),
+  baths: zod.number().nullish(),
+  squareFeet: zod.number().nullish(),
+  listPrice: zod.number().nullish(),
+  mlsId: zod.string().nullish(),
+  listingStatus: zod
+    .enum(["active", "recently_sold", "off_market", "unknown"])
+    .nullable()
+    .optional(),
+  listingUrl: zod.string().nullable().optional(),
+  listingDate: zod.string().nullable().optional(),
+  lastVerifiedAt: zod.string(),
+});
+
+export const ProcessPropertyLookupBody = zod.object({
+  address: zod.string(),
+  propertyId: zod.string().optional(),
+  realtorCandidates: zod.array(PropertyCandidateItem),
+  redfinCandidate: PropertyCandidateItem.nullable(),
+});
+
 /**
  * @summary Get a property by ID
  */

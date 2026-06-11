@@ -434,8 +434,16 @@ export interface StoredPropertyHint {
   sqft?: number | null;
 }
 
-export async function lookupPropertyDetails(
+/**
+ * Takes pre-fetched Realtor/Redfin candidates (e.g. from browser-side proxy),
+ * runs AI matching, and returns the best `PropertyLookupResult`.
+ * Used by both `lookupPropertyDetails` (server-scrape path) and the
+ * `POST /properties/process-lookup` endpoint (browser-proxy path).
+ */
+export async function processLookupCandidates(
   address: string,
+  realtorCandidates: PropertyLookupResult[],
+  redfinCandidate: PropertyLookupResult | null,
   propertyId?: string,
   storedHint?: StoredPropertyHint,
 ): Promise<PropertyLookupResult> {
@@ -447,44 +455,8 @@ export async function lookupPropertyDetails(
     listingDate: null,
     lastVerifiedAt,
   };
-  if (!address?.trim()) return empty;
 
-  const normalizedAddress = normalizeAddress(address);
-
-  logger.info(
-    { propertyId, originalAddress: address, normalizedAddress },
-    "property_refresh_start",
-  );
-
-  const [realtorSettled, redfinSettled] = await Promise.allSettled([
-    lookupRealtor(address),
-    lookupRedfin(address),
-  ]);
-
-  const realtorPkg: ProviderOutcome = realtorSettled.status === "fulfilled"
-    ? realtorSettled.value
-    : { result: null, candidates: [], searchQuery: address, matchCount: 0, error: String((realtorSettled as PromiseRejectedResult).reason) };
-
-  const redfinPkg: ProviderOutcome = redfinSettled.status === "fulfilled"
-    ? redfinSettled.value
-    : { result: null, candidates: [], searchQuery: address, matchCount: 0, error: String((redfinSettled as PromiseRejectedResult).reason) };
-
-  const realtorResult = realtorPkg.result;
-  const redfinResult = redfinPkg.result;
-
-  if (!realtorResult && !redfinResult) {
-    logger.warn(
-      {
-        propertyId,
-        originalAddress: address,
-        normalizedAddress,
-        providers: [
-          { name: "realtor", searchQuery: realtorPkg.searchQuery, matchCount: realtorPkg.matchCount, error: realtorPkg.error },
-          { name: "redfin",  searchQuery: redfinPkg.searchQuery,  matchCount: redfinPkg.matchCount,  error: redfinPkg.error },
-        ],
-      },
-      "property_refresh_no_results",
-    );
+  if (!realtorCandidates.length && !redfinCandidate) {
     return { ...empty, lastVerifiedAt };
   }
 
@@ -497,8 +469,8 @@ export async function lookupPropertyDetails(
       baths: storedHint?.baths,
       sqft: storedHint?.sqft,
     },
-    realtorCandidates: realtorPkg.candidates,
-    redfinCandidate: redfinPkg.result,
+    realtorCandidates,
+    redfinCandidate,
   });
 
   let selected: PropertyLookupResult;
@@ -509,6 +481,9 @@ export async function lookupPropertyDetails(
   let aiSelectedRealtor: number | null | undefined;
   let aiSelectedRedfin: boolean | undefined;
   let aiFallbackUsed: boolean;
+
+  const realtorResult = realtorCandidates[0] ?? null;
+  const redfinResult = redfinCandidate;
 
   if (!aiResult.fallbackUsed) {
     const decision = aiResult;
@@ -564,33 +539,12 @@ export async function lookupPropertyDetails(
     }
   }
 
+  const normalizedAddress = normalizeAddress(address);
   logger.info(
     {
       propertyId,
       originalAddress: address,
       normalizedAddress,
-      providers: [
-        {
-          name: "realtor",
-          searchQuery: realtorPkg.searchQuery,
-          matchCount: realtorPkg.matchCount,
-          candidateCount: realtorPkg.candidates.length,
-          listingStatus: realtorResult?.listingStatus ?? null,
-          listPrice: realtorResult?.listPrice ?? null,
-          mlsId: realtorResult?.mlsId ?? null,
-          error: realtorPkg.error,
-        },
-        {
-          name: "redfin",
-          searchQuery: redfinPkg.searchQuery,
-          matchCount: redfinPkg.matchCount,
-          candidateCount: redfinPkg.candidates.length,
-          listingStatus: redfinResult?.listingStatus ?? null,
-          listPrice: redfinResult?.listPrice ?? null,
-          mlsId: redfinResult?.mlsId ?? null,
-          error: redfinPkg.error,
-        },
-      ],
       selectedSource: selected.source,
       selectedMatch: {
         beds: selected.beds,
@@ -619,4 +573,67 @@ export async function lookupPropertyDetails(
   selected.matchConfidence = (aiMatchConfidence as "high" | "medium" | "low" | undefined) ?? null;
 
   return selected;
+}
+
+export async function lookupPropertyDetails(
+  address: string,
+  propertyId?: string,
+  storedHint?: StoredPropertyHint,
+): Promise<PropertyLookupResult> {
+  const lastVerifiedAt = new Date().toISOString();
+  const empty: PropertyLookupResult = {
+    source: null,
+    listingStatus: null,
+    listingUrl: null,
+    listingDate: null,
+    lastVerifiedAt,
+  };
+  if (!address?.trim()) return empty;
+
+  const normalizedAddress = normalizeAddress(address);
+
+  logger.info(
+    { propertyId, originalAddress: address, normalizedAddress },
+    "property_refresh_start",
+  );
+
+  const [realtorSettled, redfinSettled] = await Promise.allSettled([
+    lookupRealtor(address),
+    lookupRedfin(address),
+  ]);
+
+  const realtorPkg: ProviderOutcome = realtorSettled.status === "fulfilled"
+    ? realtorSettled.value
+    : { result: null, candidates: [], searchQuery: address, matchCount: 0, error: String((realtorSettled as PromiseRejectedResult).reason) };
+
+  const redfinPkg: ProviderOutcome = redfinSettled.status === "fulfilled"
+    ? redfinSettled.value
+    : { result: null, candidates: [], searchQuery: address, matchCount: 0, error: String((redfinSettled as PromiseRejectedResult).reason) };
+
+  const realtorResult = realtorPkg.result;
+  const redfinResult = redfinPkg.result;
+
+  if (!realtorResult && !redfinResult) {
+    logger.warn(
+      {
+        propertyId,
+        originalAddress: address,
+        normalizedAddress,
+        providers: [
+          { name: "realtor", searchQuery: realtorPkg.searchQuery, matchCount: realtorPkg.matchCount, error: realtorPkg.error },
+          { name: "redfin",  searchQuery: redfinPkg.searchQuery,  matchCount: redfinPkg.matchCount,  error: redfinPkg.error },
+        ],
+      },
+      "property_refresh_no_results",
+    );
+    return { ...empty, lastVerifiedAt };
+  }
+
+  return processLookupCandidates(
+    address,
+    realtorPkg.candidates,
+    redfinPkg.result,
+    propertyId,
+    storedHint,
+  );
 }

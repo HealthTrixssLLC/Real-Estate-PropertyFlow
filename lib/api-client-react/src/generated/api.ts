@@ -1491,6 +1491,37 @@ export const lookupPropertyDetails = async (
   );
 };
 
+export type ProcessPropertyLookupCandidate = {
+  source: "realtor" | "redfin";
+  beds?: number | null;
+  baths?: number | null;
+  squareFeet?: number | null;
+  listPrice?: number | null;
+  mlsId?: string | null;
+  listingStatus?: "active" | "recently_sold" | "off_market" | "unknown" | null;
+  listingUrl?: string | null;
+  listingDate?: string | null;
+  lastVerifiedAt: string;
+};
+
+export type ProcessPropertyLookupBody = {
+  address: string;
+  propertyId?: string;
+  realtorCandidates: ProcessPropertyLookupCandidate[];
+  redfinCandidate: ProcessPropertyLookupCandidate | null;
+};
+
+export const processPropertyLookup = async (
+  body: ProcessPropertyLookupBody,
+  options?: RequestInit,
+): Promise<PropertyLookupResponse> => {
+  return customFetch<PropertyLookupResponse>("/api/properties/process-lookup", {
+    ...options,
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+};
+
 export const getLookupPropertyDetailsQueryKey = (
   params?: LookupPropertyDetailsParams,
 ) => {
